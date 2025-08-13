@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Navigate,
+  Outlet,
 } from "react-router-dom";
 
 // Componentes da página inicial
@@ -16,6 +17,7 @@ import Localizacao from "./components/Localizacao";
 import FAQ from "./components/Faq";
 import CategoriasCarrossel from "./components/CategoriasCarrossel";
 import NossosServicos from "./components/NovosServicos";
+import GerenciadorContratos from "./pages/Admin/GerenciadorContrato";
 // Páginas de produtos
 import Vestidos from "./pages/Vestidos";
 import Ternos from "./pages/Ternos";
@@ -24,8 +26,10 @@ import Ternos from "./pages/Ternos";
 import Login from "./pages/Admin/Login";
 import Dashboard from "./pages/Admin/Dashboard";
 import GerenciadorProdutos from "./pages/Admin/GerenciarProdutos";
-// Componente de rota protegida
+
+// Importar o componente RotaProtegida
 import RotaProtegida from "./components/RotaPotegida";
+
 // Componente da página inicial
 const Home = () => {
   return (
@@ -41,7 +45,6 @@ const Home = () => {
   );
 };
 
-// Layout para páginas públicas
 // Layout para páginas públicas
 const PublicLayout = () => {
   return (
@@ -68,6 +71,8 @@ function App() {
           <Route path="/admin/login" element={<Login />} />
           <Route path="/admin" element={<RotaProtegida />}>
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="/admin/contratos" element={<GerenciadorContratos />} />
+
             <Route
               path="produtos/:tipoProduto"
               element={<GerenciadorProdutos />}

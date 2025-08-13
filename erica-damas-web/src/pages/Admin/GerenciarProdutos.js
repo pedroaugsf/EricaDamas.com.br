@@ -11,7 +11,6 @@ const GerenciadorProdutos = () => {
   // Estado do formulário
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [preco, setPreco] = useState("");
   const [imagens, setImagens] = useState([]);
   const [imagensPreview, setImagensPreview] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
@@ -33,25 +32,129 @@ const GerenciadorProdutos = () => {
   // Obter configuração atual
   const config = configProduto[tipoProduto] || configProduto.vestidos;
 
-  // Carregar produtos do localStorage ao iniciar
-  useEffect(() => {
-    const produtosArmazenados = localStorage.getItem(
-      `produtos_${config.colecao}`
-    );
-    if (produtosArmazenados) {
-      setProdutos(JSON.parse(produtosArmazenados));
+  // Função para obter token de autenticação
+  const getAuthToken = () => {
+    return localStorage.getItem("token");
+  };
+
+  // Detectar URL da API
+  const getApiUrl = () => {
+    const isCodespaces = window.location.hostname.includes(".app.github.dev");
+    if (isCodespaces) {
+      const codespacePrefix = window.location.hostname.split("-3000")[0];
+      return `https://${codespacePrefix}-5000.app.github.dev`;
     }
+    return process.env.REACT_APP_API_URL || "http://localhost:5000";
+  };
+
+  // Carregar produtos da API
+  const carregarProdutos = async () => {
+    try {
+      setCarregando(true);
+      const API_URL = getApiUrl();
+
+      console.log(
+        "Carregando produtos da API:",
+        `${API_URL}/api/produtos/${config.colecao}`
+      );
+
+      const response = await fetch(`${API_URL}/api/produtos/${config.colecao}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setProdutos(result.produtos);
+        console.log(`✅ ${result.produtos.length} produtos carregados`);
+      } else {
+        setErro("Erro ao carregar produtos: " + result.message);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar produtos:", error);
+      setErro("Erro ao conectar com o servidor");
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  // Carregar produtos ao iniciar
+  useEffect(() => {
+    carregarProdutos();
   }, [config.colecao]);
 
-  // Salvar produtos no localStorage quando houver alterações
-  useEffect(() => {
-    if (produtos.length > 0) {
-      localStorage.setItem(
-        `produtos_${config.colecao}`,
-        JSON.stringify(produtos)
-      );
-    }
-  }, [produtos, config.colecao]);
+  // Função para criar produto
+  const criarProduto = async (dadosProduto, arquivosImagem) => {
+    const token = getAuthToken();
+    const API_URL = getApiUrl();
+
+    console.log("=== CRIANDO PRODUTO ===");
+    console.log("Dados:", dadosProduto);
+    console.log("Imagens:", arquivosImagem.length);
+
+    const formData = new FormData();
+    formData.append("nome", dadosProduto.nome);
+    formData.append("descricao", dadosProduto.descricao);
+    formData.append("tipo", config.colecao);
+
+    arquivosImagem.forEach((arquivo) => {
+      formData.append("imagens", arquivo);
+    });
+
+    const response = await fetch(`${API_URL}/api/produtos`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    return response.json();
+  };
+
+  // Função para atualizar produto
+  const atualizarProduto = async (id, dadosProduto, arquivosImagem = []) => {
+    const token = getAuthToken();
+    const API_URL = getApiUrl();
+
+    console.log("=== ATUALIZANDO PRODUTO ===");
+    console.log("ID:", id);
+    console.log("Dados:", dadosProduto);
+    console.log("Novas imagens:", arquivosImagem.length);
+
+    const formData = new FormData();
+    formData.append("nome", dadosProduto.nome);
+    formData.append("descricao", dadosProduto.descricao);
+
+    arquivosImagem.forEach((arquivo) => {
+      formData.append("imagens", arquivo);
+    });
+
+    const response = await fetch(`${API_URL}/api/produtos/${id}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    return response.json();
+  };
+
+  // Função para excluir produto
+  const excluirProduto = async (id) => {
+    const token = getAuthToken();
+    const API_URL = getApiUrl();
+
+    console.log("=== EXCLUINDO PRODUTO ===");
+    console.log("ID:", id);
+
+    const response = await fetch(`${API_URL}/api/produtos/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.json();
+  };
 
   // Lidar com upload de imagens
   const handleImagemChange = (e) => {
@@ -69,104 +172,89 @@ const GerenciadorProdutos = () => {
   const resetarFormulario = () => {
     setNome("");
     setDescricao("");
-    setPreco("");
     setImagens([]);
     setImagensPreview([]);
     setEditandoId(null);
+    const fileInput = document.getElementById("imagens");
+    if (fileInput) fileInput.value = "";
   };
 
   // Carregar produto para edição
   const handleEditar = (produto) => {
     setNome(produto.nome);
     setDescricao(produto.descricao);
-    setPreco(produto.preco);
     setImagensPreview(produto.imagens || []);
-    setEditandoId(produto.id);
+    setEditandoId(produto._id); // ✅ Usando _id do MongoDB
+    setImagens([]);
     window.scrollTo(0, 0);
   };
 
   // Excluir produto
-  const handleExcluir = (id) => {
+  const handleExcluir = async (id) => {
     if (
       window.confirm(
         `Tem certeza que deseja excluir este ${config.tituloSingular.toLowerCase()}?`
       )
     ) {
-      setProdutos(produtos.filter((produto) => produto.id !== id));
+      try {
+        setCarregando(true);
+        const result = await excluirProduto(id);
+
+        if (result.success) {
+          console.log("✅ Produto excluído com sucesso");
+          await carregarProdutos(); // Recarregar lista
+        } else {
+          setErro("Erro ao excluir produto: " + result.message);
+        }
+      } catch (error) {
+        console.error("Erro ao excluir produto:", error);
+        setErro("Erro ao excluir produto: " + error.message);
+      } finally {
+        setCarregando(false);
+      }
     }
   };
 
   // Enviar formulário
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setCarregando(true);
+    setErro("");
 
     try {
-      // Converter imagens para Base64 para armazenamento local
-      const processarImagens = async () => {
-        let imagensBase64 = [];
-
-        // Se estiver editando e não houver novas imagens, manter as existentes
-        if (editandoId && imagens.length === 0) {
-          const produtoExistente = produtos.find((p) => p.id === editandoId);
-          imagensBase64 = produtoExistente.imagens || [];
-        }
-        // Se houver novas imagens, processá-las
-        else if (imagens.length > 0) {
-          for (const imagem of imagens) {
-            const base64 = await converterParaBase64(imagem);
-            imagensBase64.push(base64);
-          }
-        }
-
-        const dadosProduto = {
-          nome,
-          descricao,
-          preco: parseFloat(preco),
-          imagens: imagensBase64,
-          dataAtualizacao: new Date().toISOString(),
-        };
-
-        if (editandoId) {
-          // Atualizar produto existente
-          setProdutos(
-            produtos.map((produto) =>
-              produto.id === editandoId
-                ? { ...produto, ...dadosProduto, id: editandoId }
-                : produto
-            )
-          );
-        } else {
-          // Adicionar novo produto
-          const novoProduto = {
-            ...dadosProduto,
-            id: Date.now().toString(),
-            dataCriacao: new Date().toISOString(),
-          };
-          setProdutos([...produtos, novoProduto]);
-        }
-
-        resetarFormulario();
-        setCarregando(false);
+      const dadosProduto = {
+        nome: nome.trim(),
+        descricao: descricao.trim(),
       };
 
-      processarImagens();
+      let result;
+
+      if (editandoId) {
+        // Atualizar produto existente
+        result = await atualizarProduto(editandoId, dadosProduto, imagens);
+      } else {
+        // Criar novo produto
+        if (imagens.length === 0) {
+          throw new Error("Pelo menos uma imagem é obrigatória");
+        }
+        result = await criarProduto(dadosProduto, imagens);
+      }
+
+      if (result.success) {
+        console.log("✅ Produto salvo com sucesso:", result.produto);
+        resetarFormulario();
+        await carregarProdutos(); // Recarregar lista
+      } else {
+        throw new Error(result.message || "Erro ao salvar produto");
+      }
     } catch (err) {
+      console.error("Erro ao salvar produto:", err);
       setErro(
         `Erro ao salvar ${config.tituloSingular.toLowerCase()}: ${err.message}`
       );
+    } finally {
       setCarregando(false);
     }
-  };
-
-  // Função para converter imagem para Base64
-  const converterParaBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-    });
   };
 
   return (
@@ -180,7 +268,14 @@ const GerenciadorProdutos = () => {
 
       <h1 style={styles.titulo}>Gerenciar {config.titulo}</h1>
 
-      {erro && <div style={styles.erro}>{erro}</div>}
+      {erro && (
+        <div style={styles.erro}>
+          {erro}
+          <button onClick={() => setErro("")} style={styles.closeErrorButton}>
+            ×
+          </button>
+        </div>
+      )}
 
       <div style={styles.formContainer}>
         <h2 style={styles.subtitulo}>
@@ -200,6 +295,7 @@ const GerenciadorProdutos = () => {
               required
               style={styles.input}
               placeholder={`Nome do ${config.tituloSingular.toLowerCase()}`}
+              disabled={carregando}
             />
           </div>
 
@@ -212,20 +308,7 @@ const GerenciadorProdutos = () => {
               required
               style={styles.textarea}
               placeholder={`Descrição detalhada do ${config.tituloSingular.toLowerCase()}`}
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <label htmlFor="preco">Preço (R$):</label>
-            <input
-              type="number"
-              id="preco"
-              value={preco}
-              onChange={(e) => setPreco(e.target.value)}
-              step="0.01"
-              required
-              style={styles.input}
-              placeholder="0.00"
+              disabled={carregando}
             />
           </div>
 
@@ -238,25 +321,29 @@ const GerenciadorProdutos = () => {
               multiple
               accept="image/*"
               style={styles.fileInput}
+              disabled={carregando}
             />
             <small style={styles.helperText}>
               {editandoId
                 ? "Selecione novas imagens para substituir as existentes (opcional)"
-                : "Selecione uma ou mais imagens"}
+                : "Selecione uma ou mais imagens (máximo 5MB cada)"}
             </small>
           </div>
 
           {imagensPreview.length > 0 && (
             <div style={styles.previewContainer}>
-              {imagensPreview.map((preview, index) => (
-                <div key={index} style={styles.previewItem}>
-                  <img
-                    src={preview}
-                    alt={`Preview ${index + 1}`}
-                    style={styles.previewImage}
-                  />
-                </div>
-              ))}
+              <h4>Preview das Imagens:</h4>
+              <div style={styles.previewGrid}>
+                {imagensPreview.map((preview, index) => (
+                  <div key={index} style={styles.previewItem}>
+                    <img
+                      src={preview}
+                      alt={`Preview ${index + 1}`}
+                      style={styles.previewImage}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -264,7 +351,11 @@ const GerenciadorProdutos = () => {
             <button
               type="submit"
               disabled={carregando}
-              style={styles.submitButton}
+              style={{
+                ...styles.submitButton,
+                opacity: carregando ? 0.6 : 1,
+                cursor: carregando ? "not-allowed" : "pointer",
+              }}
             >
               {carregando
                 ? "Salvando..."
@@ -278,6 +369,7 @@ const GerenciadorProdutos = () => {
                 type="button"
                 onClick={resetarFormulario}
                 style={styles.cancelButton}
+                disabled={carregando}
               >
                 Cancelar
               </button>
@@ -287,41 +379,72 @@ const GerenciadorProdutos = () => {
       </div>
 
       <div style={styles.productListContainer}>
-        <h2 style={styles.subtitulo}>{config.titulo} Cadastrados</h2>
+        <h2 style={styles.subtitulo}>
+          {config.titulo} Cadastrados
+          {produtos.length > 0 && (
+            <span style={styles.productCount}>({produtos.length})</span>
+          )}
+        </h2>
 
-        {produtos.length === 0 ? (
-          <p>Nenhum {config.tituloSingular.toLowerCase()} cadastrado.</p>
+        {carregando && produtos.length === 0 ? (
+          <div style={styles.loading}>
+            <div style={styles.spinner}></div>
+            <p>Carregando produtos...</p>
+          </div>
+        ) : produtos.length === 0 ? (
+          <div style={styles.emptyMessage}>
+            <p>Nenhum {config.tituloSingular.toLowerCase()} cadastrado.</p>
+            <small>
+              Adicione o primeiro produto usando o formulário acima.
+            </small>
+          </div>
         ) : (
           <div style={styles.productGrid}>
             {produtos.map((produto) => (
-              <div key={produto.id} style={styles.productCard}>
+              <div key={produto._id} style={styles.productCard}>
                 {produto.imagens && produto.imagens[0] && (
                   <div style={styles.productImageContainer}>
                     <img
                       src={produto.imagens[0]}
                       alt={produto.nome}
                       style={styles.productImage}
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
                     />
                   </div>
                 )}
 
                 <div style={styles.productInfo}>
                   <h3 style={styles.productName}>{produto.nome}</h3>
-                  <p style={styles.productPrice}>
-                    R$ {parseFloat(produto.preco).toFixed(2).replace(".", ",")}
+                  <p style={styles.productDescription}>
+                    {produto.descricao.length > 100
+                      ? produto.descricao.substring(0, 100) + "..."
+                      : produto.descricao}
                   </p>
+                  {produto.imagens && produto.imagens.length > 1 && (
+                    <small style={styles.imageCount}>
+                      {produto.imagens.length} imagens
+                    </small>
+                  )}
+                  <small style={styles.productDate}>
+                    Criado em:{" "}
+                    {new Date(produto.createdAt).toLocaleDateString("pt-BR")}
+                  </small>
                 </div>
 
                 <div style={styles.productActions}>
                   <button
                     onClick={() => handleEditar(produto)}
                     style={styles.editButton}
+                    disabled={carregando}
                   >
                     Editar
                   </button>
                   <button
-                    onClick={() => handleExcluir(produto.id)}
+                    onClick={() => handleExcluir(produto._id)}
                     style={styles.deleteButton}
+                    disabled={carregando}
                   >
                     Excluir
                   </button>
@@ -335,6 +458,7 @@ const GerenciadorProdutos = () => {
   );
 };
 
+// Estilos atualizados
 const styles = {
   container: {
     maxWidth: "1200px",
@@ -349,6 +473,7 @@ const styles = {
     borderRadius: "4px",
     cursor: "pointer",
     marginBottom: "1rem",
+    transition: "background-color 0.3s",
   },
   titulo: {
     fontSize: "2.5rem",
@@ -362,6 +487,14 @@ const styles = {
     fontWeight: "300",
     color: "#5d4037",
     marginBottom: "1.5rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  productCount: {
+    fontSize: "1rem",
+    color: "#666",
+    fontWeight: "normal",
   },
   erro: {
     backgroundColor: "#ffebee",
@@ -369,6 +502,38 @@ const styles = {
     padding: "1rem",
     borderRadius: "4px",
     marginBottom: "1rem",
+    border: "1px solid #ffcdd2",
+    position: "relative",
+  },
+  closeErrorButton: {
+    position: "absolute",
+    top: "0.5rem",
+    right: "0.5rem",
+    background: "none",
+    border: "none",
+    fontSize: "1.5rem",
+    color: "#c62828",
+    cursor: "pointer",
+  },
+  loading: {
+    textAlign: "center",
+    padding: "2rem 0",
+  },
+  spinner: {
+    width: "40px",
+    height: "40px",
+    border: "3px solid #f3f3f3",
+    borderTop: "3px solid #b6a06a",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
+    margin: "0 auto 1rem",
+  },
+  emptyMessage: {
+    textAlign: "center",
+    padding: "2rem",
+    backgroundColor: "#f9f9f9",
+    borderRadius: "4px",
+    color: "#666",
   },
   formContainer: {
     backgroundColor: "#fff",
@@ -392,6 +557,7 @@ const styles = {
     borderRadius: "4px",
     border: "1px solid #ddd",
     fontSize: "1rem",
+    transition: "border-color 0.3s",
   },
   textarea: {
     padding: "0.75rem",
@@ -400,6 +566,7 @@ const styles = {
     fontSize: "1rem",
     minHeight: "150px",
     resize: "vertical",
+    transition: "border-color 0.3s",
   },
   fileInput: {
     padding: "0.5rem 0",
@@ -409,10 +576,13 @@ const styles = {
     fontSize: "0.85rem",
   },
   previewContainer: {
+    marginTop: "1rem",
+  },
+  previewGrid: {
     display: "flex",
     flexWrap: "wrap",
     gap: "1rem",
-    marginTop: "1rem",
+    marginTop: "0.5rem",
   },
   previewItem: {
     width: "100px",
@@ -439,6 +609,7 @@ const styles = {
     borderRadius: "4px",
     cursor: "pointer",
     fontSize: "1rem",
+    transition: "background-color 0.3s",
   },
   cancelButton: {
     backgroundColor: "#f5f5f5",
@@ -448,6 +619,7 @@ const styles = {
     borderRadius: "4px",
     cursor: "pointer",
     fontSize: "1rem",
+    transition: "background-color 0.3s",
   },
   productListContainer: {
     backgroundColor: "#fff",
@@ -457,17 +629,19 @@ const styles = {
   },
   productGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
     gap: "1.5rem",
   },
   productCard: {
     border: "1px solid #eee",
     borderRadius: "4px",
     overflow: "hidden",
+    transition: "box-shadow 0.3s",
   },
   productImageContainer: {
     height: "200px",
     overflow: "hidden",
+    backgroundColor: "#f5f5f5",
   },
   productImage: {
     width: "100%",
@@ -481,11 +655,24 @@ const styles = {
     fontSize: "1.2rem",
     fontWeight: "500",
     marginBottom: "0.5rem",
+    color: "#333",
   },
-  productPrice: {
-    fontSize: "1.1rem",
-    color: "#b6a06a",
-    fontWeight: "500",
+  productDescription: {
+    fontSize: "0.9rem",
+    color: "#666",
+    marginBottom: "0.5rem",
+    lineHeight: "1.4",
+  },
+  imageCount: {
+    color: "#999",
+    fontSize: "0.8rem",
+    display: "block",
+    marginBottom: "0.25rem",
+  },
+  productDate: {
+    color: "#999",
+    fontSize: "0.8rem",
+    display: "block",
   },
   productActions: {
     display: "flex",
@@ -497,6 +684,7 @@ const styles = {
     border: "none",
     backgroundColor: "#f5f5f5",
     cursor: "pointer",
+    transition: "background-color 0.3s",
   },
   deleteButton: {
     flex: "1",
@@ -506,6 +694,7 @@ const styles = {
     color: "#d32f2f",
     cursor: "pointer",
     borderLeft: "1px solid #eee",
+    transition: "background-color 0.3s",
   },
 };
 

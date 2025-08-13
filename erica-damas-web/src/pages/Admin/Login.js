@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
+import authService from "../../services/AuthService";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -8,25 +8,37 @@ const Login = () => {
   const [carregando, setCarregando] = useState(false);
   const navigate = useNavigate();
 
-  // Credenciais hard-coded (temporárias)
-  const ADMIN_EMAIL = "admin@ericadamas.com";
-  const ADMIN_SENHA = "admin123";
+  // Verificar se já está autenticado
+  useEffect(() => {
+    const verificarAutenticacao = async () => {
+      try {
+        const autenticado = await authService.isAuthenticated();
+        if (autenticado) {
+          navigate("/admin/dashboard");
+        }
+      } catch (error) {
+        console.error("Erro ao verificar autenticação:", error);
+      }
+    };
 
-  const handleSubmit = (e) => {
+    verificarAutenticacao();
+  }, [navigate]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErro("");
     setCarregando(true);
 
-    // Verificação simples das credenciais
-    if (email === ADMIN_EMAIL && senha === ADMIN_SENHA) {
-      // Armazenar estado de autenticação no localStorage
-      localStorage.setItem("adminAutenticado", "true");
+    try {
+      await authService.login(email, senha);
       navigate("/admin/dashboard");
-    } else {
-      setErro("Email ou senha incorretos");
+    } catch (error) {
+      setErro(error.message || "Email ou senha incorretos");
+      // Limpar senha em caso de erro
+      setSenha("");
+    } finally {
+      setCarregando(false);
     }
-
-    setCarregando(false);
   };
 
   return (
@@ -46,6 +58,7 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               required
               style={styles.input}
+              autoComplete="username"
             />
           </div>
 
@@ -58,6 +71,7 @@ const Login = () => {
               onChange={(e) => setSenha(e.target.value)}
               required
               style={styles.input}
+              autoComplete="current-password"
             />
           </div>
 

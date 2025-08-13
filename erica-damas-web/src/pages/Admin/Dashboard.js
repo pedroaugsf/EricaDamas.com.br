@@ -1,11 +1,41 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
+import authService from "../../services/AuthService";
 const Dashboard = () => {
   const navigate = useNavigate();
+  const adminName = localStorage.getItem("adminName") || "Administrador";
+
+  // Verificar autenticação ao carregar
+  useEffect(() => {
+    const verificarAutenticacao = async () => {
+      const autenticado = await authService.isAuthenticated();
+      if (!autenticado) {
+        navigate("/admin/login");
+      }
+    };
+
+    verificarAutenticacao();
+  }, [navigate]);
+
+  // Renovar sessão quando o usuário interagir com o dashboard
+  useEffect(() => {
+    const renovarSessao = () => {
+      authService.renovarSessao();
+    };
+
+    // Adicionar event listeners para renovar sessão
+    window.addEventListener("click", renovarSessao);
+    window.addEventListener("keypress", renovarSessao);
+
+    return () => {
+      // Limpar event listeners
+      window.removeEventListener("click", renovarSessao);
+      window.removeEventListener("keypress", renovarSessao);
+    };
+  }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("adminAutenticado");
+    authService.logout();
     navigate("/admin/login");
   };
 
@@ -13,9 +43,12 @@ const Dashboard = () => {
     <div style={styles.container}>
       <div style={styles.header}>
         <h1 style={styles.titulo}>Painel Administrativo</h1>
-        <button onClick={handleLogout} style={styles.logoutButton}>
-          Sair
-        </button>
+        <div style={styles.userInfo}>
+          <span style={styles.welcomeText}>Olá, {adminName}</span>
+          <button onClick={handleLogout} style={styles.logoutButton}>
+            Sair
+          </button>
+        </div>
       </div>
 
       <div style={styles.menuContainer}>
@@ -25,11 +58,16 @@ const Dashboard = () => {
             <p>Adicionar, editar ou remover vestidos de noiva</p>
           </div>
         </Link>
-
         <Link to="/admin/produtos/ternos" style={styles.menuItem}>
           <div style={styles.menuCard}>
             <h2>Gerenciar Ternos</h2>
             <p>Adicionar, editar ou remover ternos</p>
+          </div>
+        </Link>
+        <Link to="/admin/contratos" style={styles.menuItem}>
+          <div style={styles.menuCard}>
+            <h2>Gerenciar Contratos</h2>
+            <p>Criar e gerenciar contratos de locação</p>
           </div>
         </Link>
       </div>
@@ -54,6 +92,15 @@ const styles = {
     fontSize: "2.5rem",
     fontWeight: "300",
     color: "#5d4037",
+  },
+  userInfo: {
+    display: "flex",
+    alignItems: "center",
+    gap: "1rem",
+  },
+  welcomeText: {
+    fontSize: "1rem",
+    color: "#666",
   },
   logoutButton: {
     backgroundColor: "#f5f5f5",

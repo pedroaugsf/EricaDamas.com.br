@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "erica-damas-web",
+  "private_key_id": "92d9d1f98abcdb2f472195151be7302f508f708c",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDIpbkv3edKKBHn\neFRln2dtoEr73sZOqGzbXV2S15EmkC7UTgp9IF4iNnuljBdTAQxqP2Cs+DaQRDcJ\ntMvVCbL7WlSTKruMiX4JoYPn2Fhs5mHdge58p6EJLMIxrZsf/MJJmGwyhCaH65xQ\nC8b3G0nxk5K2c8vMwZf5Yi49vcnuO/EbHnL4wVPB4v2C7DWPCWybsZPm8kNXQDlC\nYCMGDnNze7ZsGbxiTiuneTo8KO/g/yA3AcFSB9Gcv7ZgSsdzpI5AyjX2/c55E1d5\nyzK9wbOy7f2a0Ip7kKmt5NPzU65a23qWSe0rX4DLACAtcYaTMdWG3MzdUaVvAzgo\n7Mg8j05XAgMBAAECggEAFSOl+m24m87TmWggttbagL7t53y1tpJ2wDh6o/6OI6/2\ndGuxyIkLzIhM8p4V1FWR8fJcxHHKMzIx/Osiu9PacDI4zYsnrfYhD0azAk7VfMkG\nRTNr5Y+LnySAuSx/NsQx0VXRCxQdMx4W89//GwhcUVVTlGFoIVnBdzFpicZga0w5\nqGDJ6Tw1UJXrUTxxhvu+cjgxBMQpsffcbqjiH4a0dK2Y0l2GJfiwjZDr7QLbbzox\nvIxwmeA5LB8VGIOnQxtL2qOKEyuJviwpcspKZx05mKT8gvr25S0yrySn/koAhRW3\nC2DFapGGbqKW7LoosLf3aXRegXDz8GanK2Qzebw9EQKBgQDjk8wWCK63PI5Q3pk9\nO5zkHQooI8NJ47uzjTKz4eGmJEgt+3Mvnkv5LvFyXoG8pMOIV6ArBj+mPiozP/Dm\n9iIZa0Vcs/5e1Vp9WwxXAyBt42fcVJchdzUVM0l5btR3g26e3OclSj0rUC8CuPAf\ny5jPktvoniLDiN57oLlJwyMtAwKBgQDhtOi77TN3JKOmkWY4r965j3zcXW1FNK1j\n7JhPBJrLwBWkqz4/UchDsIKu2qhxt9vzLS+EHezJZqHsvB5EMpHk20ah/dozyMb6\n1emZqAG4FbmZOt+j/OoOq4XOoWRXR7Vf+N4RPbD3eQx6cXl2yfI/twIz/iWDQS5e\nFaI/AH1nHQKBgQCsjjhEzLiNP2E5eE8A2t6PKGW3IcbFk+OStREoy7Do5MHF+87O\n4FwCyNFSQs5kVxnbm3VaqhZA2wnsaiMjPKWGWIvzSpcpGOTP/+VPZJOGPtNVgN5H\nBbg+JvEjHiIDrKiH1D9/StcurFG44rlPonRvj48mxiDd2j23x5o2j7twOQKBgA6j\n6HDAKxVwV/km90V4Cu9oYkX8/Wh+yTxxDVQazVuoAv9iaDA9Qss5ONDUuBZgQbEd\nXjaopkJOGPS9Iw1zZkk8+/DoAW5YeKeulm90GWBycE6DJhyB/EClWZGUoGiU6yvl\nfaoKoV78CBYtJB7TbJY7bbYnpxFDehl6N8L0ai31AoGBAKQevCmTF8DL7+oOgq3x\nKKdI47SyK6Sh+gquBjuGgogZkQJTWrq4E4NHMFZbqH2WiAq1oZmjJmMWzYHfyM24\nP1hW0XrmAl+v0oO4lBWfcGUQOw27rgCtlXJVhRujlShNuIau+Yvry8fSOpctB0Q3\n2DZaGccaCaH03Xe5gNA7Tft8\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@erica-damas-web.iam.gserviceaccount.com",
+  "client_id": "105284100686912808057",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40erica-damas-web.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
