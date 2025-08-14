@@ -1,26 +1,13 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build"
-      }
-    },
-    {
-      "src": "erica-damas-backend/server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/erica-damas-backend/server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
+"functions": {
+  "erica-damas-backend/server.js": {
+    "maxDuration": 10
+  }
+},
+"rewrites": [
+  {
+    "source": "/api/(.*)",
+    "destination": "/erica-damas-backend/server.js"
+  }
+]
 }
