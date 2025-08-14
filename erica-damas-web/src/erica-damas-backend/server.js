@@ -5,37 +5,95 @@ const dotenv = require("dotenv");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
-const { bucket } = require("./firebaseConfig");
-const Produto = require("./models/Produto");
-
-// Log do bucket logo após a importação
-console.log("Firebase bucket configurado:", bucket.name);
 
 // Carregar variáveis de ambiente
 dotenv.config();
 
 const app = express();
 
-// Conectar ao MongoDB
+// Configuração do Firebase (ajustada para Vercel)
+let bucket;
+try {
+  const admin = require("firebase-admin");
+
+  let serviceAccount;
+
+  // Para produção (Vercel), usar variáveis de ambiente
+  if (process.env.NODE_ENV === "production") {
+    serviceAccount = {
+      type: "service_account",
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+      private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      client_id: process.env.FIREBASE_CLIENT_ID,
+      auth_uri: "https://accounts.google.com/o/oauth2/auth",
+      token_uri: "https://oauth2.googleapis.com/token",
+      auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+      client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
+    };
+  } else {
+    // Para desenvolvimento local, usar arquivo JSON
+    serviceAccount = require("./firebase-key.json");
+  }
+
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    });
+  }
+
+  bucket = admin.storage().bucket();
+  console.log("Firebase bucket configurado:", bucket.name);
+} catch (error) {
+  console.error("Erro ao configurar Firebase:", error);
+}
+
+// Importar modelo do Produto
+const Produto = require("./models/Produto");
+
+// Conectar ao MongoDB (otimizado para Vercel)
 const connectDB = async () => {
+  // Se já conectado, não reconectar
+  if (mongoose.connection.readyState === 1) {
+    console.log("✅ MongoDB já conectado!");
+    return;
+  }
+
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
+      maxPoolSize: 10, // Máximo de conexões
+      serverSelectionTimeoutMS: 5000, // Timeout de 5s
+      socketTimeoutMS: 45000, // Timeout de socket
+      bufferCommands: false, // Desabilitar buffering
+      bufferMaxEntries: 0,
     });
     console.log("✅ MongoDB conectado com sucesso!");
   } catch (error) {
     console.error("❌ Erro ao conectar ao MongoDB:", error);
-    process.exit(1);
+    // Na Vercel, não fazer exit, apenas logar o erro
+    if (process.env.NODE_ENV !== "production") {
+      process.exit(1);
+    }
   }
 };
 
+// Conectar ao banco
 connectDB();
 
-// Configuração CORS
+// Configuração CORS (ajustada para produção)
 app.use(
   cors({
-    origin: "*",
+    origin:
+      process.env.NODE_ENV === "production"
+        ? [
+            "https://erica-damas-web.vercel.app",
+            "https://erica-damas-web-git-main-seu-usuario.vercel.app",
+          ]
+        : ["http://localhost:3000", "http://localhost:5000"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -69,28 +127,40 @@ console.log("Credenciais configuradas:");
 console.log("- Email:", ADMIN_EMAIL);
 console.log("- Senha está definida:", !!ADMIN_PASSWORD);
 console.log("- JWT_SECRET está definido:", !!JWT_SECRET);
+console.log("- Ambiente:", process.env.NODE_ENV || "development");
 
 // Rota de login
-app.post("/api/login", (req, res) => {
-  console.log("Tentativa de login:", req.body);
-  const { email, senha } = req.body;
+app.post("/api/login", async (req, res) => {
+  try {
+    // Garantir conexão com MongoDB
+    await connectDB();
 
-  if (email === ADMIN_EMAIL && senha === ADMIN_PASSWORD) {
-    const token = jwt.sign({ id: "admin", email: ADMIN_EMAIL }, JWT_SECRET, {
-      expiresIn: "24h",
-    });
+    console.log("Tentativa de login:", req.body);
+    const { email, senha } = req.body;
 
-    console.log("Login bem-sucedido para:", email);
-    res.json({
-      success: true,
-      token,
-      user: { name: "Administrador" },
-    });
-  } else {
-    console.log("Login falhou para:", email);
-    res.status(401).json({
+    if (email === ADMIN_EMAIL && senha === ADMIN_PASSWORD) {
+      const token = jwt.sign({ id: "admin", email: ADMIN_EMAIL }, JWT_SECRET, {
+        expiresIn: "24h",
+      });
+
+      console.log("Login bem-sucedido para:", email);
+      res.json({
+        success: true,
+        token,
+        user: { name: "Administrador" },
+      });
+    } else {
+      console.log("Login falhou para:", email);
+      res.status(401).json({
+        success: false,
+        message: "Email ou senha incorretos",
+      });
+    }
+  } catch (error) {
+    console.error("Erro no login:", error);
+    res.status(500).json({
       success: false,
-      message: "Email ou senha incorretos",
+      message: "Erro interno do servidor",
     });
   }
 });
@@ -122,7 +192,7 @@ const verificarToken = (req, res, next) => {
 // Função para fazer upload de imagem para o Firebase Storage
 const uploadImageToFirebase = async (file) => {
   try {
-    if (!file) return null;
+    if (!file || !bucket) return null;
 
     const fileName = `${uuidv4()}-${file.originalname.replace(/\s+/g, "-")}`;
 
@@ -174,6 +244,9 @@ const uploadImageToFirebase = async (file) => {
 // Buscar produtos por tipo (rota pública)
 app.get("/api/produtos/:tipo", async (req, res) => {
   try {
+    // Garantir conexão com MongoDB
+    await connectDB();
+
     const { tipo } = req.params;
 
     console.log(`Buscando produtos do tipo: ${tipo}`);
@@ -214,6 +287,9 @@ app.post(
   upload.array("imagens", 5),
   async (req, res) => {
     try {
+      // Garantir conexão com MongoDB
+      await connectDB();
+
       const { nome, descricao, tipo } = req.body;
 
       console.log("=== CRIANDO NOVO PRODUTO ===");
@@ -299,6 +375,9 @@ app.put(
   upload.array("imagens", 5),
   async (req, res) => {
     try {
+      // Garantir conexão com MongoDB
+      await connectDB();
+
       const { id } = req.params;
       const { nome, descricao } = req.body;
 
@@ -360,6 +439,9 @@ app.put(
 // Excluir produto (rota protegida)
 app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
   try {
+    // Garantir conexão com MongoDB
+    await connectDB();
+
     const { id } = req.params;
 
     console.log("=== EXCLUINDO PRODUTO ===");
@@ -395,6 +477,9 @@ app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
 // Buscar todos os produtos (rota protegida para admin)
 app.get("/api/admin/produtos", verificarToken, async (req, res) => {
   try {
+    // Garantir conexão com MongoDB
+    await connectDB();
+
     const produtos = await Produto.find().sort({ createdAt: -1 });
 
     console.log(`✅ Admin: ${produtos.length} produtos encontrados`);
@@ -415,19 +500,29 @@ app.get("/api/admin/produtos", verificarToken, async (req, res) => {
 });
 
 // Rota protegida para verificar autenticação
-app.get("/api/admin/verificar", verificarToken, (req, res) => {
-  console.log("Autenticação verificada para:", req.user.email);
-  res.json({
-    success: true,
-    message: "Autenticado com sucesso",
-    user: { email: req.user.email },
-  });
+app.get("/api/admin/verificar", verificarToken, async (req, res) => {
+  try {
+    console.log("Autenticação verificada para:", req.user.email);
+    res.json({
+      success: true,
+      message: "Autenticado com sucesso",
+      user: { email: req.user.email },
+    });
+  } catch (error) {
+    console.error("Erro na verificação:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro interno do servidor",
+    });
+  }
 });
 
 // Rota raiz
 app.get("/", (req, res) => {
   res.json({
     message: "API Erica Damas está funcionando",
+    environment: process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString(),
     endpoints: {
       public: ["GET /api/produtos/vestidos", "GET /api/produtos/ternos"],
       admin: [
@@ -443,7 +538,11 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api", (req, res) => {
-  res.json({ message: "API Erica Damas está funcionando" });
+  res.json({
+    message: "API Erica Damas está funcionando",
+    environment: process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Middleware de tratamento de erros
@@ -452,16 +551,24 @@ app.use((error, req, res, next) => {
   res.status(500).json({
     success: false,
     message: "Erro interno do servidor",
-    error: error.message,
+    error:
+      process.env.NODE_ENV === "production"
+        ? "Internal Server Error"
+        : error.message,
   });
 });
 
-// Iniciar servidor
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`📍 Em ambiente local: http://localhost:${PORT}`);
-  console.log(`☁️  No Codespaces, acesse usando o URL fornecido pelo GitHub`);
-  console.log(`🔥 Firebase Storage configurado e pronto!`);
-  console.log(`📊 MongoDB integrado e funcionando!`);
-});
+// Para desenvolvimento local
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`📍 Em ambiente local: http://localhost:${PORT}`);
+    console.log(`☁️  No Codespaces, acesse usando o URL fornecido pelo GitHub`);
+    console.log(`🔥 Firebase Storage configurado e pronto!`);
+    console.log(`📊 MongoDB integrado e funcionando!`);
+  });
+}
+
+// Export para Vercel (OBRIGATÓRIO!)
+module.exports = app;
