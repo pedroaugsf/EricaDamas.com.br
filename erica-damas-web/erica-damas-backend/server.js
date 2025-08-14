@@ -65,11 +65,10 @@ const connectDB = async () => {
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      maxPoolSize: 10, // Máximo de conexões
-      serverSelectionTimeoutMS: 5000, // Timeout de 5s
-      socketTimeoutMS: 45000, // Timeout de socket
-      bufferCommands: false, // Desabilitar buffering
-      bufferMaxEntries: 0,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      bufferCommands: false,
     });
     console.log("✅ MongoDB conectado com sucesso!");
   } catch (error) {
@@ -85,15 +84,18 @@ const connectDB = async () => {
 connectDB();
 
 // Configuração CORS (ajustada para produção)
+// Configuração CORS (ajustada para Codespaces)
 app.use(
   cors({
     origin:
       process.env.NODE_ENV === "production"
-        ? [
-            "https://erica-damas-web.vercel.app",
-            "https://erica-damas-web-git-main-seu-usuario.vercel.app",
-          ]
-        : ["http://localhost:3000", "http://localhost:5000"],
+        ? ["https://erica-damas-com-br-e5w2.vercel.app"]
+        : [
+            "http://localhost:3000",
+            "http://localhost:5000",
+            "https://ominous-orbit-g4qq7vw57qj5c6jr-3000.app.github.dev", // Frontend Codespaces
+            "https://ominous-orbit-g4qq7vw57qj5c6jr-5000.app.github.dev", // Backend Codespaces
+          ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
