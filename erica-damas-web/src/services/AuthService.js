@@ -1,21 +1,37 @@
 import axios from "axios";
 
-// Detectar se estamos no GitHub Codespaces
+// Detectar ambiente
 const isCodespaces = window.location.hostname.includes(".app.github.dev");
+const isVercel = window.location.hostname.includes("vercel.app");
+const isLocalhost = window.location.hostname === "localhost";
 
 // Construir a URL da API baseada no ambiente
 let API_URL;
+
 if (isCodespaces) {
-  // Extrair o prefixo do Codespaces da URL atual
+  // GitHub Codespaces
   const codespacePrefix = window.location.hostname.split("-3000")[0];
   API_URL = `https://${codespacePrefix}-5000.app.github.dev/api`;
+} else if (isVercel) {
+  // Vercel - usar a mesma URL base
+  API_URL = `${window.location.origin}/api`;
+} else if (isLocalhost) {
+  // Desenvolvimento local
+  API_URL = "http://localhost:5000/api";
 } else {
+  // Fallback para variável de ambiente ou localhost
   API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 }
 
 console.log(
   "Ambiente detectado:",
-  isCodespaces ? "GitHub Codespaces" : "Local/Produção"
+  isCodespaces
+    ? "GitHub Codespaces"
+    : isVercel
+    ? "Vercel"
+    : isLocalhost
+    ? "Local"
+    : "Produção"
 );
 console.log("API_URL configurada para:", API_URL);
 
@@ -35,7 +51,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log("Enviando requisição para:", config.url);
+    console.log("Enviando requisição para:", config.baseURL + config.url);
     return config;
   },
   (error) => {
