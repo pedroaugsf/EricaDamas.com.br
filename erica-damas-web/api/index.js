@@ -34,7 +34,17 @@ try {
     };
   } else {
     // Para desenvolvimento local, usar arquivo JSON
-    serviceAccount = require("./firebase-key.json");
+    try {
+      serviceAccount = require("../erica-damas-backend/firebase-key.json");
+    } catch (err) {
+      console.log("Firebase key file not found, using environment variables");
+      serviceAccount = {
+        type: "service_account",
+        project_id: process.env.FIREBASE_PROJECT_ID,
+        private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      };
+    }
   }
 
   if (!admin.apps.length) {
@@ -51,7 +61,7 @@ try {
 }
 
 // Importar modelo do Produto
-const Produto = require("./models/Produto");
+const Produto = require("../erica-damas-backend/models/Produto");
 
 // Conectar ao MongoDB (otimizado para Vercel)
 const connectDB = async () => {
@@ -62,9 +72,8 @@ const connectDB = async () => {
   }
 
   try {
+    // SUBSTITUA por:
     await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,

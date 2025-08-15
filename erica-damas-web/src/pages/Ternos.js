@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Helmet } from "react-helmet";
+import { api } from "../services/AuthService";
 
 const Ternos = () => {
   const [ternos, setTernos] = useState([]);
@@ -7,29 +8,15 @@ const Ternos = () => {
   const [ternoSelecionado, setTernoSelecionado] = useState(null);
   const [erro, setErro] = useState("");
 
-  // Detectar URL da API
-  const getApiUrl = () => {
-    const isCodespaces = window.location.hostname.includes(".app.github.dev");
-    if (isCodespaces) {
-      const codespacePrefix = window.location.hostname.split("-3000")[0];
-      return `https://${codespacePrefix}-5000.app.github.dev`;
-    }
-    return process.env.REACT_APP_API_URL || "http://localhost:5000";
-  };
-
-  // Carregar ternos da API
+  // Carregar ternos da API usando o serviço centralizado
   const carregarTernos = async () => {
     try {
       setCarregando(true);
-      const API_URL = getApiUrl();
+      setErro("");
+      console.log("Carregando ternos da API...");
 
-      console.log(
-        "Carregando ternos da API:",
-        `${API_URL}/api/produtos/ternos`
-      );
-
-      const response = await fetch(`${API_URL}/api/produtos/ternos`);
-      const result = await response.json();
+      const response = await api.get("/produtos/ternos");
+      const result = response.data;
 
       if (result.success) {
         setTernos(result.produtos);
@@ -140,6 +127,7 @@ const Ternos = () => {
                       e.target.style.backgroundColor = "#f5f5f5";
                       e.target.alt = "Imagem não disponível";
                     }}
+                    loading="lazy"
                   />
                   {terno.imagens.length > 1 && (
                     <div style={styles.imageCount}>
@@ -176,6 +164,7 @@ const Ternos = () => {
                       src={ternoSelecionado.imagens[0]}
                       alt={ternoSelecionado.nome}
                       style={styles.modalImage}
+                      loading="lazy"
                     />
                   )}
               </div>
@@ -192,6 +181,12 @@ const Ternos = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={styles.whatsappButton}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "#128C7E";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "#25D366";
+                    }}
                   >
                     💬 Consultar no WhatsApp
                   </a>
@@ -201,11 +196,43 @@ const Ternos = () => {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+
+        @media (max-width: 768px) {
+          .modalGrid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .ternosContainer {
+            padding: 2rem 1rem !important;
+          }
+
+          .titulo {
+            font-size: 2rem !important;
+          }
+
+          .ternosGrid {
+            grid-template-columns: repeat(
+              auto-fill,
+              minmax(250px, 1fr)
+            ) !important;
+            gap: 1.5rem !important;
+          }
+        }
+      `}</style>
     </section>
   );
 };
 
-// Estilos (iguais ao Vestidos.jsx, só mudando as classes)
 const styles = {
   ternosContainer: {
     maxWidth: "1200px",
@@ -235,13 +262,14 @@ const styles = {
     backgroundColor: "#ffebee",
     color: "#c62828",
     padding: "1rem",
-    borderRadius: "4px",
+    borderRadius: "8px",
     marginBottom: "2rem",
     textAlign: "center",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: "1rem",
+    flexWrap: "wrap",
   },
   retryButton: {
     backgroundColor: "#c62828",
@@ -250,6 +278,8 @@ const styles = {
     padding: "0.5rem 1rem",
     borderRadius: "4px",
     cursor: "pointer",
+    fontSize: "0.9rem",
+    transition: "background-color 0.3s",
   },
   loading: {
     textAlign: "center",
@@ -270,36 +300,41 @@ const styles = {
     textAlign: "center",
     padding: "4rem 2rem",
     backgroundColor: "#f9f9f9",
-    borderRadius: "8px",
+    borderRadius: "12px",
+    margin: "2rem 0",
   },
   contactButton: {
     display: "inline-block",
     backgroundColor: "#b6a06a",
     color: "white",
     padding: "1rem 2rem",
-    borderRadius: "4px",
+    borderRadius: "6px",
     textDecoration: "none",
     marginTop: "1rem",
-    transition: "background-color 0.3s",
+    transition: "all 0.3s",
+    fontWeight: "500",
   },
   ternosGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
     gap: "2rem",
+    marginTop: "2rem",
   },
   ternoCard: {
     backgroundColor: "#fff",
-    borderRadius: "8px",
+    borderRadius: "12px",
     overflow: "hidden",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+    boxShadow: "0 4px 15px rgba(0,0,0,0.08)",
     cursor: "pointer",
     transition: "all 0.3s ease",
     position: "relative",
+    border: "1px solid #f0f0f0",
   },
   ternoImageContainer: {
     height: "350px",
     overflow: "hidden",
     position: "relative",
+    backgroundColor: "#f8f8f8",
   },
   ternoImage: {
     width: "100%",
@@ -309,28 +344,32 @@ const styles = {
   },
   imageCount: {
     position: "absolute",
-    top: "10px",
-    right: "10px",
-    backgroundColor: "rgba(0,0,0,0.7)",
+    top: "12px",
+    right: "12px",
+    backgroundColor: "rgba(0,0,0,0.75)",
     color: "white",
-    padding: "0.25rem 0.5rem",
-    borderRadius: "12px",
+    padding: "0.3rem 0.6rem",
+    borderRadius: "15px",
     fontSize: "0.8rem",
+    fontWeight: "500",
   },
   ternoInfo: {
     padding: "1.5rem",
     textAlign: "center",
+    backgroundColor: "#fff",
   },
   ternoName: {
-    fontSize: "1.3rem",
+    fontSize: "1.4rem",
     fontWeight: "400",
     color: "#5d4037",
-    marginBottom: "0.5rem",
+    marginBottom: "0.8rem",
+    lineHeight: "1.3",
   },
   ternoDescription: {
-    fontSize: "0.9rem",
+    fontSize: "0.95rem",
     color: "#666",
-    lineHeight: "1.4",
+    lineHeight: "1.5",
+    margin: "0",
   },
   modalOverlay: {
     position: "fixed",
@@ -338,28 +377,30 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: "rgba(0,0,0,0.85)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
     padding: "1rem",
+    backdropFilter: "blur(2px)",
   },
   modalContent: {
     backgroundColor: "#fff",
-    borderRadius: "8px",
+    borderRadius: "12px",
     maxWidth: "1000px",
     width: "100%",
     maxHeight: "90vh",
     overflow: "auto",
     position: "relative",
+    boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
   },
   closeButton: {
     position: "absolute",
     top: "15px",
     right: "20px",
-    fontSize: "2rem",
-    background: "rgba(0,0,0,0.5)",
+    fontSize: "1.8rem",
+    background: "rgba(0,0,0,0.6)",
     color: "white",
     border: "none",
     borderRadius: "50%",
@@ -370,6 +411,8 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    transition: "background-color 0.3s",
+    fontWeight: "300",
   },
   modalGrid: {
     display: "grid",
@@ -381,30 +424,34 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#f8f8f8",
   },
   modalImage: {
     width: "100%",
     height: "auto",
     maxHeight: "60vh",
     objectFit: "contain",
-    borderRadius: "4px",
+    borderRadius: "8px",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
   },
   modalInfoSection: {
-    padding: "2rem",
+    padding: "2.5rem",
     display: "flex",
     flexDirection: "column",
+    backgroundColor: "#fff",
   },
   modalTitle: {
-    fontSize: "2rem",
+    fontSize: "2.2rem",
     fontWeight: "400",
     color: "#5d4037",
-    marginBottom: "1rem",
+    marginBottom: "1.5rem",
+    lineHeight: "1.3",
   },
   modalDescription: {
     fontSize: "1.1rem",
     lineHeight: "1.8",
-    color: "#666",
-    marginBottom: "2rem",
+    color: "#555",
+    marginBottom: "2.5rem",
     flex: 1,
   },
   modalActions: {
@@ -415,8 +462,8 @@ const styles = {
   whatsappButton: {
     backgroundColor: "#25D366",
     color: "white",
-    padding: "1rem",
-    borderRadius: "6px",
+    padding: "1.2rem",
+    borderRadius: "8px",
     textAlign: "center",
     textDecoration: "none",
     fontSize: "1.1rem",
@@ -424,8 +471,10 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: "0.5rem",
-    transition: "background-color 0.3s",
+    gap: "0.8rem",
+    transition: "all 0.3s",
+    border: "none",
+    cursor: "pointer",
   },
 };
 
