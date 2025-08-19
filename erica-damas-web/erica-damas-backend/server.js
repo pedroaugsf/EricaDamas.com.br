@@ -83,8 +83,13 @@ const connectDB = async () => {
 // Conectar ao banco
 connectDB();
 
-// Configuração CORS (ajustada para produção)
-// Configuração CORS (ajustada para Codespaces)
+// Configuração do multer para armazenar arquivos na memória
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // Limite de 5MB
+});
+
 // Configuração CORS (mais permissiva para Render)
 app.use(
   cors({
@@ -138,6 +143,16 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// Middleware para logging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log("Origin:", req.headers.origin);
+  next();
+});
+
+// Middleware para parsing JSON
+app.use(express.json());
 
 // Credenciais do .env
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ericadamas.com";
