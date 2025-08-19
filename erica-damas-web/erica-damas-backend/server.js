@@ -85,39 +85,58 @@ connectDB();
 
 // Configuração CORS (ajustada para produção)
 // Configuração CORS (ajustada para Codespaces)
+// Configuração CORS (mais permissiva para Render)
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? ["https://erica-damas-com-br-e5w2.vercel.app"]
-        : [
-            "http://localhost:3000",
-            "http://localhost:5000",
-            "https://ominous-orbit-g4qq7vw57qj5c6jr-3000.app.github.dev", // Frontend Codespaces
-            "https://ominous-orbit-g4qq7vw57qj5c6jr-5000.app.github.dev", // Backend Codespaces
-          ],
+    origin: [
+      // Produção
+      "https://erica-damas-com-br-e5w2.vercel.app",
+      "https://erica-damas-com-br-e5w2-git-main-pedros-projects-f4fedec9.vercel.app",
+      // Desenvolvimento
+      "http://localhost:3000",
+      "http://localhost:5000",
+      // Codespaces
+      "https://ominous-orbit-g4qq7vw57qj5c6jr-3000.app.github.dev",
+      "https://ominous-orbit-g4qq7vw57qj5c6jr-5000.app.github.dev",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     credentials: true,
     optionsSuccessStatus: 200,
+    preflightContinue: false,
   })
 );
 
-// Middleware para logging
+// Middleware adicional para CORS (IMPORTANTE!)
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  console.log("Origin:", req.headers.origin);
+  const origin = req.headers.origin;
+
+  // Lista de origens permitidas
+  const allowedOrigins = [
+    "https://erica-damas-com-br-e5w2.vercel.app",
+    "https://erica-damas-com-br-e5w2-git-main-pedros-projects-f4fedec9.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "https://ominous-orbit-g4qq7vw57qj5c6jr-3000.app.github.dev",
+    "https://ominous-orbit-g4qq7vw57qj5c6jr-5000.app.github.dev",
+  ];
+
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type,Authorization,X-Requested-With"
+  );
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
   next();
-});
-
-// Middleware para parsing JSON
-app.use(express.json());
-
-// Configuração do multer para armazenar arquivos na memória
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Limite de 5MB
 });
 
 // Credenciais do .env
