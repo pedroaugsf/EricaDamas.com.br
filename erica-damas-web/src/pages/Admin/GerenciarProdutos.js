@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { api } from "../../services/AuthService";
 
 const GerenciadorProdutos = () => {
   const { tipoProduto } = useParams();
@@ -32,34 +33,15 @@ const GerenciadorProdutos = () => {
   // Obter configuração atual
   const config = configProduto[tipoProduto] || configProduto.vestidos;
 
-  // Função para obter token de autenticação
-  const getAuthToken = () => {
-    return localStorage.getItem("token");
-  };
-
-  // Detectar URL da API
-  const getApiUrl = () => {
-    const isCodespaces = window.location.hostname.includes(".app.github.dev");
-    if (isCodespaces) {
-      const codespacePrefix = window.location.hostname.split("-3000")[0];
-      return `https://${codespacePrefix}-5000.app.github.dev`;
-    }
-    return process.env.REACT_APP_API_URL || "http://localhost:5000";
-  };
-
   // Carregar produtos da API
   const carregarProdutos = async () => {
     try {
       setCarregando(true);
-      const API_URL = getApiUrl();
 
-      console.log(
-        "Carregando produtos da API:",
-        `${API_URL}/api/produtos/${config.colecao}`
-      );
+      console.log("Carregando produtos da API:", `/produtos/${config.colecao}`);
 
-      const response = await fetch(`${API_URL}/api/produtos/${config.colecao}`);
-      const result = await response.json();
+      const response = await api.get(`/produtos/${config.colecao}`);
+      const result = response.data;
 
       if (result.success) {
         setProdutos(result.produtos);
@@ -82,9 +64,6 @@ const GerenciadorProdutos = () => {
 
   // Função para criar produto
   const criarProduto = async (dadosProduto, arquivosImagem) => {
-    const token = getAuthToken();
-    const API_URL = getApiUrl();
-
     console.log("=== CRIANDO PRODUTO ===");
     console.log("Dados:", dadosProduto);
     console.log("Imagens:", arquivosImagem.length);
@@ -98,22 +77,17 @@ const GerenciadorProdutos = () => {
       formData.append("imagens", arquivo);
     });
 
-    const response = await fetch(`${API_URL}/api/produtos`, {
-      method: "POST",
+    const response = await api.post("/produtos", formData, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
       },
-      body: formData,
     });
 
-    return response.json();
+    return response.data;
   };
 
   // Função para atualizar produto
   const atualizarProduto = async (id, dadosProduto, arquivosImagem = []) => {
-    const token = getAuthToken();
-    const API_URL = getApiUrl();
-
     console.log("=== ATUALIZANDO PRODUTO ===");
     console.log("ID:", id);
     console.log("Dados:", dadosProduto);
@@ -127,33 +101,22 @@ const GerenciadorProdutos = () => {
       formData.append("imagens", arquivo);
     });
 
-    const response = await fetch(`${API_URL}/api/produtos/${id}`, {
-      method: "PUT",
+    const response = await api.put(`/produtos/${id}`, formData, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
       },
-      body: formData,
     });
 
-    return response.json();
+    return response.data;
   };
 
   // Função para excluir produto
   const excluirProduto = async (id) => {
-    const token = getAuthToken();
-    const API_URL = getApiUrl();
-
     console.log("=== EXCLUINDO PRODUTO ===");
     console.log("ID:", id);
 
-    const response = await fetch(`${API_URL}/api/produtos/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    return response.json();
+    const response = await api.delete(`/produtos/${id}`);
+    return response.data;
   };
 
   // Lidar com upload de imagens
@@ -184,7 +147,7 @@ const GerenciadorProdutos = () => {
     setNome(produto.nome);
     setDescricao(produto.descricao);
     setImagensPreview(produto.imagens || []);
-    setEditandoId(produto._id); // ✅ Usando _id do MongoDB
+    setEditandoId(produto._id);
     setImagens([]);
     window.scrollTo(0, 0);
   };
@@ -262,6 +225,12 @@ const GerenciadorProdutos = () => {
       <button
         onClick={() => navigate("/admin/dashboard")}
         style={styles.backButton}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = "#e0e0e0";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = "#f5f5f5";
+        }}
       >
         ← Voltar ao Painel
       </button>
@@ -286,7 +255,9 @@ const GerenciadorProdutos = () => {
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.formGroup}>
-            <label htmlFor="nome">Nome:</label>
+            <label htmlFor="nome" style={styles.label}>
+              Nome:
+            </label>
             <input
               type="text"
               id="nome"
@@ -296,11 +267,19 @@ const GerenciadorProdutos = () => {
               style={styles.input}
               placeholder={`Nome do ${config.tituloSingular.toLowerCase()}`}
               disabled={carregando}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "#b6a06a";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "#ddd";
+              }}
             />
           </div>
 
           <div style={styles.formGroup}>
-            <label htmlFor="descricao">Descrição:</label>
+            <label htmlFor="descricao" style={styles.label}>
+              Descrição:
+            </label>
             <textarea
               id="descricao"
               value={descricao}
@@ -309,11 +288,19 @@ const GerenciadorProdutos = () => {
               style={styles.textarea}
               placeholder={`Descrição detalhada do ${config.tituloSingular.toLowerCase()}`}
               disabled={carregando}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "#b6a06a";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "#ddd";
+              }}
             />
           </div>
 
           <div style={styles.formGroup}>
-            <label htmlFor="imagens">Imagens:</label>
+            <label htmlFor="imagens" style={styles.label}>
+              Imagens:
+            </label>
             <input
               type="file"
               id="imagens"
@@ -332,7 +319,7 @@ const GerenciadorProdutos = () => {
 
           {imagensPreview.length > 0 && (
             <div style={styles.previewContainer}>
-              <h4>Preview das Imagens:</h4>
+              <h4 style={styles.previewTitle}>Preview das Imagens:</h4>
               <div style={styles.previewGrid}>
                 {imagensPreview.map((preview, index) => (
                   <div key={index} style={styles.previewItem}>
@@ -356,6 +343,16 @@ const GerenciadorProdutos = () => {
                 opacity: carregando ? 0.6 : 1,
                 cursor: carregando ? "not-allowed" : "pointer",
               }}
+              onMouseEnter={(e) => {
+                if (!carregando) {
+                  e.currentTarget.style.backgroundColor = "#a08c5a";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!carregando) {
+                  e.currentTarget.style.backgroundColor = "#b6a06a";
+                }
+              }}
             >
               {carregando
                 ? "Salvando..."
@@ -370,6 +367,12 @@ const GerenciadorProdutos = () => {
                 onClick={resetarFormulario}
                 style={styles.cancelButton}
                 disabled={carregando}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#e0e0e0";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#f5f5f5";
+                }}
               >
                 Cancelar
               </button>
@@ -401,7 +404,19 @@ const GerenciadorProdutos = () => {
         ) : (
           <div style={styles.productGrid}>
             {produtos.map((produto) => (
-              <div key={produto._id} style={styles.productCard}>
+              <div
+                key={produto._id}
+                style={styles.productCard}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 12px rgba(0,0,0,0.15)";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
+                  e.currentTarget.style.transform = "translateY(0)";
+                }}
+              >
                 {produto.imagens && produto.imagens[0] && (
                   <div style={styles.productImageContainer}>
                     <img
@@ -438,6 +453,12 @@ const GerenciadorProdutos = () => {
                     onClick={() => handleEditar(produto)}
                     style={styles.editButton}
                     disabled={carregando}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "#e8f5e8";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "#f5f5f5";
+                    }}
                   >
                     Editar
                   </button>
@@ -445,6 +466,12 @@ const GerenciadorProdutos = () => {
                     onClick={() => handleExcluir(produto._id)}
                     style={styles.deleteButton}
                     disabled={carregando}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "#ffebee";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "#f5f5f5";
+                    }}
                   >
                     Excluir
                   </button>
@@ -454,26 +481,74 @@ const GerenciadorProdutos = () => {
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+
+        @media (max-width: 768px) {
+          .container {
+            padding: 1rem !important;
+          }
+
+          .titulo {
+            font-size: 2rem !important;
+          }
+
+          .productGrid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .buttonGroup {
+            flex-direction: column !important;
+          }
+
+          .previewGrid {
+            grid-template-columns: repeat(3, 1fr) !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .formContainer,
+          .productListContainer {
+            padding: 1rem !important;
+          }
+
+          .previewGrid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
 
-// Estilos atualizados
+// Estilos atualizados e melhorados
 const styles = {
   container: {
     maxWidth: "1200px",
     margin: "0 auto",
     padding: "2rem",
     fontFamily: '"Cormorant Garamond", serif',
+    backgroundColor: "#fafafa",
+    minHeight: "100vh",
   },
   backButton: {
     backgroundColor: "#f5f5f5",
     border: "1px solid #ddd",
-    padding: "0.5rem 1rem",
-    borderRadius: "4px",
+    padding: "0.75rem 1.5rem",
+    borderRadius: "6px",
     cursor: "pointer",
-    marginBottom: "1rem",
-    transition: "background-color 0.3s",
+    marginBottom: "1.5rem",
+    transition: "all 0.3s ease",
+    fontSize: "1rem",
+    fontWeight: "500",
   },
   titulo: {
     fontSize: "2.5rem",
@@ -481,6 +556,7 @@ const styles = {
     color: "#5d4037",
     textAlign: "center",
     marginBottom: "2rem",
+    letterSpacing: "1px",
   },
   subtitulo: {
     fontSize: "1.8rem",
@@ -490,34 +566,41 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+    flexWrap: "wrap",
   },
   productCount: {
     fontSize: "1rem",
     color: "#666",
     fontWeight: "normal",
+    backgroundColor: "#f0f0f0",
+    padding: "0.25rem 0.75rem",
+    borderRadius: "15px",
   },
   erro: {
     backgroundColor: "#ffebee",
     color: "#c62828",
-    padding: "1rem",
-    borderRadius: "4px",
-    marginBottom: "1rem",
+    padding: "1rem 1.5rem",
+    borderRadius: "6px",
+    marginBottom: "1.5rem",
     border: "1px solid #ffcdd2",
     position: "relative",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
   },
   closeErrorButton: {
     position: "absolute",
-    top: "0.5rem",
-    right: "0.5rem",
+    top: "0.75rem",
+    right: "1rem",
     background: "none",
     border: "none",
     fontSize: "1.5rem",
     color: "#c62828",
     cursor: "pointer",
+    fontWeight: "bold",
   },
   loading: {
     textAlign: "center",
-    padding: "2rem 0",
+    padding: "3rem 0",
+    color: "#666",
   },
   spinner: {
     width: "40px",
@@ -530,66 +613,89 @@ const styles = {
   },
   emptyMessage: {
     textAlign: "center",
-    padding: "2rem",
+    padding: "3rem 2rem",
     backgroundColor: "#f9f9f9",
-    borderRadius: "4px",
+    borderRadius: "8px",
     color: "#666",
+    border: "1px solid #eee",
   },
   formContainer: {
     backgroundColor: "#fff",
-    padding: "2rem",
-    borderRadius: "5px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    padding: "2.5rem",
+    borderRadius: "8px",
+    boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
     marginBottom: "2rem",
+    border: "1px solid #eee",
   },
   form: {
     display: "flex",
     flexDirection: "column",
-    gap: "1rem",
+    gap: "1.5rem",
   },
   formGroup: {
     display: "flex",
     flexDirection: "column",
     gap: "0.5rem",
   },
+  label: {
+    fontSize: "1rem",
+    fontWeight: "500",
+    color: "#333",
+    marginBottom: "0.25rem",
+  },
   input: {
-    padding: "0.75rem",
-    borderRadius: "4px",
+    padding: "0.75rem 1rem",
+    borderRadius: "6px",
     border: "1px solid #ddd",
     fontSize: "1rem",
-    transition: "border-color 0.3s",
+    transition: "all 0.3s ease",
+    backgroundColor: "#fafafa",
   },
   textarea: {
-    padding: "0.75rem",
-    borderRadius: "4px",
+    padding: "0.75rem 1rem",
+    borderRadius: "6px",
     border: "1px solid #ddd",
     fontSize: "1rem",
-    minHeight: "150px",
+    minHeight: "120px",
     resize: "vertical",
-    transition: "border-color 0.3s",
+    transition: "all 0.3s ease",
+    backgroundColor: "#fafafa",
+    fontFamily: "inherit",
   },
   fileInput: {
     padding: "0.5rem 0",
+    fontSize: "1rem",
   },
   helperText: {
     color: "#666",
-    fontSize: "0.85rem",
+    fontSize: "0.875rem",
+    fontStyle: "italic",
   },
   previewContainer: {
     marginTop: "1rem",
+    padding: "1rem",
+    backgroundColor: "#f9f9f9",
+    borderRadius: "6px",
+    border: "1px solid #eee",
+  },
+  previewTitle: {
+    margin: "0 0 1rem 0",
+    color: "#333",
+    fontSize: "1.1rem",
   },
   previewGrid: {
-    display: "flex",
-    flexWrap: "wrap",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
     gap: "1rem",
-    marginTop: "0.5rem",
+    maxWidth: "500px",
   },
   previewItem: {
     width: "100px",
     height: "100px",
     overflow: "hidden",
-    borderRadius: "4px",
-    border: "1px solid #ddd",
+    borderRadius: "6px",
+    border: "2px solid #ddd",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
   },
   previewImage: {
     width: "100%",
@@ -600,74 +706,87 @@ const styles = {
     display: "flex",
     gap: "1rem",
     marginTop: "1rem",
+    flexWrap: "wrap",
   },
   submitButton: {
     backgroundColor: "#b6a06a",
     color: "white",
     border: "none",
-    padding: "0.75rem 1.5rem",
-    borderRadius: "4px",
+    padding: "0.875rem 2rem",
+    borderRadius: "6px",
     cursor: "pointer",
     fontSize: "1rem",
-    transition: "background-color 0.3s",
+    fontWeight: "500",
+    transition: "all 0.3s ease",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
   },
   cancelButton: {
     backgroundColor: "#f5f5f5",
     color: "#333",
     border: "1px solid #ddd",
-    padding: "0.75rem 1.5rem",
-    borderRadius: "4px",
+    padding: "0.875rem 2rem",
+    borderRadius: "6px",
     cursor: "pointer",
     fontSize: "1rem",
-    transition: "background-color 0.3s",
+    fontWeight: "500",
+    transition: "all 0.3s ease",
   },
   productListContainer: {
     backgroundColor: "#fff",
-    padding: "2rem",
-    borderRadius: "5px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    padding: "2.5rem",
+    borderRadius: "8px",
+    boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+    border: "1px solid #eee",
   },
   productGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
     gap: "1.5rem",
   },
   productCard: {
     border: "1px solid #eee",
-    borderRadius: "4px",
+    borderRadius: "8px",
     overflow: "hidden",
-    transition: "box-shadow 0.3s",
+    transition: "all 0.3s ease",
+    backgroundColor: "#fff",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
   },
   productImageContainer: {
     height: "200px",
     overflow: "hidden",
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8f8f8",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   productImage: {
     width: "100%",
     height: "100%",
     objectFit: "cover",
+    transition: "transform 0.3s ease",
   },
   productInfo: {
-    padding: "1rem",
+    padding: "1.5rem",
   },
   productName: {
-    fontSize: "1.2rem",
+    fontSize: "1.3rem",
     fontWeight: "500",
     marginBottom: "0.5rem",
     color: "#333",
+    lineHeight: "1.3",
   },
   productDescription: {
-    fontSize: "0.9rem",
+    fontSize: "0.95rem",
     color: "#666",
-    marginBottom: "0.5rem",
-    lineHeight: "1.4",
+    marginBottom: "0.75rem",
+    lineHeight: "1.5",
   },
   imageCount: {
     color: "#999",
     fontSize: "0.8rem",
     display: "block",
-    marginBottom: "0.25rem",
+    marginBottom: "0.5rem",
+    fontWeight: "500",
   },
   productDate: {
     color: "#999",
@@ -680,21 +799,26 @@ const styles = {
   },
   editButton: {
     flex: "1",
-    padding: "0.75rem",
+    padding: "1rem",
     border: "none",
     backgroundColor: "#f5f5f5",
     cursor: "pointer",
-    transition: "background-color 0.3s",
+    transition: "all 0.3s ease",
+    fontSize: "0.95rem",
+    fontWeight: "500",
+    color: "#2e7d32",
   },
   deleteButton: {
     flex: "1",
-    padding: "0.75rem",
+    padding: "1rem",
     border: "none",
     backgroundColor: "#f5f5f5",
     color: "#d32f2f",
     cursor: "pointer",
     borderLeft: "1px solid #eee",
-    transition: "background-color 0.3s",
+    transition: "all 0.3s ease",
+    fontSize: "0.95rem",
+    fontWeight: "500",
   },
 };
 
