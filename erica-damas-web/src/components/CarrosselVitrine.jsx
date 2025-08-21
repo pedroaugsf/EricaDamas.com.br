@@ -138,12 +138,12 @@ const CarrosselVitrine = () => {
     },
     {
       id: 3,
-      titulo: "Pacotes Completos",
-      subtitulo: "Noiva + Noivo + Acessórios",
+      titulo: "Vestidos de Debutante",
+      subtitulo: "Para momentos especiais",
       imagem:
-        "https://images.unsplash.com/photo-1583939003579-730e3918a45a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80",
-      link: "/pacotes",
-      cta: "Conhecer Ofertas",
+        "https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80",
+      link: "/debutantes",
+      cta: "Conhecer Modelos",
     },
   ];
 

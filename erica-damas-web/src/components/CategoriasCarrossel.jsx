@@ -9,57 +9,57 @@ const addHoverStyles = () => {
   const style = document.createElement("style");
   style.innerHTML = `
 .slick-slide:hover .categoria-imagem {
-  transform: scale(1.05);
+transform: scale(1.05);
 }
 .categoria-button:hover {
-  background-color: #b6a06a !important;
-  border-color: #b6a06a !important;
+background-color: #b6a06a !important;
+border-color: #b6a06a !important;
 }
 .categoria-overlay:hover {
-  background-color: rgba(0, 0, 0, 0.5) !important;
+background-color: rgba(0, 0, 0, 0.5) !important;
 }
 
 /* Ajustes para o carrossel */
 .categorias-carrossel .slick-list {
-  margin: 0 20px;
+margin: 0 20px;
 }
 
 .categorias-carrossel .slick-prev {
-  left: -5px;
-  z-index: 10;
+left: -5px;
+z-index: 10;
 }
 
 .categorias-carrossel .slick-next {
-  right: -5px;
-  z-index: 10;
+right: -5px;
+z-index: 10;
 }
 
 @media (min-width: 768px) {
-  .categorias-carrossel .slick-list {
-    margin: 0 40px;
-  }
-  
-  .categorias-carrossel .slick-prev {
-    left: 10px;
-  }
-  
-  .categorias-carrossel .slick-next {
-    right: 10px;
-  }
+.categorias-carrossel .slick-list {
+  margin: 0 40px;
+}
+
+.categorias-carrossel .slick-prev {
+  left: 10px;
+}
+
+.categorias-carrossel .slick-next {
+  right: 10px;
+}
 }
 
 @media (min-width: 1200px) {
-  .categorias-carrossel .slick-list {
-    margin: 0 60px;
-  }
-  
-  .categorias-carrossel .slick-prev {
-    left: 20px;
-  }
-  
-  .categorias-carrossel .slick-next {
-    right: 20px;
-  }
+.categorias-carrossel .slick-list {
+  margin: 0 60px;
+}
+
+.categorias-carrossel .slick-prev {
+  left: 20px;
+}
+
+.categorias-carrossel .slick-next {
+  right: 20px;
+}
 }
 `;
   document.head.appendChild(style);
@@ -109,14 +109,6 @@ const CategoriasCarrossel = () => {
       imagem:
         "https://images.unsplash.com/photo-1593032465175-481ac7f401a0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=880&q=80",
       link: "/ternos",
-    },
-    {
-      id: 4,
-      titulo: "ACESSÓRIOS",
-      subtitulo: "detalhes que encantam",
-      imagem:
-        "https://images.unsplash.com/photo-1611652022419-a9419f74343d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=688&q=80",
-      link: "/acessorios",
     },
   ];
 

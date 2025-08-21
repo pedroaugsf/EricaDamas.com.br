@@ -28,6 +28,11 @@ const GerenciadorProdutos = () => {
       tituloSingular: "Terno",
       colecao: "ternos",
     },
+    debutantes: {
+      titulo: "Vestidos de Debutante",
+      tituloSingular: "Vestido de Debutante",
+      colecao: "debutantes",
+    },
   };
 
   // Obter configuração atual

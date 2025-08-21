@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import authService from "../../services/AuthService";
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const adminName = localStorage.getItem("adminName") || "Administrador";
@@ -62,6 +63,12 @@ const Dashboard = () => {
           <div style={styles.menuCard}>
             <h2>Gerenciar Ternos</h2>
             <p>Adicionar, editar ou remover ternos</p>
+          </div>
+        </Link>
+        <Link to="/admin/produtos/debutantes" style={styles.menuItem}>
+          <div style={styles.menuCard}>
+            <h2>Gerenciar Debutantes</h2>
+            <p>Adicionar, editar ou remover vestidos de debutante</p>
           </div>
         </Link>
         <Link to="/admin/contratos" style={styles.menuItem}>

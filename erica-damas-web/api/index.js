@@ -77,7 +77,8 @@ app.get("/produtos/:tipo", async (req, res) => {
     await connectDB();
     const { tipo } = req.params;
 
-    if (!["vestidos", "ternos"].includes(tipo)) {
+    // MODIFICADO: Incluído "debutantes" na lista de tipos válidos
+    if (!["vestidos", "ternos", "debutantes"].includes(tipo)) {
       return res.status(400).json({
         success: false,
         message: "Tipo inválido",

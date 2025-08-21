@@ -287,10 +287,12 @@ app.get("/api/produtos/:tipo", async (req, res) => {
 
     console.log(`Buscando produtos do tipo: ${tipo}`);
 
-    if (!["vestidos", "ternos"].includes(tipo)) {
+    // MODIFICADO: Incluído "debutantes" na lista de tipos válidos
+    if (!["vestidos", "ternos", "debutantes"].includes(tipo)) {
       return res.status(400).json({
         success: false,
-        message: "Tipo de produto inválido. Use 'vestidos' ou 'ternos'",
+        message:
+          "Tipo de produto inválido. Use 'vestidos', 'ternos' ou 'debutantes'",
       });
     }
 
@@ -340,10 +342,11 @@ app.post(
         });
       }
 
-      if (!["vestidos", "ternos"].includes(tipo)) {
+      // MODIFICADO: Incluído "debutantes" na lista de tipos válidos
+      if (!["vestidos", "ternos", "debutantes"].includes(tipo)) {
         return res.status(400).json({
           success: false,
-          message: "Tipo deve ser 'vestidos' ou 'ternos'",
+          message: "Tipo deve ser 'vestidos', 'ternos' ou 'debutantes'",
         });
       }
 
@@ -386,12 +389,22 @@ app.post(
       console.log("✅ Produto criado com sucesso:", novoProduto._id);
       console.log("URLs das imagens:", validImageUrls);
 
+      // MODIFICADO: Adicionado suporte para mensagem de "debutantes"
+      let mensagem;
+      if (tipo === "vestidos") {
+        mensagem = "Vestido criado com sucesso";
+      } else if (tipo === "ternos") {
+        mensagem = "Terno criado com sucesso";
+      } else if (tipo === "debutantes") {
+        mensagem = "Vestido de debutante criado com sucesso";
+      } else {
+        mensagem = "Produto criado com sucesso";
+      }
+
       res.status(201).json({
         success: true,
         produto: novoProduto,
-        message: `${
-          tipo === "vestidos" ? "Vestido" : "Terno"
-        } criado com sucesso`,
+        message: mensagem,
       });
     } catch (error) {
       console.error("❌ Erro ao criar produto:", error);
@@ -560,7 +573,11 @@ app.get("/", (req, res) => {
     environment: process.env.NODE_ENV || "development",
     timestamp: new Date().toISOString(),
     endpoints: {
-      public: ["GET /api/produtos/vestidos", "GET /api/produtos/ternos"],
+      public: [
+        "GET /api/produtos/vestidos",
+        "GET /api/produtos/ternos",
+        "GET /api/produtos/debutantes", // MODIFICADO: Adicionado endpoint de debutantes
+      ],
       admin: [
         "POST /api/login",
         "GET /api/admin/verificar",

@@ -21,6 +21,7 @@ import GerenciadorContratos from "./pages/Admin/GerenciadorContrato";
 // Páginas de produtos
 import Vestidos from "./pages/Vestidos";
 import Ternos from "./pages/Ternos";
+import Debutantes from "./pages/Debutantes";
 
 // Páginas administrativas
 import Login from "./pages/Admin/Login";
@@ -55,6 +56,7 @@ const PublicLayout = () => {
           <Route path="/" element={<Home />} />
           <Route path="/vestidos" element={<Vestidos />} />
           <Route path="/ternos" element={<Ternos />} />
+          <Route path="/debutantes" element={<Debutantes />} />
         </Routes>
       </main>
       <Footer />
