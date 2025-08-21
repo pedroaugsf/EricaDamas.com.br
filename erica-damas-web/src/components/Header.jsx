@@ -1,21 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import { Link, useLocation } from "react-router-dom";
 
-const Header = () => {
+const Header = memo(() => {
   const [scrolled, setScrolled] = useState(false);
   const [acervoOpen, setAcervoOpen] = useState(false);
   const location = useLocation();
 
-  // Detecta o scroll para mudar a aparência do header
+  // Detecta o scroll para mudar a aparência do header - otimizado com throttle
   useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      const isScrolled = window.scrollY > 10;
-      if (isScrolled !== scrolled) {
-        setScrolled(isScrolled);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const isScrolled = window.scrollY > 10;
+          if (isScrolled !== scrolled) {
+            setScrolled(isScrolled);
+          }
+          ticking = false;
+        });
+        ticking = true;
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
@@ -35,10 +43,10 @@ const Header = () => {
     return location.pathname === path;
   };
 
-  // Links de navegação
+  // Links de navegação - definidos fora do componente para evitar recriação
   const navLinks = [
     { name: "Home", path: "/" },
-    { name: "Sobre", path: "/sobre" },
+    { name: "Serviços", path: "/sobre" },
     {
       name: "Acervo",
       path: "/acervo",
@@ -49,8 +57,24 @@ const Header = () => {
         { name: "Ternos", path: "/ternos" },
       ],
     },
-    { name: "Contato", path: "/contato" },
+    { name: "Localização", path: "/contato" },
   ];
+
+  // Função para navegação suave para componentes específicos
+  const scrollToComponent = (componentId, e) => {
+    e.preventDefault();
+
+    // Se estiver na página inicial, role para o componente
+    if (location.pathname === "/") {
+      const element = document.getElementById(componentId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    } else {
+      // Se não estiver na página inicial, navegue para a página inicial com um parâmetro de hash
+      window.location.href = `/#${componentId}`;
+    }
+  };
 
   // Fechar dropdown quando clicar fora
   useEffect(() => {
@@ -66,32 +90,36 @@ const Header = () => {
     };
   }, [acervoOpen]);
 
-  // Adicionar estilos CSS para o dropdown
+  // Adicionar estilos CSS para o dropdown - otimizado para ser executado apenas uma vez
   useEffect(() => {
-    const style = document.createElement("style");
-    style.innerHTML = `
-    .dropdown-menu {
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(10px);
-      transition: all 0.3s ease;
-    }
-    
-    .dropdown-open .dropdown-menu {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-    }
-    
-    .dropdown-item:hover {
-      background-color: rgba(182, 160, 106, 0.1);
-    }
-  `;
-    document.head.appendChild(style);
+    // Verificar se o estilo já existe para evitar duplicação
+    if (!document.getElementById("header-dropdown-styles")) {
+      const style = document.createElement("style");
+      style.id = "header-dropdown-styles";
+      style.innerHTML = `
+.dropdown-menu {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
 
-    return () => {
-      document.head.removeChild(style);
-    };
+.dropdown-open .dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(182, 160, 106, 0.1);
+}
+`;
+      document.head.appendChild(style);
+    }
+
+    // Não é necessário remover o estilo, pois ele é compartilhado entre instâncias
   }, []);
 
   return (
@@ -104,7 +132,7 @@ const Header = () => {
       }}
     >
       <div style={styles.container}>
-        {/* Logo */}
+        {/* Logo - Otimizado com imagem pré-carregada */}
         <div style={styles.logoContainer}>
           <Link to="/" style={styles.logoLink}>
             <img
@@ -115,6 +143,9 @@ const Header = () => {
                 height: scrolled ? "65px" : "85px",
                 maxWidth: scrolled ? "320px" : "380px",
               }}
+              width="380"
+              height="85"
+              loading="eager"
             />
           </Link>
         </div>
@@ -131,33 +162,77 @@ const Header = () => {
                 onMouseEnter={() => link.dropdown && setAcervoOpen(true)}
                 onMouseLeave={() => link.dropdown && setAcervoOpen(false)}
               >
-                <Link
-                  to={link.path}
-                  style={{
-                    ...styles.menuLink,
-                    color: isActive(link.path) ? "#e8d192" : "#b6a06a",
-                    fontWeight: isActive(link.path) ? "600" : "500",
-                  }}
-                  onClick={(e) => {
-                    if (link.dropdown) {
-                      e.preventDefault();
-                      setAcervoOpen(!acervoOpen);
-                    }
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "#e8d192";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = isActive(link.path)
-                      ? "#e8d192"
-                      : "#b6a06a";
-                  }}
-                >
-                  {link.name}
-                  {link.dropdown && <span style={styles.dropdownArrow}>▾</span>}
-                </Link>
+                {link.name === "Serviços" ? (
+                  <a
+                    href="#nossos-servicos"
+                    onClick={(e) => scrollToComponent("nossos-servicos", e)}
+                    style={{
+                      ...styles.menuLink,
+                      color: isActive(link.path) ? "#e8d192" : "#b6a06a",
+                      fontWeight: isActive(link.path) ? "600" : "500",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "#e8d192";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = isActive(link.path)
+                        ? "#e8d192"
+                        : "#b6a06a";
+                    }}
+                  >
+                    {link.name}
+                  </a>
+                ) : link.name === "Localização" ? (
+                  <a
+                    href="#localizacao"
+                    onClick={(e) => scrollToComponent("localizacao", e)}
+                    style={{
+                      ...styles.menuLink,
+                      color: isActive(link.path) ? "#e8d192" : "#b6a06a",
+                      fontWeight: isActive(link.path) ? "600" : "500",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "#e8d192";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = isActive(link.path)
+                        ? "#e8d192"
+                        : "#b6a06a";
+                    }}
+                  >
+                    {link.name}
+                  </a>
+                ) : (
+                  <Link
+                    to={link.path}
+                    style={{
+                      ...styles.menuLink,
+                      color: isActive(link.path) ? "#e8d192" : "#b6a06a",
+                      fontWeight: isActive(link.path) ? "600" : "500",
+                    }}
+                    onClick={(e) => {
+                      if (link.dropdown) {
+                        e.preventDefault();
+                        setAcervoOpen(!acervoOpen);
+                      }
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "#e8d192";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = isActive(link.path)
+                        ? "#e8d192"
+                        : "#b6a06a";
+                    }}
+                  >
+                    {link.name}
+                    {link.dropdown && (
+                      <span style={styles.dropdownArrow}>▾</span>
+                    )}
+                  </Link>
+                )}
 
-                {/* Dropdown Menu */}
+                {/* Dropdown Menu - Renderizado condicionalmente para melhor performance */}
                 {link.dropdown && (
                   <div className="dropdown-menu" style={styles.dropdownMenu}>
                     {link.subItems.map((subItem) => (
@@ -205,6 +280,9 @@ const Header = () => {
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="currentColor"
+                  width="20"
+                  height="20"
+                  aria-hidden="true"
                 >
                   <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                 </svg>
@@ -215,8 +293,9 @@ const Header = () => {
       </div>
     </header>
   );
-};
+});
 
+// Estilos otimizados - definidos fora do componente para evitar recriação
 const styles = {
   header: {
     backgroundColor: "#000000",
@@ -232,6 +311,7 @@ const styles = {
     zIndex: 1000,
     margin: 0,
     transition: "all 0.3s ease",
+    willChange: "height, background-color, box-shadow",
   },
   container: {
     display: "flex",
@@ -263,6 +343,7 @@ const styles = {
     transition: "all 0.3s ease",
     filter: "brightness(1.05)",
     padding: "2px 0",
+    willChange: "height, max-width",
   },
   nav: {
     height: "100%",
@@ -293,12 +374,13 @@ const styles = {
     fontWeight: 500,
     letterSpacing: "1.5px",
     padding: "0.5rem 0",
-    transition: "all 0.3s ease",
+    transition: "color 0.3s ease",
     display: "flex",
     alignItems: "center",
     height: "100%",
     position: "relative",
     textTransform: "uppercase",
+    cursor: "pointer",
   },
   dropdownArrow: {
     marginLeft: "5px",

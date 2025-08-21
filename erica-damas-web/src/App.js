@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
   Outlet,
+  useLocation,
 } from "react-router-dom";
 
 // Componentes da página inicial
@@ -31,15 +32,44 @@ import GerenciadorProdutos from "./pages/Admin/GerenciarProdutos";
 // Importar o componente RotaProtegida
 import RotaProtegida from "./components/RotaPotegida";
 
+// Componente para lidar com redirecionamentos específicos
+const RedirectToComponent = ({ targetId }) => {
+  useEffect(() => {
+    window.location.href = `/#${targetId}`;
+  }, [targetId]);
+
+  return <div>Redirecionando...</div>;
+};
+
 // Componente da página inicial
 const Home = () => {
+  const location = useLocation();
+
+  // Efeito para lidar com navegação por hash na URL
+  useEffect(() => {
+    // Verificar se há um hash na URL
+    if (location.hash) {
+      const id = location.hash.substring(1);
+      const element = document.getElementById(id);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 100);
+      }
+    }
+  }, [location]);
+
   return (
     <div>
       <CarrosselVitrine />
       <CategoriasCarrossel />
-      <NossosServicos />
+      <div id="nossos-servicos">
+        <NossosServicos />
+      </div>
       <About />
-      <Localizacao />
+      <div id="localizacao">
+        <Localizacao />
+      </div>
       <Depoimentos />
       <FAQ />
     </div>
@@ -57,6 +87,14 @@ const PublicLayout = () => {
           <Route path="/vestidos" element={<Vestidos />} />
           <Route path="/ternos" element={<Ternos />} />
           <Route path="/debutantes" element={<Debutantes />} />
+          <Route
+            path="/sobre"
+            element={<RedirectToComponent targetId="nossos-servicos" />}
+          />
+          <Route
+            path="/contato"
+            element={<RedirectToComponent targetId="localizacao" />}
+          />
         </Routes>
       </main>
       <Footer />
