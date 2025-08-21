@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../../services/AuthService";
 
 const GerenciadorContratos = () => {
   const navigate = useNavigate();
   const [contratos, setContratos] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+
+  // Estados para paginação e filtros
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(10);
+  const [filtroData, setFiltroData] = useState("semana"); // todos, semana, mes
+  const [pesquisa, setPesquisa] = useState("");
 
   // Estados do formulário
   const [dadosCliente, setDadosCliente] = useState({
@@ -46,18 +55,131 @@ const GerenciadorContratos = () => {
     { value: "misto", label: "Pagamento Misto" },
   ];
 
-  // Carregar contratos salvos
-  useEffect(() => {
-    const contratosSalvos = localStorage.getItem("contratos");
-    if (contratosSalvos) {
-      setContratos(JSON.parse(contratosSalvos));
+  // Carregar contratos do banco de dados
+  const carregarContratos = async () => {
+    try {
+      setCarregando(true);
+      setErro("");
+
+      // Chamada à API para buscar contratos
+      const response = await api.get("/contratos");
+
+      if (response.data.success) {
+        setContratos(response.data.contratos);
+        console.log(
+          `✅ ${response.data.contratos.length} contratos carregados`
+        );
+      } else {
+        throw new Error(response.data.message || "Erro ao carregar contratos");
+      }
+    } catch (error) {
+      console.error("Erro ao carregar contratos:", error);
+      setErro("Falha ao carregar contratos. " + (error.message || ""));
+
+      // Fallback para localStorage se a API falhar
+      const contratosSalvos = localStorage.getItem("contratos");
+      if (contratosSalvos) {
+        setContratos(JSON.parse(contratosSalvos));
+        console.log("⚠️ Usando contratos do localStorage como fallback");
+      }
+    } finally {
+      setCarregando(false);
     }
+  };
+
+  useEffect(() => {
+    carregarContratos();
   }, []);
 
-  // Salvar contratos
-  const salvarContratos = (novosContratos) => {
-    localStorage.setItem("contratos", JSON.stringify(novosContratos));
-    setContratos(novosContratos);
+  // Salvar contratos no banco de dados e localStorage
+  const salvarContratos = async (novoContrato, isUpdate = false) => {
+    try {
+      setCarregando(true);
+
+      let response;
+
+      if (isUpdate) {
+        // Atualizar contrato existente
+        response = await api.put(`/contratos/${novoContrato.id}`, novoContrato);
+      } else {
+        // Criar novo contrato
+        response = await api.post("/contratos", novoContrato);
+      }
+
+      if (response.data.success) {
+        // Recarregar a lista de contratos
+        await carregarContratos();
+        console.log(
+          `✅ Contrato ${isUpdate ? "atualizado" : "criado"} com sucesso`
+        );
+      } else {
+        throw new Error(response.data.message || "Erro ao salvar contrato");
+      }
+    } catch (error) {
+      console.error(
+        `Erro ao ${isUpdate ? "atualizar" : "criar"} contrato:`,
+        error
+      );
+      setErro(
+        `Falha ao ${isUpdate ? "atualizar" : "criar"} contrato. ${
+          error.message || ""
+        }`
+      );
+
+      // Fallback para localStorage se a API falhar
+      const contratosSalvos = localStorage.getItem("contratos")
+        ? JSON.parse(localStorage.getItem("contratos"))
+        : [];
+
+      let novosContratos;
+
+      if (isUpdate) {
+        novosContratos = contratosSalvos.map((c) =>
+          c.id === novoContrato.id ? novoContrato : c
+        );
+      } else {
+        novosContratos = [...contratosSalvos, novoContrato];
+      }
+
+      localStorage.setItem("contratos", JSON.stringify(novosContratos));
+      setContratos(novosContratos);
+      console.log("⚠️ Salvando no localStorage como fallback");
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  // Excluir contrato
+  const excluirContrato = async (id) => {
+    if (window.confirm("Tem certeza que deseja excluir este contrato?")) {
+      try {
+        setCarregando(true);
+
+        const response = await api.delete(`/contratos/${id}`);
+
+        if (response.data.success) {
+          await carregarContratos();
+          console.log("✅ Contrato excluído com sucesso");
+        } else {
+          throw new Error(response.data.message || "Erro ao excluir contrato");
+        }
+      } catch (error) {
+        console.error("Erro ao excluir contrato:", error);
+        setErro("Falha ao excluir contrato. " + (error.message || ""));
+
+        // Fallback para localStorage se a API falhar
+        const contratosSalvos = localStorage.getItem("contratos")
+          ? JSON.parse(localStorage.getItem("contratos"))
+          : [];
+
+        const novosContratos = contratosSalvos.filter((c) => c.id !== id);
+        localStorage.setItem("contratos", JSON.stringify(novosContratos));
+        setContratos(novosContratos);
+        console.log("⚠️ Excluindo do localStorage como fallback");
+      } finally {
+        setCarregando(false);
+      }
+    }
   };
 
   // Adicionar item
@@ -214,16 +336,8 @@ const GerenciadorContratos = () => {
       dataCriacao: new Date().toISOString(),
     };
 
-    let novosContratos;
-    if (editandoId) {
-      novosContratos = contratos.map((c) =>
-        c.id === editandoId ? novoContrato : c
-      );
-    } else {
-      novosContratos = [...contratos, novoContrato];
-    }
-
-    salvarContratos(novosContratos);
+    // Salvar no banco de dados (e localStorage como fallback)
+    salvarContratos(novoContrato, !!editandoId);
     resetarFormulario();
   };
 
@@ -233,14 +347,7 @@ const GerenciadorContratos = () => {
     setDadosContrato(contrato.contrato);
     setEditandoId(contrato.id);
     setMostrarFormulario(true);
-  };
-
-  // Excluir contrato
-  const excluirContrato = (id) => {
-    if (window.confirm("Tem certeza que deseja excluir este contrato?")) {
-      const novosContratos = contratos.filter((c) => c.id !== id);
-      salvarContratos(novosContratos);
-    }
+    window.scrollTo(0, 0);
   };
 
   // Função para formatar data brasileira
@@ -275,447 +382,510 @@ const GerenciadorContratos = () => {
       .replace(".", ",");
   };
 
+  // Filtrar contratos por data
+  const filtrarContratosPorData = () => {
+    if (filtroData === "todos") {
+      return contratos;
+    }
+
+    const hoje = new Date();
+    const inicioSemana = new Date(hoje);
+    inicioSemana.setDate(hoje.getDate() - hoje.getDay()); // Domingo da semana atual
+
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+
+    return contratos.filter((contrato) => {
+      const dataContrato = new Date(contrato.dataCriacao);
+
+      if (filtroData === "semana") {
+        return dataContrato >= inicioSemana;
+      } else if (filtroData === "mes") {
+        return dataContrato >= inicioMes;
+      }
+
+      return true;
+    });
+  };
+
+  // Filtrar contratos por pesquisa
+  const filtrarContratosPorPesquisa = (contratosFiltrados) => {
+    if (!pesquisa) return contratosFiltrados;
+
+    const termoPesquisa = pesquisa.toLowerCase();
+
+    return contratosFiltrados.filter(
+      (contrato) =>
+        contrato.cliente.nome.toLowerCase().includes(termoPesquisa) ||
+        contrato.cliente.cpf.includes(termoPesquisa) ||
+        contrato.contrato.itens.some((item) =>
+          item.especificacao.toLowerCase().includes(termoPesquisa)
+        )
+    );
+  };
+
+  // Contratos filtrados e paginados
+  const getContratosFiltrados = () => {
+    const contratosFiltradosPorData = filtrarContratosPorData();
+    const contratosFiltrados = filtrarContratosPorPesquisa(
+      contratosFiltradosPorData
+    );
+
+    // Ordenar por data de criação (mais recentes primeiro)
+    const contratosOrdenados = [...contratosFiltrados].sort(
+      (a, b) => new Date(b.dataCriacao) - new Date(a.dataCriacao)
+    );
+
+    // Calcular índices para paginação
+    const indexInicial = (paginaAtual - 1) * itensPorPagina;
+    const indexFinal = indexInicial + itensPorPagina;
+
+    return {
+      contratos: contratosOrdenados.slice(indexInicial, indexFinal),
+      total: contratosOrdenados.length,
+    };
+  };
+
+  const { contratos: contratosPaginados, total: totalContratos } =
+    getContratosFiltrados();
+  const totalPaginas = Math.ceil(totalContratos / itensPorPagina);
+
   // Imprimir contrato
   const imprimirContrato = (contrato) => {
     const { cliente, contrato: dadosContrato, total } = contrato;
 
     const janela = window.open("", "_blank");
     janela.document.write(`
-      <!DOCTYPE html>
-      <html lang="pt-BR">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Contrato de Locação - ${cliente.nome}</title>
-        <style>
-          @page {
-            margin: 2cm 1.5cm;
-            size: A4;
-          }
-          
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          
-          body {
-            font-family: 'Times New Roman', serif;
-            font-size: 11pt;
-            line-height: 1.4;
-            color: #000;
-            background: white;
-          }
-          
-          .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 15px;
-          }
-          
-          .company-name {
-            font-size: 16pt;
-            font-weight: bold;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-          }
-          
-          .company-info {
-            font-size: 10pt;
-            color: #333;
-          }
-          
-          .contract-title {
-            font-size: 14pt;
-            font-weight: bold;
-            text-align: center;
-            margin: 25px 0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-          
-          .section {
-            margin-bottom: 25px;
-          }
-          
-          .section-title {
-            font-size: 12pt;
-            font-weight: bold;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 5px;
-          }
-          
-          .parties {
-            margin-bottom: 20px;
-          }
-          
-          .party {
-            margin-bottom: 15px;
-          }
-          
-          .party-label {
-            font-weight: bold;
-            text-transform: uppercase;
-          }
-          
-          .client-info {
-            margin-left: 20px;
-            line-height: 1.6;
-          }
-          
-          .dates-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-          }
-          
-          .dates-table td {
-            padding: 8px 12px;
-            border: 1px solid #333;
-            font-weight: bold;
-            text-align: center;
-          }
-          
-          .dates-table .label {
-            background-color: #f0f0f0;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 10pt;
-          }
-          
-          .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-          }
-          
-          .items-table th {
-            background-color: #333;
-            color: white;
-            padding: 10px 8px;
-            text-align: center;
-            font-size: 10pt;
-            text-transform: uppercase;
-            font-weight: bold;
-          }
-          
-          .items-table td {
-            padding: 8px;
-            border: 1px solid #333;
-            text-align: left;
-            vertical-align: top;
-          }
-          
-          .items-table .center {
-            text-align: center;
-          }
-          
-          .items-table .right {
-            text-align: right;
-          }
-          
-          .total-row {
-            background-color: #f8f8f8;
-            font-weight: bold;
-          }
-          
-          .payment-section {
-            background-color: #f9f9f9;
-            padding: 15px;
-            border: 1px solid #ccc;
-            margin: 15px 0;
-          }
-          
-          .installments-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-          }
-          
-          .installments-table th {
-            background-color: #e0e0e0;
-            padding: 8px;
-            border: 1px solid #333;
-            text-align: center;
-            font-size: 10pt;
-            font-weight: bold;
-          }
-          
-          .installments-table td {
-            padding: 6px 8px;
-            border: 1px solid #333;
-            text-align: center;
-            font-size: 10pt;
-          }
-          
-          .signature-section {
-            margin-top: 40px;
-            border-top: 1px solid #ccc;
-            padding-top: 20px;
-          }
-          
-          .signature-box {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 30px;
-          }
-          
-          .signature-line {
-            width: 45%;
-            text-align: center;
-            border-bottom: 1px solid #000;
-            padding-bottom: 5px;
-            margin-bottom: 5px;
-          }
-          
-          .signature-label {
-            font-size: 10pt;
-            font-weight: bold;
-            text-transform: uppercase;
-          }
-          
-          .clause {
-            text-align: justify;
-            margin-bottom: 15px;
-            text-indent: 20px;
-          }
-          
-          .clause-title {
-            font-weight: bold;
-            text-decoration: underline;
-            margin-bottom: 10px;
-          }
-          
-          .footer {
-            margin-top: 30px;
-            text-align: center;
-            font-size: 9pt;
-            color: #666;
-            border-top: 1px solid #ccc;
-            padding-top: 15px;
-          }
-          
-          @media print {
-            body { print-color-adjust: exact; }
-            .no-print { display: none; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="company-name">ÉRICA DAMAS LINO EIRELI</div>
-          <div class="company-info">
-            Rua Goiás, 275 - São José - Pará de Minas/MG<br>
-            CNPJ: 11.791.386/0001-13 | Telefone: (37) 3231-0000
-          </div>
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Contrato de Locação - ${cliente.nome}</title>
+      <style>
+        @page {
+          margin: 2cm 1.5cm;
+          size: A4;
+        }
+        
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: 'Times New Roman', serif;
+          font-size: 11pt;
+          line-height: 1.4;
+          color: #000;
+          background: white;
+        }
+        
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+          border-bottom: 2px solid #000;
+          padding-bottom: 15px;
+        }
+        
+        .company-name {
+          font-size: 16pt;
+          font-weight: bold;
+          letter-spacing: 1px;
+          margin-bottom: 5px;
+        }
+        
+        .company-info {
+          font-size: 10pt;
+          color: #333;
+        }
+        
+        .contract-title {
+          font-size: 14pt;
+          font-weight: bold;
+          text-align: center;
+          margin: 25px 0;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        
+        .section {
+          margin-bottom: 25px;
+        }
+        
+        .section-title {
+          font-size: 12pt;
+          font-weight: bold;
+          margin-bottom: 15px;
+          text-transform: uppercase;
+          border-bottom: 1px solid #ccc;
+          padding-bottom: 5px;
+        }
+        
+        .parties {
+          margin-bottom: 20px;
+        }
+        
+        .party {
+          margin-bottom: 15px;
+        }
+        
+        .party-label {
+          font-weight: bold;
+          text-transform: uppercase;
+        }
+        
+        .client-info {
+          margin-left: 20px;
+          line-height: 1.6;
+        }
+        
+        .dates-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 15px 0;
+        }
+        
+        .dates-table td {
+          padding: 8px 12px;
+          border: 1px solid #333;
+          font-weight: bold;
+          text-align: center;
+        }
+        
+        .dates-table .label {
+          background-color: #f0f0f0;
+          font-weight: bold;
+          text-transform: uppercase;
+          font-size: 10pt;
+        }
+        
+        .items-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 15px 0;
+        }
+        
+        .items-table th {
+          background-color: #333;
+          color: white;
+          padding: 10px 8px;
+          text-align: center;
+          font-size: 10pt;
+          text-transform: uppercase;
+          font-weight: bold;
+        }
+        
+        .items-table td {
+          padding: 8px;
+          border: 1px solid #333;
+          text-align: left;
+          vertical-align: top;
+        }
+        
+        .items-table .center {
+          text-align: center;
+        }
+        
+        .items-table .right {
+          text-align: right;
+        }
+        
+        .total-row {
+          background-color: #f8f8f8;
+          font-weight: bold;
+        }
+        
+        .payment-section {
+          background-color: #f9f9f9;
+          padding: 15px;
+          border: 1px solid #ccc;
+          margin: 15px 0;
+        }
+        
+        .installments-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 10px;
+        }
+        
+        .installments-table th {
+          background-color: #e0e0e0;
+          padding: 8px;
+          border: 1px solid #333;
+          text-align: center;
+          font-size: 10pt;
+          font-weight: bold;
+        }
+        
+        .installments-table td {
+          padding: 6px 8px;
+          border: 1px solid #333;
+          text-align: center;
+          font-size: 10pt;
+        }
+        
+        .signature-section {
+          margin-top: 40px;
+          border-top: 1px solid #ccc;
+          padding-top: 20px;
+        }
+        
+        .signature-box {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 30px;
+        }
+        
+        .signature-line {
+          width: 45%;
+          text-align: center;
+          border-bottom: 1px solid #000;
+          padding-bottom: 5px;
+          margin-bottom: 5px;
+        }
+        
+        .signature-label {
+          font-size: 10pt;
+          font-weight: bold;
+          text-transform: uppercase;
+        }
+        
+        .clause {
+          text-align: justify;
+          margin-bottom: 15px;
+          text-indent: 20px;
+        }
+        
+        .clause-title {
+          font-weight: bold;
+          text-decoration: underline;
+          margin-bottom: 10px;
+        }
+        
+        .footer {
+          margin-top: 30px;
+          text-align: center;
+          font-size: 9pt;
+          color: #666;
+          border-top: 1px solid #ccc;
+          padding-top: 15px;
+        }
+        
+        @media print {
+          body { print-color-adjust: exact; }
+          .no-print { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="company-name">ÉRICA DAMAS LINO EIRELI</div>
+        <div class="company-info">
+          Rua Goiás, 275 - São José - Pará de Minas/MG<br>
+          CNPJ: 11.791.386/0001-13 | Telefone: (37) 3231-0000
         </div>
+      </div>
 
-        <div class="contract-title">
-          CONTRATO EXTRAJUDICIAL DE RESERVA E LOCAÇÃO<br>
-          DE VESTIDOS, TRAJES E ACESSÓRIOS
-        </div>
+      <div class="contract-title">
+        CONTRATO EXTRAJUDICIAL DE RESERVA E LOCAÇÃO<br>
+        DE VESTIDOS, TRAJES E ACESSÓRIOS
+      </div>
 
-        <div class="section">
-          <div class="section-title">1. IDENTIFICAÇÃO DAS PARTES</div>
-          
-          <div class="parties">
-            <div class="party">
-              <div class="party-label">LOCADORA:</div>
-              <div style="margin-left: 20px; margin-top: 8px;">
-                <strong>ÉRICA DAMAS LINO EIRELI</strong>, pessoa jurídica de direito privado, estabelecida na Rua Goiás, 275, São José, Pará de Minas/MG, inscrita no CNPJ sob nº 11.791.386/0001-13.
-              </div>
+      <div class="section">
+        <div class="section-title">1. IDENTIFICAÇÃO DAS PARTES</div>
+        
+        <div class="parties">
+          <div class="party">
+            <div class="party-label">LOCADORA:</div>
+            <div style="margin-left: 20px; margin-top: 8px;">
+              <strong>ÉRICA DAMAS LINO EIRELI</strong>, pessoa jurídica de direito privado, estabelecida na Rua Goiás, 275, São José, Pará de Minas/MG, inscrita no CNPJ sob nº 11.791.386/0001-13.
             </div>
-            
-            <div class="party">
-              <div class="party-label">LOCATÁRIO(A):</div>
-              <div class="client-info">
-                <strong>${cliente.nome.toUpperCase()}</strong><br>
-                RG: ${formatarRG(cliente.rg)} | CPF: ${formatarCPF(
+          </div>
+          
+          <div class="party">
+            <div class="party-label">LOCATÁRIO(A):</div>
+            <div class="client-info">
+              <strong>${cliente.nome.toUpperCase()}</strong><br>
+              RG: ${formatarRG(cliente.rg)} | CPF: ${formatarCPF(
       cliente.cpf
     )}<br>
-                Nacionalidade: ${
-                  cliente.nacionalidade
-                } | Data Nasc.: ${formatarDataBrasileira(
+              Nacionalidade: ${
+                cliente.nacionalidade
+              } | Data Nasc.: ${formatarDataBrasileira(
       cliente.dataNascimento
     )}<br>
-                Profissão: ${cliente.profissao}<br>
-                Endereço: ${cliente.endereco}, ${cliente.numero} - ${
+              Profissão: ${cliente.profissao}<br>
+              Endereço: ${cliente.endereco}, ${cliente.numero} - ${
       cliente.bairro
     }<br>
-                Cidade: ${cliente.cidade}<br>
-                Telefone: ${formatarTelefone(
-                  cliente.telefone
-                )} | Celular: ${formatarTelefone(cliente.celular)}
-              </div>
+              Cidade: ${cliente.cidade}<br>
+              Telefone: ${formatarTelefone(
+                cliente.telefone
+              )} | Celular: ${formatarTelefone(cliente.celular)}
             </div>
           </div>
-
-          <p class="clause">
-            As partes acima identificadas têm, entre si, justos e acertados o presente <strong>CONTRATO DE RESERVA E LOCAÇÃO</strong>, que se regerá pelas cláusulas seguintes e pelas condições de preço, forma e termo de pagamento descritas no presente instrumento.
-          </p>
-
-          <table class="dates-table">
-            <tr>
-              <td class="label">Data da Venda</td>
-              <td class="label">Data do Ajuste</td>
-              <td class="label">Data da Retirada</td>
-              <td class="label">Data da Entrega</td>
-            </tr>
-            <tr>
-              <td>${formatarDataBrasileira(dadosContrato.dataVenda)}</td>
-              <td>${formatarDataBrasileira(dadosContrato.dataAjuste)}</td>
-              <td>${formatarDataBrasileira(dadosContrato.dataRetirada)}</td>
-              <td>${formatarDataBrasileira(dadosContrato.dataEntrega)}</td>
-            </tr>
-          </table>
         </div>
 
-        <div class="section">
-          <div class="section-title">2. DO OBJETO DO CONTRATO</div>
-          
-          <p class="clause">
-            <span class="clause-title">Cláusula 1ª.</span> É objeto do presente contrato a locação dos seguintes trajes e acessórios:
-          </p>
+        <p class="clause">
+          As partes acima identificadas têm, entre si, justos e acertados o presente <strong>CONTRATO DE RESERVA E LOCAÇÃO</strong>, que se regerá pelas cláusulas seguintes e pelas condições de preço, forma e termo de pagamento descritas no presente instrumento.
+        </p>
 
-          <table class="items-table">
-            <thead>
+        <table class="dates-table">
+          <tr>
+            <td class="label">Data da Venda</td>
+            <td class="label">Data do Ajuste</td>
+            <td class="label">Data da Retirada</td>
+            <td class="label">Data da Entrega</td>
+          </tr>
+          <tr>
+            <td>${formatarDataBrasileira(dadosContrato.dataVenda)}</td>
+            <td>${formatarDataBrasileira(dadosContrato.dataAjuste)}</td>
+            <td>${formatarDataBrasileira(dadosContrato.dataRetirada)}</td>
+            <td>${formatarDataBrasileira(dadosContrato.dataEntrega)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="section">
+        <div class="section-title">2. DO OBJETO DO CONTRATO</div>
+        
+        <p class="clause">
+          <span class="clause-title">Cláusula 1ª.</span> É objeto do presente contrato a locação dos seguintes trajes e acessórios:
+        </p>
+
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width: 10%">CÓDIGO</th>
+              <th style="width: 65%">ESPECIFICAÇÃO</th>
+              <th style="width: 25%">VALOR (R$)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dadosContrato.itens
+              .map(
+                (item) => `
               <tr>
-                <th style="width: 10%">CÓDIGO</th>
-                <th style="width: 65%">ESPECIFICAÇÃO</th>
-                <th style="width: 25%">VALOR (R$)</th>
+                <td class="center">${item.codigo || "-"}</td>
+                <td>${item.especificacao || "-"}</td>
+                <td class="right">R$ ${formatarValor(item.valor)}</td>
               </tr>
-            </thead>
-            <tbody>
-              ${dadosContrato.itens
-                .map(
-                  (item) => `
-                <tr>
-                  <td class="center">${item.codigo || "-"}</td>
-                  <td>${item.especificacao || "-"}</td>
-                  <td class="right">R$ ${formatarValor(item.valor)}</td>
-                </tr>
-              `
-                )
-                .join("")}
-              <tr class="total-row">
-                <td colspan="2" class="right"><strong>VALOR TOTAL:</strong></td>
-                <td class="right"><strong>R$ ${formatarValor(
-                  total
-                )}</strong></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="section">
-          <div class="section-title">3. FORMA DE PAGAMENTO CONTRATADA</div>
-          
-          <div class="payment-section">
-            <p><strong>Forma de pagamento especificada:</strong> ${
-              dadosContrato.formaPagamento || "A definir"
-            }</p>
-            
-            ${
-              dadosContrato.parcelas.length > 0
-                ? `
-              <p style="margin-top: 15px;"><strong>Parcelamento acordado:</strong></p>
-              <table class="installments-table">
-                <thead>
-                  <tr>
-                    <th>Parcela</th>
-                    <th>Valor (R$)</th>
-                    <th>Vencimento</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${dadosContrato.parcelas
-                    .map(
-                      (parcela) => `
-                    <tr>
-                      <td>${parcela.numero}ª</td>
-                      <td>R$ ${formatarValor(parcela.valor)}</td>
-                      <td>${formatarDataBrasileira(parcela.vencimento)}</td>
-                    </tr>
-                  `
-                    )
-                    .join("")}
-                </tbody>
-              </table>
             `
-                : ""
-            }
+              )
+              .join("")}
+            <tr class="total-row">
+              <td colspan="2" class="right"><strong>VALOR TOTAL:</strong></td>
+              <td class="right"><strong>R$ ${formatarValor(total)}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section">
+        <div class="section-title">3. FORMA DE PAGAMENTO CONTRATADA</div>
+        
+        <div class="payment-section">
+          <p><strong>Forma de pagamento especificada:</strong> ${
+            dadosContrato.formaPagamento || "A definir"
+          }</p>
+          
+          ${
+            dadosContrato.parcelas.length > 0
+              ? `
+            <p style="margin-top: 15px;"><strong>Parcelamento acordado:</strong></p>
+            <table class="installments-table">
+              <thead>
+                <tr>
+                  <th>Parcela</th>
+                  <th>Valor (R$)</th>
+                  <th>Vencimento</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${dadosContrato.parcelas
+                  .map(
+                    (parcela) => `
+                  <tr>
+                    <td>${parcela.numero}ª</td>
+                    <td>R$ ${formatarValor(parcela.valor)}</td>
+                    <td>${formatarDataBrasileira(parcela.vencimento)}</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          `
+              : ""
+          }
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">4. DAS OBRIGAÇÕES E RESPONSABILIDADES</div>
+        
+        <p class="clause">
+          <span class="clause-title">Cláusula 2ª.</span> O LOCATÁRIO compromete-se a retirar a(s) peça(s) na data acordada, em perfeito estado de conservação, limpa(s) e devidamente ajustada(s).
+        </p>
+        
+        <p class="clause">
+          <span class="clause-title">Cláusula 3ª.</span> O LOCATÁRIO obriga-se a devolver a(s) peça(s) na data estabelecida, no mesmo estado em que foi(ram) retirada(s), sob pena de arcar com os custos de limpeza, reparos ou reposição.
+        </p>
+        
+        <p class="clause">
+          <span class="clause-title">Cláusula 4ª.</span> Em caso de danos, manchas ou avarias na(s) peça(s), o LOCATÁRIO será responsável pelo pagamento integral do valor de reposição da peça danificada.
+        </p>
+      </div>
+
+      <div class="signature-section">
+        <p style="text-align: center; margin-bottom: 20px;">
+          <strong>TERMO DE RECEBIMENTO</strong>
+        </p>
+        
+        <p class="clause">
+          Declaro que recebi a(s) peça(s) conforme especificado neste contrato, em perfeito estado de conservação, limpa(s), sem danos e devidamente ajustada(s), comprometendo-me a devolvê-la(s) na data acordada.
+        </p>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 40px;">
+          <div style="width: 30%; text-align: center;">
+            <div style="border-bottom: 1px solid #000; margin-bottom: 5px; height: 40px;"></div>
+            <div class="signature-label">Data: ___/___/______</div>
+          </div>
+          
+          <div style="width: 60%; text-align: center;">
+            <div style="border-bottom: 1px solid #000; margin-bottom: 5px; height: 40px;"></div>
+            <div class="signature-label">Assinatura do Locatário</div>
+            <div style="font-size: 9pt; margin-top: 5px;">${cliente.nome}</div>
           </div>
         </div>
 
-        <div class="section">
-          <div class="section-title">4. DAS OBRIGAÇÕES E RESPONSABILIDADES</div>
-          
-          <p class="clause">
-            <span class="clause-title">Cláusula 2ª.</span> O LOCATÁRIO compromete-se a retirar a(s) peça(s) na data acordada, em perfeito estado de conservação, limpa(s) e devidamente ajustada(s).
-          </p>
-          
-          <p class="clause">
-            <span class="clause-title">Cláusula 3ª.</span> O LOCATÁRIO obriga-se a devolver a(s) peça(s) na data estabelecida, no mesmo estado em que foi(ram) retirada(s), sob pena de arcar com os custos de limpeza, reparos ou reposição.
-          </p>
-          
-          <p class="clause">
-            <span class="clause-title">Cláusula 4ª.</span> Em caso de danos, manchas ou avarias na(s) peça(s), o LOCATÁRIO será responsável pelo pagamento integral do valor de reposição da peça danificada.
-          </p>
-        </div>
-
-        <div class="signature-section">
-          <p style="text-align: center; margin-bottom: 20px;">
-            <strong>TERMO DE RECEBIMENTO</strong>
-          </p>
-          
-          <p class="clause">
-            Declaro que recebi a(s) peça(s) conforme especificado neste contrato, em perfeito estado de conservação, limpa(s), sem danos e devidamente ajustada(s), comprometendo-me a devolvê-la(s) na data acordada.
-          </p>
-
-          <div style="display: flex; justify-content: space-between; margin-top: 40px;">
-            <div style="width: 30%; text-align: center;">
-              <div style="border-bottom: 1px solid #000; margin-bottom: 5px; height: 40px;"></div>
-              <div class="signature-label">Data: ___/___/______</div>
-            </div>
-            
-            <div style="width: 60%; text-align: center;">
-              <div style="border-bottom: 1px solid #000; margin-bottom: 5px; height: 40px;"></div>
-              <div class="signature-label">Assinatura do Locatário</div>
-              <div style="font-size: 9pt; margin-top: 5px;">${
-                cliente.nome
-              }</div>
-            </div>
-          </div>
-
-          <div style="display: flex; justify-content: center; margin-top: 40px;">
-            <div style="width: 60%; text-align: center;">
-              <div style="border-bottom: 1px solid #000; margin-bottom: 5px; height: 40px;"></div>
-              <div class="signature-label">Érica Damas Lino Eireli</div>
-              <div style="font-size: 9pt; margin-top: 5px;">Locadora</div>
-            </div>
+        <div style="display: flex; justify-content: center; margin-top: 40px;">
+          <div style="width: 60%; text-align: center;">
+            <div style="border-bottom: 1px solid #000; margin-bottom: 5px; height: 40px;"></div>
+            <div class="signature-label">Érica Damas Lino Eireli</div>
+            <div style="font-size: 9pt; margin-top: 5px;">Locadora</div>
           </div>
         </div>
+      </div>
 
-        <div class="footer">
-          Pará de Minas/MG, ${new Date().toLocaleDateString("pt-BR", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}<br>
-          Este contrato foi gerado eletronicamente e possui validade jurídica.
-        </div>
+      <div class="footer">
+        Pará de Minas/MG, ${new Date().toLocaleDateString("pt-BR", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}<br>
+        Este contrato foi gerado eletronicamente e possui validade jurídica.
+      </div>
 
-        <script>
-          window.onload = function() {
-            window.print();
-          };
-        </script>
-      </body>
-      </html>
-    `);
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      </script>
+    </body>
+    </html>
+  `);
 
     janela.document.close();
   };
@@ -731,10 +901,20 @@ const GerenciadorContratos = () => {
 
       <h1 style={styles.titulo}>Gerenciar Contratos</h1>
 
+      {erro && (
+        <div style={styles.erro}>
+          {erro}
+          <button onClick={() => setErro("")} style={styles.closeErrorButton}>
+            ×
+          </button>
+        </div>
+      )}
+
       <div style={styles.actionsContainer}>
         <button
           onClick={() => setMostrarFormulario(true)}
           style={styles.newButton}
+          disabled={carregando}
         >
           + Novo Contrato
         </button>
@@ -1257,73 +1437,213 @@ const GerenciadorContratos = () => {
           </fieldset>
 
           <div style={styles.buttonGroup}>
-            <button onClick={salvarContrato} style={styles.saveButton}>
-              {editandoId ? "Atualizar" : "Salvar"} Contrato
+            <button
+              onClick={salvarContrato}
+              style={styles.saveButton}
+              disabled={carregando}
+            >
+              {carregando ? "Salvando..." : editandoId ? "Atualizar" : "Salvar"}{" "}
+              Contrato
             </button>
-            <button onClick={resetarFormulario} style={styles.cancelButton}>
+            <button
+              onClick={resetarFormulario}
+              style={styles.cancelButton}
+              disabled={carregando}
+            >
               Cancelar
             </button>
           </div>
         </div>
       )}
 
+      {/* FILTROS E PESQUISA */}
+      <div style={styles.filtrosContainer}>
+        <div style={styles.filtroItem}>
+          <label>Período:</label>
+          <select
+            value={filtroData}
+            onChange={(e) => setFiltroData(e.target.value)}
+            style={styles.filtroSelect}
+          >
+            <option value="semana">Esta semana</option>
+            <option value="mes">Este mês</option>
+            <option value="todos">Todos</option>
+          </select>
+        </div>
+
+        <div style={styles.filtroItem}>
+          <label>Itens por página:</label>
+          <select
+            value={itensPorPagina}
+            onChange={(e) => setItensPorPagina(Number(e.target.value))}
+            style={styles.filtroSelect}
+          >
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+
+        <div style={styles.pesquisaContainer}>
+          <input
+            type="text"
+            placeholder="Pesquisar por nome, CPF ou item..."
+            value={pesquisa}
+            onChange={(e) => setPesquisa(e.target.value)}
+            style={styles.pesquisaInput}
+          />
+        </div>
+      </div>
+
       {/* LISTA DE CONTRATOS */}
       <div style={styles.contractsList}>
-        <h2 style={styles.subtitulo}>Contratos Salvos ({contratos.length})</h2>
+        <h2 style={styles.subtitulo}>
+          Contratos{" "}
+          {filtroData === "semana"
+            ? "da Semana"
+            : filtroData === "mes"
+            ? "do Mês"
+            : ""}
+          <span style={styles.contratosCount}>
+            {totalContratos} {totalContratos === 1 ? "contrato" : "contratos"}
+          </span>
+        </h2>
 
-        {contratos.length === 0 ? (
-          <p>Nenhum contrato cadastrado.</p>
+        {carregando && (
+          <div style={styles.loading}>
+            <div style={styles.spinner}></div>
+            <p>Carregando contratos...</p>
+          </div>
+        )}
+
+        {!carregando && contratosPaginados.length === 0 ? (
+          <div style={styles.emptyMessage}>
+            <p>Nenhum contrato encontrado para os filtros selecionados.</p>
+          </div>
         ) : (
-          contratos.map((contrato) => (
-            <div key={contrato.id} style={styles.contractCard}>
-              <div style={styles.contractHeader}>
-                <h3>{contrato.cliente.nome}</h3>
-                <span style={styles.contractTotal}>
-                  R$ {formatarValor(contrato.total)}
-                </span>
+          <div style={styles.compactContractsList}>
+            {contratosPaginados.map((contrato) => (
+              <div key={contrato.id} style={styles.compactContractCard}>
+                <div style={styles.compactContractInfo}>
+                  <div style={styles.compactContractHeader}>
+                    <h3 style={styles.compactContractName}>
+                      {contrato.cliente.nome}
+                    </h3>
+                    <span style={styles.compactContractTotal}>
+                      R$ {formatarValor(contrato.total)}
+                    </span>
+                  </div>
+
+                  <div style={styles.compactContractDetails}>
+                    <div style={styles.compactContractDetail}>
+                      <span style={styles.detailLabel}>Retirada:</span>
+                      <span>
+                        {formatarDataBrasileira(contrato.contrato.dataRetirada)}
+                      </span>
+                    </div>
+                    <div style={styles.compactContractDetail}>
+                      <span style={styles.detailLabel}>Entrega:</span>
+                      <span>
+                        {formatarDataBrasileira(contrato.contrato.dataEntrega)}
+                      </span>
+                    </div>
+                    <div style={styles.compactContractDetail}>
+                      <span style={styles.detailLabel}>Itens:</span>
+                      <span>{contrato.contrato.itens.length}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={styles.compactContractActions}>
+                  <button
+                    onClick={() => imprimirContrato(contrato)}
+                    style={styles.compactActionButton}
+                    title="Imprimir Contrato"
+                  >
+                    🖨️
+                  </button>
+                  <button
+                    onClick={() => editarContrato(contrato)}
+                    style={styles.compactActionButton}
+                    title="Editar Contrato"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => excluirContrato(contrato.id)}
+                    style={styles.compactActionButton}
+                    title="Excluir Contrato"
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
-              <div style={styles.contractInfo}>
-                <p>
-                  <strong>Retirada:</strong>{" "}
-                  {formatarDataBrasileira(contrato.contrato.dataRetirada)}
-                </p>
-                <p>
-                  <strong>Entrega:</strong>{" "}
-                  {formatarDataBrasileira(contrato.contrato.dataEntrega)}
-                </p>
-                <p>
-                  <strong>Itens:</strong> {contrato.contrato.itens.length}
-                </p>
-              </div>
-              <div style={styles.contractActions}>
-                <button
-                  onClick={() => imprimirContrato(contrato)}
-                  style={styles.printButton}
-                >
-                  🖨️ Imprimir
-                </button>
-                <button
-                  onClick={() => editarContrato(contrato)}
-                  style={styles.editButton}
-                >
-                  ✏️ Editar
-                </button>
-                <button
-                  onClick={() => excluirContrato(contrato.id)}
-                  style={styles.deleteButton}
-                >
-                  🗑️ Excluir
-                </button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
+        )}
+
+        {/* PAGINAÇÃO */}
+        {totalPaginas > 1 && (
+          <div style={styles.paginacao}>
+            <button
+              onClick={() => setPaginaAtual(1)}
+              disabled={paginaAtual === 1}
+              style={
+                paginaAtual === 1
+                  ? styles.paginaBotaoDesabilitado
+                  : styles.paginaBotao
+              }
+            >
+              &laquo;
+            </button>
+
+            <button
+              onClick={() => setPaginaAtual(paginaAtual - 1)}
+              disabled={paginaAtual === 1}
+              style={
+                paginaAtual === 1
+                  ? styles.paginaBotaoDesabilitado
+                  : styles.paginaBotao
+              }
+            >
+              &lt;
+            </button>
+
+            <span style={styles.paginaInfo}>
+              Página {paginaAtual} de {totalPaginas}
+            </span>
+
+            <button
+              onClick={() => setPaginaAtual(paginaAtual + 1)}
+              disabled={paginaAtual === totalPaginas}
+              style={
+                paginaAtual === totalPaginas
+                  ? styles.paginaBotaoDesabilitado
+                  : styles.paginaBotao
+              }
+            >
+              &gt;
+            </button>
+
+            <button
+              onClick={() => setPaginaAtual(totalPaginas)}
+              disabled={paginaAtual === totalPaginas}
+              style={
+                paginaAtual === totalPaginas
+                  ? styles.paginaBotaoDesabilitado
+                  : styles.paginaBotao
+              }
+            >
+              &raquo;
+            </button>
+          </div>
         )}
       </div>
     </div>
   );
 };
 
-// Estilos (mantidos iguais ao original)
+// Estilos atualizados
 const styles = {
   container: {
     maxWidth: "1400px",
@@ -1351,6 +1671,17 @@ const styles = {
     fontWeight: "300",
     color: "#5d4037",
     marginBottom: "1.5rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  contratosCount: {
+    fontSize: "1rem",
+    color: "#666",
+    fontWeight: "normal",
+    backgroundColor: "#f0f0f0",
+    padding: "0.25rem 0.75rem",
+    borderRadius: "15px",
   },
   actionsContainer: {
     textAlign: "center",
@@ -1482,57 +1813,173 @@ const styles = {
     borderRadius: "8px",
     boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
   },
-  contractCard: {
+
+  // Novos estilos para contratos compactos
+  compactContractsList: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+    gap: "1rem",
+  },
+  compactContractCard: {
     border: "1px solid #eee",
     borderRadius: "8px",
-    padding: "1.5rem",
-    marginBottom: "1rem",
+    padding: "1rem",
+    display: "flex",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+    transition: "all 0.2s ease",
   },
-  contractHeader: {
+  compactContractInfo: {
+    flex: 1,
+  },
+  compactContractHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "1rem",
+    marginBottom: "0.5rem",
   },
-  contractTotal: {
-    fontSize: "1.2rem",
+  compactContractName: {
+    fontSize: "1.1rem",
+    fontWeight: "500",
+    margin: 0,
+    color: "#5d4037",
+  },
+  compactContractTotal: {
+    fontSize: "1rem",
     fontWeight: "bold",
     color: "#b6a06a",
   },
-  contractInfo: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "1rem",
-    marginBottom: "1rem",
+  compactContractDetails: {
+    fontSize: "0.9rem",
   },
-  contractActions: {
+  compactContractDetail: {
     display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "0.25rem",
+  },
+  detailLabel: {
+    color: "#666",
+    marginRight: "0.5rem",
+  },
+  compactContractActions: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.5rem",
+    marginLeft: "1rem",
+  },
+  compactActionButton: {
+    backgroundColor: "transparent",
+    border: "1px solid #ddd",
+    borderRadius: "4px",
+    width: "32px",
+    height: "32px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    fontSize: "1rem",
+    padding: 0,
+    transition: "all 0.2s ease",
+  },
+
+  // Estilos para filtros e paginação
+  filtrosContainer: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "1rem",
+    marginBottom: "1.5rem",
+    backgroundColor: "#f9f9f9",
+    padding: "1rem",
+    borderRadius: "8px",
+  },
+  filtroItem: {
+    display: "flex",
+    alignItems: "center",
     gap: "0.5rem",
   },
-  printButton: {
-    backgroundColor: "#17a2b8",
-    color: "white",
-    border: "none",
-    padding: "0.5rem 1rem",
+  filtroSelect: {
+    padding: "0.5rem",
+    border: "1px solid #ddd",
     borderRadius: "4px",
+    fontSize: "0.9rem",
+  },
+  pesquisaContainer: {
+    flex: 1,
+  },
+  pesquisaInput: {
+    width: "100%",
+    padding: "0.5rem",
+    border: "1px solid #ddd",
+    borderRadius: "4px",
+    fontSize: "0.9rem",
+  },
+  paginacao: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "0.5rem",
+    marginTop: "2rem",
+  },
+  paginaBotao: {
+    padding: "0.5rem 0.75rem",
+    border: "1px solid #ddd",
+    borderRadius: "4px",
+    backgroundColor: "#fff",
     cursor: "pointer",
   },
-  editButton: {
-    backgroundColor: "#ffc107",
-    color: "black",
-    border: "none",
-    padding: "0.5rem 1rem",
+  paginaBotaoDesabilitado: {
+    padding: "0.5rem 0.75rem",
+    border: "1px solid #eee",
     borderRadius: "4px",
-    cursor: "pointer",
+    backgroundColor: "#f9f9f9",
+    color: "#ccc",
+    cursor: "not-allowed",
   },
-  deleteButton: {
-    backgroundColor: "#dc3545",
-    color: "white",
+  paginaInfo: {
+    padding: "0 1rem",
+  },
+
+  // Estilos para mensagens e erros
+  erro: {
+    backgroundColor: "#ffebee",
+    color: "#c62828",
+    padding: "1rem",
+    borderRadius: "8px",
+    marginBottom: "1.5rem",
+    position: "relative",
+  },
+  closeErrorButton: {
+    position: "absolute",
+    top: "0.5rem",
+    right: "0.5rem",
+    background: "none",
     border: "none",
-    padding: "0.5rem 1rem",
-    borderRadius: "4px",
+    fontSize: "1.2rem",
     cursor: "pointer",
+    color: "#c62828",
   },
+  loading: {
+    textAlign: "center",
+    padding: "2rem 0",
+  },
+  spinner: {
+    width: "40px",
+    height: "40px",
+    border: "3px solid #f3f3f3",
+    borderTop: "3px solid #b6a06a",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
+    margin: "0 auto 1rem",
+  },
+  emptyMessage: {
+    textAlign: "center",
+    padding: "2rem",
+    color: "#666",
+  },
+
+  // Estilos restantes do componente original
   resumoHeader: {
     display: "flex",
     justifyContent: "space-between",

@@ -5,11 +5,14 @@ const dotenv = require("dotenv");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
+const http = require("http");
+const { Server } = require("socket.io");
 
 // Carregar variáveis de ambiente
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
 
 // Configuração do Firebase (ajustada para Vercel)
 let bucket;
@@ -53,6 +56,51 @@ try {
 // Importar modelo do Produto
 const Produto = require("./models/Produto");
 
+// Definir modelo de Contrato
+const contratoSchema = new mongoose.Schema({
+  cliente: {
+    nome: String,
+    rg: String,
+    cpf: String,
+    nacionalidade: String,
+    dataNascimento: String,
+    profissao: String,
+    endereco: String,
+    numero: String,
+    bairro: String,
+    cidade: String,
+    telefone: String,
+    celular: String,
+  },
+  contrato: {
+    dataVenda: String,
+    dataAjuste: String,
+    dataRetirada: String,
+    dataEntrega: String,
+    formaPagamento: String,
+    itens: [
+      {
+        codigo: String,
+        especificacao: String,
+        valor: String,
+      },
+    ],
+    parcelas: [
+      {
+        numero: Number,
+        valor: String,
+        vencimento: String,
+      },
+    ],
+    observacoesPagamento: String,
+    observacoesGerais: String,
+  },
+  total: Number,
+  dataCriacao: { type: Date, default: Date.now },
+});
+
+const Contrato = mongoose.model("Contrato", contratoSchema);
+
 // Conectar ao MongoDB (otimizado para Vercel)
 const connectDB = async () => {
   // Se já conectado, não reconectar
@@ -90,20 +138,30 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // Limite de 5MB
 });
 
+// Lista de origens permitidas
+const allowedOrigins = [
+  // Produção
+  "https://erica-damas-com-br-e5w2.vercel.app",
+  "https://erica-damas-com-br-e5w2-git-main-pedros-projects-f4fedec9.vercel.app",
+  // Desenvolvimento
+  "http://localhost:3000",
+  "http://localhost:5000",
+  // Codespaces
+  "https://ominous-orbit-g4qq7vw57qj5c6jr-3000.app.github.dev",
+  "https://ominous-orbit-g4qq7vw57qj5c6jr-5000.app.github.dev",
+];
+
 // Configuração CORS (mais permissiva para Render)
 app.use(
   cors({
-    origin: [
-      // Produção
-      "https://erica-damas-com-br-e5w2.vercel.app",
-      "https://erica-damas-com-br-e5w2-git-main-pedros-projects-f4fedec9.vercel.app",
-      // Desenvolvimento
-      "http://localhost:3000",
-      "http://localhost:5000",
-      // Codespaces
-      "https://ominous-orbit-g4qq7vw57qj5c6jr-3000.app.github.dev",
-      "https://ominous-orbit-g4qq7vw57qj5c6jr-5000.app.github.dev",
-    ],
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log("Origem bloqueada pelo CORS:", origin);
+        callback(new Error("Bloqueado pelo CORS"));
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     credentials: true,
@@ -112,19 +170,19 @@ app.use(
   })
 );
 
+// Configuração do WebSocket
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+  path: "/ws",
+});
+
 // Middleware adicional para CORS (IMPORTANTE!)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-
-  // Lista de origens permitidas
-  const allowedOrigins = [
-    "https://erica-damas-com-br-e5w2.vercel.app",
-    "https://erica-damas-com-br-e5w2-git-main-pedros-projects-f4fedec9.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:5000",
-    "https://ominous-orbit-g4qq7vw57qj5c6jr-3000.app.github.dev",
-    "https://ominous-orbit-g4qq7vw57qj5c6jr-5000.app.github.dev",
-  ];
 
   if (allowedOrigins.includes(origin)) {
     res.header("Access-Control-Allow-Origin", origin);
@@ -287,7 +345,6 @@ app.get("/api/produtos/:tipo", async (req, res) => {
 
     console.log(`Buscando produtos do tipo: ${tipo}`);
 
-    // MODIFICADO: Incluído "debutantes" na lista de tipos válidos
     if (!["vestidos", "ternos", "debutantes"].includes(tipo)) {
       return res.status(400).json({
         success: false,
@@ -342,7 +399,6 @@ app.post(
         });
       }
 
-      // MODIFICADO: Incluído "debutantes" na lista de tipos válidos
       if (!["vestidos", "ternos", "debutantes"].includes(tipo)) {
         return res.status(400).json({
           success: false,
@@ -389,7 +445,6 @@ app.post(
       console.log("✅ Produto criado com sucesso:", novoProduto._id);
       console.log("URLs das imagens:", validImageUrls);
 
-      // MODIFICADO: Adicionado suporte para mensagem de "debutantes"
       let mensagem;
       if (tipo === "vestidos") {
         mensagem = "Vestido criado com sucesso";
@@ -400,6 +455,12 @@ app.post(
       } else {
         mensagem = "Produto criado com sucesso";
       }
+
+      // Notificar clientes via WebSocket
+      io.emit("atualizacaoProdutos", {
+        tipo: "novo",
+        produto: novoProduto,
+      });
 
       res.status(201).json({
         success: true,
@@ -469,6 +530,12 @@ app.put(
 
       console.log("✅ Produto atualizado com sucesso:", produto._id);
 
+      // Notificar clientes via WebSocket
+      io.emit("atualizacaoProdutos", {
+        tipo: "atualizacao",
+        produto: produto,
+      });
+
       res.json({
         success: true,
         produto,
@@ -508,6 +575,12 @@ app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
     await Produto.findByIdAndDelete(id);
 
     console.log("✅ Produto excluído com sucesso:", id);
+
+    // Notificar clientes via WebSocket
+    io.emit("atualizacaoProdutos", {
+      tipo: "exclusao",
+      id: id,
+    });
 
     res.json({
       success: true,
@@ -566,6 +639,155 @@ app.get("/api/admin/verificar", verificarToken, async (req, res) => {
   }
 });
 
+// ==================== ROTAS DA API DE CONTRATOS ====================
+
+// Buscar todos os contratos (rota protegida)
+app.get("/api/contratos", verificarToken, async (req, res) => {
+  try {
+    // Garantir conexão com MongoDB
+    await connectDB();
+
+    const contratos = await Contrato.find().sort({ dataCriacao: -1 });
+
+    console.log(`✅ ${contratos.length} contratos encontrados`);
+
+    res.json({
+      success: true,
+      contratos,
+      total: contratos.length,
+    });
+  } catch (error) {
+    console.error("Erro ao buscar contratos:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao buscar contratos",
+      error: error.message,
+    });
+  }
+});
+
+// Criar novo contrato (rota protegida)
+app.post("/api/contratos", verificarToken, async (req, res) => {
+  try {
+    // Garantir conexão com MongoDB
+    await connectDB();
+
+    console.log("=== CRIANDO NOVO CONTRATO ===");
+    console.log("Dados recebidos:", req.body);
+
+    const novoContrato = new Contrato(req.body);
+    await novoContrato.save();
+
+    console.log("✅ Contrato criado com sucesso:", novoContrato._id);
+
+    // Notificar clientes via WebSocket
+    io.emit("atualizacaoContratos", {
+      tipo: "novo",
+      contrato: novoContrato,
+    });
+
+    res.status(201).json({
+      success: true,
+      contrato: novoContrato,
+      message: "Contrato criado com sucesso",
+    });
+  } catch (error) {
+    console.error("❌ Erro ao criar contrato:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao criar contrato",
+      error: error.message,
+    });
+  }
+});
+
+// Atualizar contrato existente (rota protegida)
+app.put("/api/contratos/:id", verificarToken, async (req, res) => {
+  try {
+    // Garantir conexão com MongoDB
+    await connectDB();
+
+    const { id } = req.params;
+
+    console.log("=== ATUALIZANDO CONTRATO ===");
+    console.log("ID do contrato:", id);
+
+    const contrato = await Contrato.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
+
+    if (!contrato) {
+      return res.status(404).json({
+        success: false,
+        message: "Contrato não encontrado",
+      });
+    }
+
+    console.log("✅ Contrato atualizado com sucesso:", contrato._id);
+
+    // Notificar clientes via WebSocket
+    io.emit("atualizacaoContratos", {
+      tipo: "atualizacao",
+      contrato: contrato,
+    });
+
+    res.json({
+      success: true,
+      contrato,
+      message: "Contrato atualizado com sucesso",
+    });
+  } catch (error) {
+    console.error("❌ Erro ao atualizar contrato:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao atualizar contrato",
+      error: error.message,
+    });
+  }
+});
+
+// Excluir contrato (rota protegida)
+app.delete("/api/contratos/:id", verificarToken, async (req, res) => {
+  try {
+    // Garantir conexão com MongoDB
+    await connectDB();
+
+    const { id } = req.params;
+
+    console.log("=== EXCLUINDO CONTRATO ===");
+    console.log("ID do contrato:", id);
+
+    const contrato = await Contrato.findByIdAndDelete(id);
+
+    if (!contrato) {
+      return res.status(404).json({
+        success: false,
+        message: "Contrato não encontrado",
+      });
+    }
+
+    console.log("✅ Contrato excluído com sucesso:", id);
+
+    // Notificar clientes via WebSocket
+    io.emit("atualizacaoContratos", {
+      tipo: "exclusao",
+      id: id,
+    });
+
+    res.json({
+      success: true,
+      message: "Contrato excluído com sucesso",
+    });
+  } catch (error) {
+    console.error("❌ Erro ao excluir contrato:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao excluir contrato",
+      error: error.message,
+    });
+  }
+});
+
 // Rota raiz
 app.get("/", (req, res) => {
   res.json({
@@ -576,7 +798,7 @@ app.get("/", (req, res) => {
       public: [
         "GET /api/produtos/vestidos",
         "GET /api/produtos/ternos",
-        "GET /api/produtos/debutantes", // MODIFICADO: Adicionado endpoint de debutantes
+        "GET /api/produtos/debutantes",
       ],
       admin: [
         "POST /api/login",
@@ -585,6 +807,10 @@ app.get("/", (req, res) => {
         "POST /api/produtos",
         "PUT /api/produtos/:id",
         "DELETE /api/produtos/:id",
+        "GET /api/contratos",
+        "POST /api/contratos",
+        "PUT /api/contratos/:id",
+        "DELETE /api/contratos/:id",
       ],
     },
   });
@@ -595,6 +821,54 @@ app.get("/api", (req, res) => {
     message: "API Erica Damas está funcionando",
     environment: process.env.NODE_ENV || "development",
     timestamp: new Date().toISOString(),
+  });
+});
+
+// WebSocket handlers
+io.on("connection", (socket) => {
+  console.log("Cliente WebSocket conectado:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("Cliente WebSocket desconectado:", socket.id);
+  });
+
+  // Eventos para contratos
+  socket.on("novoContrato", async (data) => {
+    console.log("Evento novoContrato recebido:", data.id);
+    try {
+      const contrato = await Contrato.findById(data.id);
+      if (contrato) {
+        io.emit("atualizacaoContratos", {
+          tipo: "novo",
+          contrato: contrato,
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao processar novoContrato:", error);
+    }
+  });
+
+  socket.on("atualizacaoContrato", async (data) => {
+    console.log("Evento atualizacaoContrato recebido:", data.id);
+    try {
+      const contrato = await Contrato.findById(data.id);
+      if (contrato) {
+        io.emit("atualizacaoContratos", {
+          tipo: "atualizacao",
+          contrato: contrato,
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao processar atualizacaoContrato:", error);
+    }
+  });
+
+  socket.on("exclusaoContrato", (id) => {
+    console.log("Evento exclusaoContrato recebido:", id);
+    io.emit("atualizacaoContratos", {
+      tipo: "exclusao",
+      id: id,
+    });
   });
 });
 
@@ -614,12 +888,13 @@ app.use((error, req, res, next) => {
 // Para desenvolvimento local
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Servidor HTTP e WebSocket rodando na porta ${PORT}`);
     console.log(`📍 Em ambiente local: http://localhost:${PORT}`);
     console.log(`☁️  No Codespaces, acesse usando o URL fornecido pelo GitHub`);
     console.log(`🔥 Firebase Storage configurado e pronto!`);
     console.log(`📊 MongoDB integrado e funcionando!`);
+    console.log(`🔌 WebSocket configurado no caminho /ws`);
   });
 }
 
