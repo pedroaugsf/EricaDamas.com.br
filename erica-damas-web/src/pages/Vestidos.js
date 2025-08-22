@@ -186,8 +186,7 @@ const Vestidos = () => {
                 {vestido.imagens && vestido.imagens[0] && (
                   <div style={styles.vestidoImageContainer}>
                     <img
-                      src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
-                      data-src={vestido.imagens[0]}
+                      src={vestido.imagens[0]}
                       alt={vestido.nome}
                       style={styles.vestidoImage}
                       onError={(e) => {
