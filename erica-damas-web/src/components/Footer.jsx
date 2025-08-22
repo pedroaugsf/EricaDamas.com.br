@@ -3,9 +3,9 @@ import { FaWhatsapp, FaMapMarkerAlt, FaInstagram } from "react-icons/fa";
 
 const Footer = () => {
   const contacts = {
-    whatsapp: "https://wa.me/5531994530011",
-    maps: "https://maps.google.com?q=Av.+Frei+Henrique+Soares,+292+-+Inconfidentes,+Contagem/MG",
-    instagram: "https://instagram.com/ericadamas",
+    whatsapp: "https://wa.me/5537999153738",
+    maps: "https://maps.google.com?q=Av.+Amazonas,+275+-+Sao+Jose,+Para+de+Minas/MG",
+    instagram: "https://instagram.com/ericadamas_noivas",
   };
 
   return (
@@ -40,7 +40,7 @@ const Footer = () => {
               style={styles.contactLink}
             >
               <FaInstagram style={styles.icon} />
-              <span>@ericadamas</span>
+              <span>@ericadamas_noivas</span>
             </a>
 
             <a
@@ -51,7 +51,7 @@ const Footer = () => {
             >
               <FaMapMarkerAlt style={styles.icon} />
               <span style={styles.addressText}>
-                Av. Frei Henrique Soares, 292, Contagem/MG
+                Av. Amazonas, 275, São José, Pará de Minas/MG
               </span>
             </a>
           </div>

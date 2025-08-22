@@ -2,7 +2,7 @@ import React from "react";
 import { Helmet } from "react-helmet";
 
 const AboutPage = () => {
-  const whatsappNumber = "5531994530011"; // Número formatado para link do WhatsApp
+  const whatsappNumber = "5537999153738"; // Número formatado para link do WhatsApp
   const defaultMessage = "Olá Erica Damas, gostaria de agendar uma visita!";
   const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     defaultMessage

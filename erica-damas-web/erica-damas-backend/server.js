@@ -336,14 +336,20 @@ const uploadImageToFirebase = async (file) => {
 // ==================== ROTAS DA API DE PRODUTOS ====================
 
 // Buscar produtos por tipo (rota pública)
+// Buscar produtos por tipo (rota pública)
 app.get("/api/produtos/:tipo", async (req, res) => {
   try {
     // Garantir conexão com MongoDB
     await connectDB();
 
     const { tipo } = req.params;
+    const pagina = parseInt(req.query.pagina) || 1;
+    const limite = parseInt(req.query.limite) || 12;
+    const skip = (pagina - 1) * limite;
 
-    console.log(`Buscando produtos do tipo: ${tipo}`);
+    console.log(
+      `Buscando produtos do tipo: ${tipo} (página ${pagina}, limite ${limite})`
+    );
 
     if (!["vestidos", "ternos", "debutantes"].includes(tipo)) {
       return res.status(400).json({
@@ -353,17 +359,32 @@ app.get("/api/produtos/:tipo", async (req, res) => {
       });
     }
 
+    // Buscar total de produtos para paginação
+    const total = await Produto.countDocuments({
+      tipo,
+      ativo: true,
+    });
+
+    // Buscar produtos com paginação
     const produtos = await Produto.find({
       tipo,
       ativo: true,
-    }).sort({ createdAt: -1 });
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limite);
 
-    console.log(`✅ ${produtos.length} produtos encontrados do tipo ${tipo}`);
+    console.log(
+      `✅ ${produtos.length} produtos encontrados do tipo ${tipo} (total: ${total})`
+    );
 
     res.json({
       success: true,
       produtos,
-      total: produtos.length,
+      total,
+      pagina,
+      limite,
+      paginas: Math.ceil(total / limite),
     });
   } catch (error) {
     console.error("Erro ao buscar produtos:", error);

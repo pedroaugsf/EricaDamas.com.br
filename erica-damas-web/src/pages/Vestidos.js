@@ -5,22 +5,43 @@ import { api } from "../services/AuthService";
 const Vestidos = () => {
   const [vestidos, setVestidos] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [carregandoMais, setCarregandoMais] = useState(false);
   const [vestidoSelecionado, setVestidoSelecionado] = useState(null);
   const [erro, setErro] = useState("");
+  const [pagina, setPagina] = useState(1);
+  const [temMais, setTemMais] = useState(true);
+  const [totalVestidos, setTotalVestidos] = useState(0);
+  const itensPorPagina = 12;
 
   // Carregar vestidos da API usando o serviço centralizado
-  const carregarVestidos = async () => {
+  const carregarVestidos = async (paginaAtual = 1, acumular = false) => {
     try {
-      setCarregando(true);
-      setErro("");
-      console.log("Carregando vestidos da API...");
+      if (paginaAtual === 1) {
+        setCarregando(true);
+      } else {
+        setCarregandoMais(true);
+      }
 
-      const response = await api.get("/produtos/vestidos");
+      setErro("");
+      console.log(`Carregando vestidos da API (página ${paginaAtual})...`);
+
+      const response = await api.get(
+        `/produtos/vestidos?pagina=${paginaAtual}&limite=${itensPorPagina}`
+      );
       const result = response.data;
 
       if (result.success) {
-        setVestidos(result.produtos);
-        console.log(`✅ ${result.produtos.length} vestidos carregados`);
+        if (acumular) {
+          setVestidos((prev) => [...prev, ...result.produtos]);
+        } else {
+          setVestidos(result.produtos);
+        }
+
+        setTotalVestidos(result.total);
+        setTemMais(result.produtos.length === itensPorPagina);
+        console.log(
+          `✅ ${result.produtos.length} vestidos carregados (total: ${result.total})`
+        );
       } else {
         setErro("Erro ao carregar vestidos: " + result.message);
         console.error("Erro na API:", result.message);
@@ -30,12 +51,46 @@ const Vestidos = () => {
       setErro("Erro ao conectar com o servidor");
     } finally {
       setCarregando(false);
+      setCarregandoMais(false);
     }
   };
 
   useEffect(() => {
     carregarVestidos();
+
+    // Configurar observador de interseção para lazy loading de imagens
+    const imgObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const img = entry.target;
+            const src = img.getAttribute("data-src");
+            if (src) {
+              img.src = src;
+              img.removeAttribute("data-src");
+              imgObserver.unobserve(img);
+            }
+          }
+        });
+      },
+      { rootMargin: "200px 0px" }
+    );
+
+    // Observar todas as imagens com data-src
+    document.querySelectorAll("img[data-src]").forEach((img) => {
+      imgObserver.observe(img);
+    });
+
+    return () => {
+      imgObserver.disconnect();
+    };
   }, []);
+
+  const carregarMais = () => {
+    const proximaPagina = pagina + 1;
+    setPagina(proximaPagina);
+    carregarVestidos(proximaPagina, true);
+  };
 
   const abrirModal = (vestido) => {
     setVestidoSelecionado(vestido);
@@ -69,12 +124,20 @@ const Vestidos = () => {
       <div style={styles.tituloContainer}>
         <h1 style={styles.titulo}>VESTIDOS DE NOIVA</h1>
         <div style={styles.divisor}></div>
+        {!carregando && totalVestidos > 0 && (
+          <p style={styles.resultCount}>
+            Exibindo {vestidos.length} de {totalVestidos} vestidos
+          </p>
+        )}
       </div>
 
       {erro && (
         <div style={styles.erro}>
           {erro}
-          <button onClick={carregarVestidos} style={styles.retryButton}>
+          <button
+            onClick={() => carregarVestidos(1)}
+            style={styles.retryButton}
+          >
             Tentar novamente
           </button>
         </div>
@@ -102,51 +165,74 @@ const Vestidos = () => {
           </a>
         </div>
       ) : (
-        <div style={styles.vestidosGrid}>
-          {vestidos.map((vestido) => (
-            <div
-              key={vestido._id}
-              style={styles.vestidoCard}
-              onClick={() => abrirModal(vestido)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-8px)";
-                e.currentTarget.style.boxShadow =
-                  "0 12px 30px rgba(0,0,0,0.15)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)";
-              }}
-            >
-              {vestido.imagens && vestido.imagens[0] && (
-                <div style={styles.vestidoImageContainer}>
-                  <img
-                    src={vestido.imagens[0]}
-                    alt={vestido.nome}
-                    style={styles.vestidoImage}
-                    onError={(e) => {
-                      e.target.style.backgroundColor = "#f5f5f5";
-                      e.target.alt = "Imagem não disponível";
-                    }}
-                    loading="lazy"
-                  />
-                  {vestido.imagens.length > 1 && (
-                    <div style={styles.imageCount}>
-                      +{vestido.imagens.length - 1}
-                    </div>
-                  )}
+        <div>
+          <div style={styles.vestidosGrid}>
+            {vestidos.map((vestido) => (
+              <div
+                key={vestido._id}
+                style={styles.vestidoCard}
+                onClick={() => abrirModal(vestido)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-8px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 12px 30px rgba(0,0,0,0.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 20px rgba(0,0,0,0.08)";
+                }}
+              >
+                {vestido.imagens && vestido.imagens[0] && (
+                  <div style={styles.vestidoImageContainer}>
+                    <img
+                      src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
+                      data-src={vestido.imagens[0]}
+                      alt={vestido.nome}
+                      style={styles.vestidoImage}
+                      onError={(e) => {
+                        e.target.style.backgroundColor = "#f5f5f5";
+                        e.target.alt = "Imagem não disponível";
+                      }}
+                      loading="lazy"
+                    />
+                    {vestido.imagens.length > 1 && (
+                      <div style={styles.imageCount}>
+                        +{vestido.imagens.length - 1}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div style={styles.vestidoInfo}>
+                  <h3 style={styles.vestidoName}>{vestido.nome}</h3>
+                  <p style={styles.vestidoDescription}>
+                    {vestido.descricao.length > 100
+                      ? vestido.descricao.substring(0, 100) + "..."
+                      : vestido.descricao}
+                  </p>
                 </div>
-              )}
-              <div style={styles.vestidoInfo}>
-                <h3 style={styles.vestidoName}>{vestido.nome}</h3>
-                <p style={styles.vestidoDescription}>
-                  {vestido.descricao.length > 100
-                    ? vestido.descricao.substring(0, 100) + "..."
-                    : vestido.descricao}
-                </p>
               </div>
+            ))}
+          </div>
+
+          {temMais && (
+            <div style={styles.loadMoreContainer}>
+              <button
+                style={styles.loadMoreButton}
+                onClick={carregarMais}
+                disabled={carregandoMais}
+              >
+                {carregandoMais ? (
+                  <React.Fragment>
+                    <div style={styles.smallSpinner}></div>
+                    Carregando...
+                  </React.Fragment>
+                ) : (
+                  "Carregar mais vestidos"
+                )}
+              </button>
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -167,6 +253,30 @@ const Vestidos = () => {
                       style={styles.modalImage}
                       loading="lazy"
                     />
+                  )}
+
+                {vestidoSelecionado.imagens &&
+                  vestidoSelecionado.imagens.length > 1 && (
+                    <div style={styles.thumbnailContainer}>
+                      {vestidoSelecionado.imagens
+                        .slice(0, 5)
+                        .map((img, index) => (
+                          <img
+                            key={index}
+                            src={img}
+                            alt={`${vestidoSelecionado.nome} - imagem ${
+                              index + 1
+                            }`}
+                            style={styles.thumbnail}
+                            onClick={(e) => {
+                              // Trocar imagem principal ao clicar na miniatura
+                              const mainImg =
+                                e.currentTarget.parentNode.previousSibling;
+                              mainImg.src = img;
+                            }}
+                          />
+                        ))}
+                    </div>
                   )}
               </div>
 
@@ -247,6 +357,10 @@ const Vestidos = () => {
           .modalTitle {
             font-size: 1.8rem !important;
           }
+
+          .thumbnailContainer {
+            flex-wrap: wrap !important;
+          }
         }
 
         @media (max-width: 480px) {
@@ -292,6 +406,11 @@ const styles = {
     backgroundColor: "#b6a06a",
     margin: "0 auto",
   },
+  resultCount: {
+    marginTop: "1rem",
+    color: "#666",
+    fontSize: "0.95rem",
+  },
   erro: {
     backgroundColor: "#ffebee",
     color: "#c62828",
@@ -329,6 +448,15 @@ const styles = {
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
     margin: "0 auto 1rem",
+  },
+  smallSpinner: {
+    width: "20px",
+    height: "20px",
+    border: "2px solid #f3f3f3",
+    borderTop: "2px solid #b6a06a",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
+    marginRight: "10px",
   },
   emptyMessage: {
     textAlign: "center",
@@ -409,6 +537,24 @@ const styles = {
     lineHeight: "1.5",
     marginBottom: "0.5rem",
   },
+  loadMoreContainer: {
+    textAlign: "center",
+    margin: "3rem 0 1rem",
+  },
+  loadMoreButton: {
+    backgroundColor: "#b6a06a",
+    color: "white",
+    border: "none",
+    padding: "1rem 2rem",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "1rem",
+    fontWeight: "500",
+    transition: "all 0.3s",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   modalOverlay: {
     position: "fixed",
     top: 0,
@@ -460,6 +606,7 @@ const styles = {
   modalImageSection: {
     padding: "3rem",
     display: "flex",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#fafafa",
@@ -467,10 +614,25 @@ const styles = {
   modalImage: {
     width: "100%",
     height: "auto",
-    maxHeight: "75vh",
+    maxHeight: "60vh",
     objectFit: "contain",
     borderRadius: "6px",
     boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+  },
+  thumbnailContainer: {
+    display: "flex",
+    gap: "10px",
+    marginTop: "15px",
+    justifyContent: "center",
+  },
+  thumbnail: {
+    width: "60px",
+    height: "60px",
+    objectFit: "cover",
+    borderRadius: "4px",
+    cursor: "pointer",
+    border: "2px solid transparent",
+    transition: "all 0.2s",
   },
   modalInfoSection: {
     padding: "3rem 2rem",

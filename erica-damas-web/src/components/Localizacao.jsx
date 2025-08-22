@@ -5,16 +5,16 @@ const Localizacao = () => {
   // Dados de contato
   const contato = {
     endereco: {
-      rua: "Av. Frei Henrique Soares, 292",
-      bairro: "Inconfidentes",
-      cidade: "Contagem",
+      rua: "Av. Amazonas, 275",
+      bairro: "São José",
+      cidade: "Pará de Minas",
       estado: "MG",
-      cep: "32260-340",
+      cep: "35660-000",
     },
-    telefone: "(31) 99453-0011",
+    telefone: "(37) 99915-3738",
     horarios: {
-      semana: "Segunda a Sexta: 10h às 19h",
-      sabado: "Sábado: 10h às 16h",
+      semana: "Segunda a Sexta: 09h às 18h",
+      sabado: "Sábado: 09h às 13h",
       domingo: "Domingo: Fechado",
     },
   };
@@ -72,7 +72,7 @@ const Localizacao = () => {
         {/* Mapa */}
         <div style={styles.mapContainer}>
           <iframe
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3750.6574336174996!2d-44.05740908508547!3d-19.941169986594684!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xa6bfd2f9a9c877%3A0x8f7d0e6a4e55a30b!2sAv.%20Frei%20Henrique%20Soares%2C%20292%20-%20Inconfidentes%2C%20Contagem%20-%20MG!5e0!3m2!1spt-BR!2sbr!4v1628176894953!5m2!1spt-BR!2sbr"
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3750.6574336174996!2d-44.05740908508547!3d-19.941169986594684!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xa6bfd2f9a9c877%3A0x8f7d0e6a4e55a30b!2sAv.%20Amazonas%2C%20275%20-%20S%C3%A3o%20Jos%C3%A9%2C%20Par%C3%A1%20de%20Minas%20-%20MG!5e0!3m2!1spt-BR!2sbr!4v1628176894953!5m2!1spt-BR!2sbr"
             width="100%"
             height="100%"
             style={styles.map}

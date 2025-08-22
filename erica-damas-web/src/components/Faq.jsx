@@ -28,7 +28,7 @@ const FAQ = () => {
       {
         pergunta: "Vocês atendem em outras cidades?",
         resposta:
-          "Nosso ateliê está localizado em Contagem/MG, mas atendemos clientes de todo o Brasil. Para clientes de outras cidades, oferecemos consultoria online inicial e organizamos as provas presenciais de forma otimizada. Em casos especiais, nossa equipe pode se deslocar até você, mediante consulta de disponibilidade e custos adicionais.",
+          "Nosso ateliê está localizado em Pará de Minas/MG, mas atendemos clientes de todo o Brasil. Para clientes de outras cidades, oferecemos consultoria online inicial e organizamos as provas presenciais de forma otimizada. Em casos especiais, nossa equipe pode se deslocar até você, mediante consulta de disponibilidade e custos adicionais.",
       },
       {
         pergunta: "Quanto tempo de antecedência devo procurar o ateliê?",
@@ -116,7 +116,7 @@ const FAQ = () => {
       {
         pergunta: "Como agendar uma visita ao ateliê?",
         resposta:
-          "Você pode agendar sua visita através do nosso WhatsApp (31) 99453-0011, por telefone, e-mail ou preenchendo o formulário em nosso site. Recomendamos o agendamento prévio para garantirmos um atendimento exclusivo e personalizado. Ao agendar, informe o tipo de evento e suas preferências iniciais para que possamos preparar uma seleção prévia de peças.",
+          "Você pode agendar sua visita através do nosso WhatsApp (37) 99915-3738, por telefone, e-mail ou preenchendo o formulário em nosso site. Recomendamos o agendamento prévio para garantirmos um atendimento exclusivo e personalizado. Ao agendar, informe o tipo de evento e suas preferências iniciais para que possamos preparar uma seleção prévia de peças.",
       },
       {
         pergunta: "Qual o horário de funcionamento do ateliê?",
@@ -226,18 +226,12 @@ const FAQ = () => {
           </p>
           <div style={styles.contactButtons}>
             <a
-              href="https://wa.me/5531994530011?text=Olá,%20tenho%20uma%20dúvida%20sobre%20o%20Ateliê%20Erica%20Damas"
+              href="https://wa.me/5537999153738?text=Olá,%20tenho%20uma%20dúvida%20sobre%20o%20Ateliê%20Erica%20Damas"
               target="_blank"
               rel="noopener noreferrer"
               style={styles.whatsappButton}
             >
               Falar pelo WhatsApp
-            </a>
-            <a
-              href="mailto:contato@ericadamas.com.br"
-              style={styles.emailButton}
-            >
-              Enviar E-mail
             </a>
           </div>
         </div>
