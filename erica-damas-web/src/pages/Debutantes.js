@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { api } from "../services/AuthService";
 
@@ -8,51 +8,175 @@ const Debutantes = () => {
   const [vestidoSelecionado, setVestidoSelecionado] = useState(null);
   const [erro, setErro] = useState("");
 
-  // Carregar vestidos de debutante da API usando o serviço centralizado
-  const carregarVestidos = async () => {
+  // Carregar vestidos de debutante da API usando o serviço centralizado (otimizado com useCallback)
+  const carregarVestidos = useCallback(async () => {
     try {
       setCarregando(true);
       setErro("");
-      console.log("Carregando vestidos de debutante da API...");
 
-      const response = await api.get("/produtos/debutantes");
+      // Adicionar timeout para cancelar requisição se demorar muito
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos timeout
+
+      const response = await api.get("/produtos/debutantes", {
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
       const result = response.data;
 
       if (result.success) {
-        setVestidos(result.produtos);
-        console.log(
-          `✅ ${result.produtos.length} vestidos de debutante carregados`
-        );
+        // Processar imagens para pré-carregamento
+        const produtosProcessados = result.produtos.map((produto) => ({
+          ...produto,
+          imagemCarregada: false,
+        }));
+
+        setVestidos(produtosProcessados);
       } else {
         setErro("Erro ao carregar vestidos: " + result.message);
-        console.error("Erro na API:", result.message);
       }
     } catch (error) {
-      console.error("Erro ao carregar vestidos de debutante:", error);
-      setErro("Erro ao conectar com o servidor");
+      if (error.name === "AbortError") {
+        setErro("Tempo limite excedido. Verifique sua conexão.");
+      } else {
+        setErro("Erro ao conectar com o servidor");
+      }
     } finally {
       setCarregando(false);
     }
+  }, []);
+
+  // Função para pré-carregar imagens
+  const preCarregarImagem = (src) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => resolve(src);
+      img.onerror = () => reject();
+    });
   };
 
   useEffect(() => {
     carregarVestidos();
-  }, []);
 
-  const abrirModal = (vestido) => {
+    // Limpar estado ao desmontar
+    return () => {
+      setVestidos([]);
+      setVestidoSelecionado(null);
+    };
+  }, [carregarVestidos]);
+
+  // Configurar observador de interseção para lazy loading
+  useEffect(() => {
+    if (vestidos.length === 0) return;
+
+    const imgObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const img = entry.target;
+            const src = img.getAttribute("data-src");
+            if (src) {
+              // Usar técnica de fade-in para imagens
+              img.style.opacity = "0";
+              img.src = src;
+              img.onload = () => {
+                img.style.transition = "opacity 0.3s ease";
+                img.style.opacity = "1";
+              };
+              img.removeAttribute("data-src");
+              imgObserver.unobserve(img);
+            }
+          }
+        });
+      },
+      { rootMargin: "200px 0px", threshold: 0.1 }
+    );
+
+    // Observar todas as imagens com data-src
+    document.querySelectorAll("img[data-src]").forEach((img) => {
+      imgObserver.observe(img);
+    });
+
+    return () => {
+      imgObserver.disconnect();
+    };
+  }, [vestidos]);
+
+  const abrirModal = useCallback((vestido) => {
     setVestidoSelecionado(vestido);
     document.body.style.overflow = "hidden";
-  };
 
-  const fecharModal = () => {
+    // Pré-carregar todas as imagens do vestido selecionado
+    if (vestido.imagens && vestido.imagens.length > 0) {
+      vestido.imagens.forEach((src) => {
+        preCarregarImagem(src).catch(() => {
+          // Silenciosamente ignorar erros de pré-carregamento
+        });
+      });
+    }
+  }, []);
+
+  const fecharModal = useCallback(() => {
     setVestidoSelecionado(null);
     document.body.style.overflow = "auto";
-  };
+  }, []);
 
-  const gerarMensagemWhatsApp = (vestido) => {
-    const mensagem = `Olá! Gostaria de saber mais sobre o vestido de debutante "${vestido.nome}". Poderia me dar mais informações sobre disponibilidade e valores?`;
-    return `https://wa.me/5511999999999?text=${encodeURIComponent(mensagem)}`;
-  };
+  const gerarMensagemWhatsApp = useMemo(
+    () => (vestido) => {
+      const mensagem = `Olá! Gostaria de saber mais sobre o vestido de debutante "${vestido.nome}". Poderia me dar mais informações sobre disponibilidade e valores?`;
+      return `https://wa.me/5511999999999?text=${encodeURIComponent(mensagem)}`;
+    },
+    []
+  );
+
+  // Renderização condicional otimizada
+  const renderVestidosGrid = useMemo(() => {
+    if (vestidos.length === 0) return null;
+
+    return (
+      <div style={styles.vestidosGrid}>
+        {vestidos.map((vestido) => (
+          <div
+            key={vestido._id}
+            style={styles.vestidoCard}
+            onClick={() => abrirModal(vestido)}
+            className="vestido-card"
+          >
+            {vestido.imagens && vestido.imagens[0] && (
+              <div style={styles.vestidoImageContainer}>
+                <img
+                  src={vestido.imagens[0]} // Carregar diretamente para primeira renderização
+                  alt={vestido.nome}
+                  style={styles.vestidoImage}
+                  onError={(e) => {
+                    e.target.style.backgroundColor = "#f5f5f5";
+                    e.target.alt = "Imagem não disponível";
+                  }}
+                  loading="lazy"
+                />
+                {vestido.imagens.length > 1 && (
+                  <div style={styles.imageCount}>
+                    +{vestido.imagens.length - 1}
+                  </div>
+                )}
+              </div>
+            )}
+            <div style={styles.vestidoInfo}>
+              <h3 style={styles.vestidoName}>{vestido.nome}</h3>
+              <p style={styles.vestidoDescription}>
+                {vestido.descricao.length > 100
+                  ? vestido.descricao.substring(0, 100) + "..."
+                  : vestido.descricao}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }, [vestidos, abrirModal]);
 
   return (
     <section style={styles.vestidosContainer}>
@@ -66,6 +190,9 @@ const Debutantes = () => {
           name="keywords"
           content="vestidos de debutante, 15 anos, festa de debutante, vestido"
         />
+        {/* Preload para melhorar performance */}
+        <link rel="preconnect" href={api.defaults.baseURL} />
+        <link rel="dns-prefetch" href={api.defaults.baseURL} />
       </Helmet>
 
       <div style={styles.tituloContainer}>
@@ -99,57 +226,13 @@ const Debutantes = () => {
             target="_blank"
             rel="noopener noreferrer"
             style={styles.contactButton}
+            className="contact-button"
           >
             Fale Conosco
           </a>
         </div>
       ) : (
-        <div style={styles.vestidosGrid}>
-          {vestidos.map((vestido) => (
-            <div
-              key={vestido._id}
-              style={styles.vestidoCard}
-              onClick={() => abrirModal(vestido)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-8px)";
-                e.currentTarget.style.boxShadow =
-                  "0 12px 30px rgba(0,0,0,0.15)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)";
-              }}
-            >
-              {vestido.imagens && vestido.imagens[0] && (
-                <div style={styles.vestidoImageContainer}>
-                  <img
-                    src={vestido.imagens[0]}
-                    alt={vestido.nome}
-                    style={styles.vestidoImage}
-                    onError={(e) => {
-                      e.target.style.backgroundColor = "#f5f5f5";
-                      e.target.alt = "Imagem não disponível";
-                    }}
-                    loading="lazy"
-                  />
-                  {vestido.imagens.length > 1 && (
-                    <div style={styles.imageCount}>
-                      +{vestido.imagens.length - 1}
-                    </div>
-                  )}
-                </div>
-              )}
-              <div style={styles.vestidoInfo}>
-                <h3 style={styles.vestidoName}>{vestido.nome}</h3>
-                <p style={styles.vestidoDescription}>
-                  {vestido.descricao.length > 100
-                    ? vestido.descricao.substring(0, 100) + "..."
-                    : vestido.descricao}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+        renderVestidosGrid
       )}
 
       {vestidoSelecionado && (
@@ -167,8 +250,31 @@ const Debutantes = () => {
                       src={vestidoSelecionado.imagens[0]}
                       alt={vestidoSelecionado.nome}
                       style={styles.modalImage}
-                      loading="lazy"
                     />
+                  )}
+
+                {vestidoSelecionado.imagens &&
+                  vestidoSelecionado.imagens.length > 1 && (
+                    <div style={styles.thumbnailContainer}>
+                      {vestidoSelecionado.imagens
+                        .slice(0, 5)
+                        .map((img, index) => (
+                          <img
+                            key={index}
+                            src={img}
+                            alt={`${vestidoSelecionado.nome} - imagem ${
+                              index + 1
+                            }`}
+                            style={styles.thumbnail}
+                            onClick={(e) => {
+                              // Trocar imagem principal ao clicar na miniatura
+                              const mainImg =
+                                e.currentTarget.parentNode.previousSibling;
+                              mainImg.src = img;
+                            }}
+                          />
+                        ))}
+                    </div>
                   )}
               </div>
 
@@ -184,14 +290,7 @@ const Debutantes = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={styles.whatsappButton}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#128C7E";
-                      e.currentTarget.style.transform = "translateY(-2px)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "#25D366";
-                      e.currentTarget.style.transform = "translateY(0)";
-                    }}
+                    className="whatsapp-button"
                   >
                     💬 Consultar no WhatsApp
                   </a>
@@ -210,6 +309,33 @@ const Debutantes = () => {
           100% {
             transform: rotate(360deg);
           }
+        }
+
+        .vestido-card {
+          transition: all 0.3s ease;
+        }
+
+        .vestido-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .whatsapp-button {
+          transition: all 0.3s ease;
+        }
+
+        .whatsapp-button:hover {
+          background-color: #128c7e;
+          transform: translateY(-2px);
+        }
+
+        .contact-button {
+          transition: all 0.3s ease;
+        }
+
+        .contact-button:hover {
+          background-color: #9a8655;
+          transform: translateY(-2px);
         }
 
         @media (max-width: 768px) {
@@ -462,6 +588,7 @@ const styles = {
   modalImageSection: {
     padding: "3rem",
     display: "flex",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#fafafa",
@@ -473,6 +600,22 @@ const styles = {
     objectFit: "contain",
     borderRadius: "6px",
     boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+  },
+  thumbnailContainer: {
+    display: "flex",
+    gap: "10px",
+    marginTop: "15px",
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
+  thumbnail: {
+    width: "60px",
+    height: "60px",
+    objectFit: "cover",
+    borderRadius: "4px",
+    cursor: "pointer",
+    border: "2px solid transparent",
+    transition: "all 0.2s",
   },
   modalInfoSection: {
     padding: "3rem 2rem",

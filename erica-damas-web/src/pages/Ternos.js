@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { api } from "../services/AuthService";
 
@@ -8,49 +8,175 @@ const Ternos = () => {
   const [ternoSelecionado, setTernoSelecionado] = useState(null);
   const [erro, setErro] = useState("");
 
-  // Carregar ternos da API usando o serviço centralizado
-  const carregarTernos = async () => {
+  // Carregar ternos da API usando o serviço centralizado (otimizado com useCallback)
+  const carregarTernos = useCallback(async () => {
     try {
       setCarregando(true);
       setErro("");
-      console.log("Carregando ternos da API...");
 
-      const response = await api.get("/produtos/ternos");
+      // Adicionar timeout para cancelar requisição se demorar muito
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos timeout
+
+      const response = await api.get("/produtos/ternos", {
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
       const result = response.data;
 
       if (result.success) {
-        setTernos(result.produtos);
-        console.log(`✅ ${result.produtos.length} ternos carregados`);
+        // Processar imagens para pré-carregamento
+        const produtosProcessados = result.produtos.map((produto) => ({
+          ...produto,
+          imagemCarregada: false,
+        }));
+
+        setTernos(produtosProcessados);
       } else {
         setErro("Erro ao carregar ternos: " + result.message);
-        console.error("Erro na API:", result.message);
       }
     } catch (error) {
-      console.error("Erro ao carregar ternos:", error);
-      setErro("Erro ao conectar com o servidor");
+      if (error.name === "AbortError") {
+        setErro("Tempo limite excedido. Verifique sua conexão.");
+      } else {
+        setErro("Erro ao conectar com o servidor");
+      }
     } finally {
       setCarregando(false);
     }
+  }, []);
+
+  // Função para pré-carregar imagens
+  const preCarregarImagem = (src) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => resolve(src);
+      img.onerror = () => reject();
+    });
   };
 
   useEffect(() => {
     carregarTernos();
-  }, []);
 
-  const abrirModal = (terno) => {
+    // Limpar estado ao desmontar
+    return () => {
+      setTernos([]);
+      setTernoSelecionado(null);
+    };
+  }, [carregarTernos]);
+
+  // Configurar observador de interseção para lazy loading
+  useEffect(() => {
+    if (ternos.length === 0) return;
+
+    const imgObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const img = entry.target;
+            const src = img.getAttribute("data-src");
+            if (src) {
+              // Usar técnica de fade-in para imagens
+              img.style.opacity = "0";
+              img.src = src;
+              img.onload = () => {
+                img.style.transition = "opacity 0.3s ease";
+                img.style.opacity = "1";
+              };
+              img.removeAttribute("data-src");
+              imgObserver.unobserve(img);
+            }
+          }
+        });
+      },
+      { rootMargin: "200px 0px", threshold: 0.1 }
+    );
+
+    // Observar todas as imagens com data-src
+    document.querySelectorAll("img[data-src]").forEach((img) => {
+      imgObserver.observe(img);
+    });
+
+    return () => {
+      imgObserver.disconnect();
+    };
+  }, [ternos]);
+
+  const abrirModal = useCallback((terno) => {
     setTernoSelecionado(terno);
     document.body.style.overflow = "hidden";
-  };
 
-  const fecharModal = () => {
+    // Pré-carregar todas as imagens do terno selecionado
+    if (terno.imagens && terno.imagens.length > 0) {
+      terno.imagens.forEach((src) => {
+        preCarregarImagem(src).catch(() => {
+          // Silenciosamente ignorar erros de pré-carregamento
+        });
+      });
+    }
+  }, []);
+
+  const fecharModal = useCallback(() => {
     setTernoSelecionado(null);
     document.body.style.overflow = "auto";
-  };
+  }, []);
 
-  const gerarMensagemWhatsApp = (terno) => {
-    const mensagem = `Olá! Gostaria de saber mais sobre o terno "${terno.nome}". Poderia me dar mais informações sobre disponibilidade e valores?`;
-    return `https://wa.me/5511999999999?text=${encodeURIComponent(mensagem)}`;
-  };
+  const gerarMensagemWhatsApp = useMemo(
+    () => (terno) => {
+      const mensagem = `Olá! Gostaria de saber mais sobre o terno "${terno.nome}". Poderia me dar mais informações sobre disponibilidade e valores?`;
+      return `https://wa.me/5511999999999?text=${encodeURIComponent(mensagem)}`;
+    },
+    []
+  );
+
+  // Renderização condicional otimizada
+  const renderTernosGrid = useMemo(() => {
+    if (ternos.length === 0) return null;
+
+    return (
+      <div style={styles.ternosGrid}>
+        {ternos.map((terno) => (
+          <div
+            key={terno._id}
+            style={styles.ternoCard}
+            onClick={() => abrirModal(terno)}
+            className="terno-card"
+          >
+            {terno.imagens && terno.imagens[0] && (
+              <div style={styles.ternoImageContainer}>
+                <img
+                  src={terno.imagens[0]} // Carregar diretamente para primeira renderização
+                  alt={terno.nome}
+                  style={styles.ternoImage}
+                  onError={(e) => {
+                    e.target.style.backgroundColor = "#f5f5f5";
+                    e.target.alt = "Imagem não disponível";
+                  }}
+                  loading="lazy"
+                />
+                {terno.imagens.length > 1 && (
+                  <div style={styles.imageCount}>
+                    +{terno.imagens.length - 1}
+                  </div>
+                )}
+              </div>
+            )}
+            <div style={styles.ternoInfo}>
+              <h3 style={styles.ternoName}>{terno.nome}</h3>
+              <p style={styles.ternoDescription}>
+                {terno.descricao.length > 100
+                  ? terno.descricao.substring(0, 100) + "..."
+                  : terno.descricao}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }, [ternos, abrirModal]);
 
   return (
     <section style={styles.ternosContainer}>
@@ -64,6 +190,9 @@ const Ternos = () => {
           name="keywords"
           content="ternos, casamento, noivo, terno masculino"
         />
+        {/* Preload para melhorar performance */}
+        <link rel="preconnect" href={api.defaults.baseURL} />
+        <link rel="dns-prefetch" href={api.defaults.baseURL} />
       </Helmet>
 
       <div style={styles.tituloContainer}>
@@ -97,56 +226,13 @@ const Ternos = () => {
             target="_blank"
             rel="noopener noreferrer"
             style={styles.contactButton}
+            className="contact-button"
           >
             Fale Conosco
           </a>
         </div>
       ) : (
-        <div style={styles.ternosGrid}>
-          {ternos.map((terno) => (
-            <div
-              key={terno._id}
-              style={styles.ternoCard}
-              onClick={() => abrirModal(terno)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-5px)";
-                e.currentTarget.style.boxShadow = "0 8px 25px rgba(0,0,0,0.15)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)";
-              }}
-            >
-              {terno.imagens && terno.imagens[0] && (
-                <div style={styles.ternoImageContainer}>
-                  <img
-                    src={terno.imagens[0]}
-                    alt={terno.nome}
-                    style={styles.ternoImage}
-                    onError={(e) => {
-                      e.target.style.backgroundColor = "#f5f5f5";
-                      e.target.alt = "Imagem não disponível";
-                    }}
-                    loading="lazy"
-                  />
-                  {terno.imagens.length > 1 && (
-                    <div style={styles.imageCount}>
-                      +{terno.imagens.length - 1}
-                    </div>
-                  )}
-                </div>
-              )}
-              <div style={styles.ternoInfo}>
-                <h3 style={styles.ternoName}>{terno.nome}</h3>
-                <p style={styles.ternoDescription}>
-                  {terno.descricao.length > 100
-                    ? terno.descricao.substring(0, 100) + "..."
-                    : terno.descricao}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+        renderTernosGrid
       )}
 
       {ternoSelecionado && (
@@ -164,8 +250,31 @@ const Ternos = () => {
                       src={ternoSelecionado.imagens[0]}
                       alt={ternoSelecionado.nome}
                       style={styles.modalImage}
-                      loading="lazy"
                     />
+                  )}
+
+                {ternoSelecionado.imagens &&
+                  ternoSelecionado.imagens.length > 1 && (
+                    <div style={styles.thumbnailContainer}>
+                      {ternoSelecionado.imagens
+                        .slice(0, 5)
+                        .map((img, index) => (
+                          <img
+                            key={index}
+                            src={img}
+                            alt={`${ternoSelecionado.nome} - imagem ${
+                              index + 1
+                            }`}
+                            style={styles.thumbnail}
+                            onClick={(e) => {
+                              // Trocar imagem principal ao clicar na miniatura
+                              const mainImg =
+                                e.currentTarget.parentNode.previousSibling;
+                              mainImg.src = img;
+                            }}
+                          />
+                        ))}
+                    </div>
                   )}
               </div>
 
@@ -181,12 +290,7 @@ const Ternos = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={styles.whatsappButton}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#128C7E";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "#25D366";
-                    }}
+                    className="whatsapp-button"
                   >
                     💬 Consultar no WhatsApp
                   </a>
@@ -205,6 +309,32 @@ const Ternos = () => {
           100% {
             transform: rotate(360deg);
           }
+        }
+
+        .terno-card {
+          transition: all 0.3s ease;
+        }
+
+        .terno-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .whatsapp-button {
+          transition: all 0.3s ease;
+        }
+
+        .whatsapp-button:hover {
+          background-color: #128c7e;
+        }
+
+        .contact-button {
+          transition: all 0.3s ease;
+        }
+
+        .contact-button:hover {
+          background-color: #9a8655;
+          transform: translateY(-2px);
         }
 
         @media (max-width: 768px) {
@@ -422,6 +552,7 @@ const styles = {
   modalImageSection: {
     padding: "2rem",
     display: "flex",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#f8f8f8",
@@ -433,6 +564,22 @@ const styles = {
     objectFit: "contain",
     borderRadius: "8px",
     boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+  },
+  thumbnailContainer: {
+    display: "flex",
+    gap: "10px",
+    marginTop: "15px",
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
+  thumbnail: {
+    width: "60px",
+    height: "60px",
+    objectFit: "cover",
+    borderRadius: "4px",
+    cursor: "pointer",
+    border: "2px solid transparent",
+    transition: "all 0.2s",
   },
   modalInfoSection: {
     padding: "2.5rem",

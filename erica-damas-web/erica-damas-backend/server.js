@@ -7,12 +7,19 @@ const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
 const http = require("http");
 const { Server } = require("socket.io");
+const compression = require("compression"); // Adicionar compressão
 
 // Carregar variáveis de ambiente
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
+// Aplicar compressão para todas as respostas
+app.use(compression({ level: 6 }));
+
+// Variável para rastrear tentativas de conexão MongoDB
+let isConnecting = false;
 
 // Configuração do Firebase (ajustada para Vercel)
 let bucket;
@@ -56,10 +63,10 @@ try {
 // Importar modelo do Produto
 const Produto = require("./models/Produto");
 
-// Definir modelo de Contrato
+// Definir modelo de Contrato com índices
 const contratoSchema = new mongoose.Schema({
   cliente: {
-    nome: String,
+    nome: { type: String, index: true },
     rg: String,
     cpf: String,
     nacionalidade: String,
@@ -96,8 +103,12 @@ const contratoSchema = new mongoose.Schema({
     observacoesGerais: String,
   },
   total: Number,
-  dataCriacao: { type: Date, default: Date.now },
+  dataCriacao: { type: Date, default: Date.now, index: true },
 });
+
+// Adicionar índices para melhorar performance
+contratoSchema.index({ dataCriacao: -1 });
+contratoSchema.index({ "cliente.nome": 1 });
 
 const Contrato = mongoose.model("Contrato", contratoSchema);
 
@@ -105,26 +116,59 @@ const Contrato = mongoose.model("Contrato", contratoSchema);
 const connectDB = async () => {
   // Se já conectado, não reconectar
   if (mongoose.connection.readyState === 1) {
-    console.log("✅ MongoDB já conectado!");
+    return;
+  }
+
+  // Se uma conexão já estiver em andamento, aguardar
+  if (isConnecting) {
+    await new Promise((resolve) => {
+      const checkConnection = setInterval(() => {
+        if (mongoose.connection.readyState === 1) {
+          clearInterval(checkConnection);
+          resolve();
+        }
+      }, 100);
+    });
     return;
   }
 
   try {
+    isConnecting = true;
+
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      maxPoolSize: 10,
+      maxPoolSize: 20, // Aumentar o pool de conexões
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
       bufferCommands: false,
+      connectTimeoutMS: 10000,
     });
+
     console.log("✅ MongoDB conectado com sucesso!");
+
+    // Configurar índices para melhorar performance
+    await setupIndexes();
   } catch (error) {
     console.error("❌ Erro ao conectar ao MongoDB:", error);
-    // Na Vercel, não fazer exit, apenas logar o erro
     if (process.env.NODE_ENV !== "production") {
       process.exit(1);
     }
+  } finally {
+    isConnecting = false;
+  }
+};
+
+// Função para configurar índices
+const setupIndexes = async () => {
+  try {
+    // Criar índices para o modelo Produto
+    await Produto.collection.createIndex({ tipo: 1, ativo: 1 });
+    await Produto.collection.createIndex({ createdAt: -1 });
+
+    console.log("✅ Índices MongoDB configurados com sucesso!");
+  } catch (error) {
+    console.error("❌ Erro ao configurar índices MongoDB:", error);
   }
 };
 
@@ -202,13 +246,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware para logging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  console.log("Origin:", req.headers.origin);
-  next();
-});
-
 // Middleware para parsing JSON
 app.use(express.json());
 
@@ -217,19 +254,12 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ericadamas.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Eri@D4m4s!2024#Adm";
 const JWT_SECRET = process.env.JWT_SECRET || "chave_secreta_padrao";
 
-console.log("Credenciais configuradas:");
-console.log("- Email:", ADMIN_EMAIL);
-console.log("- Senha está definida:", !!ADMIN_PASSWORD);
-console.log("- JWT_SECRET está definido:", !!JWT_SECRET);
-console.log("- Ambiente:", process.env.NODE_ENV || "development");
-
 // Rota de login
 app.post("/api/login", async (req, res) => {
   try {
     // Garantir conexão com MongoDB
     await connectDB();
 
-    console.log("Tentativa de login:", req.body);
     const { email, senha } = req.body;
 
     if (email === ADMIN_EMAIL && senha === ADMIN_PASSWORD) {
@@ -266,7 +296,6 @@ const verificarToken = (req, res, next) => {
   }
 
   const token = req.headers.authorization?.split(" ")[1];
-  console.log("Verificando token:", token ? "Token fornecido" : "Sem token");
 
   if (!token) {
     return res.status(401).json({ message: "Acesso negado" });
@@ -275,7 +304,6 @@ const verificarToken = (req, res, next) => {
   try {
     const verificado = jwt.verify(token, JWT_SECRET);
     req.user = verificado;
-    console.log("Token válido para:", verificado.email);
     next();
   } catch (error) {
     console.log("Token inválido:", error.message);
@@ -289,18 +317,13 @@ const uploadImageToFirebase = async (file) => {
     if (!file || !bucket) return null;
 
     const fileName = `${uuidv4()}-${file.originalname.replace(/\s+/g, "-")}`;
-
-    console.log("Iniciando upload para Firebase...");
-    console.log("Nome do arquivo:", fileName);
-    console.log("Tipo do arquivo:", file.mimetype);
-    console.log("Tamanho do arquivo:", file.size);
-
     const fileUpload = bucket.file(`produtos/${fileName}`);
 
     const blobStream = fileUpload.createWriteStream({
       metadata: {
         contentType: file.mimetype,
       },
+      resumable: false, // Desativar upload resumable para melhorar velocidade
     });
 
     return new Promise((resolve, reject) => {
@@ -311,13 +334,8 @@ const uploadImageToFirebase = async (file) => {
 
       blobStream.on("finish", async () => {
         try {
-          console.log("Upload concluído, tornando arquivo público...");
-
           await fileUpload.makePublic();
-
           const publicUrl = `https://storage.googleapis.com/${bucket.name}/produtos/${fileName}`;
-
-          console.log("URL pública gerada:", publicUrl);
           resolve(publicUrl);
         } catch (error) {
           console.error("Erro ao tornar arquivo público:", error);
@@ -336,7 +354,6 @@ const uploadImageToFirebase = async (file) => {
 // ==================== ROTAS DA API DE PRODUTOS ====================
 
 // Buscar produtos por tipo (rota pública)
-// Buscar produtos por tipo (rota pública)
 app.get("/api/produtos/:tipo", async (req, res) => {
   try {
     // Garantir conexão com MongoDB
@@ -347,10 +364,6 @@ app.get("/api/produtos/:tipo", async (req, res) => {
     const limite = parseInt(req.query.limite) || 12;
     const skip = (pagina - 1) * limite;
 
-    console.log(
-      `Buscando produtos do tipo: ${tipo} (página ${pagina}, limite ${limite})`
-    );
-
     if (!["vestidos", "ternos", "debutantes"].includes(tipo)) {
       return res.status(400).json({
         success: false,
@@ -359,24 +372,25 @@ app.get("/api/produtos/:tipo", async (req, res) => {
       });
     }
 
-    // Buscar total de produtos para paginação
-    const total = await Produto.countDocuments({
-      tipo,
-      ativo: true,
-    });
+    // Executar consultas em paralelo para melhorar o desempenho
+    const [total, produtos] = await Promise.all([
+      // Consulta para contar documentos
+      Produto.countDocuments({
+        tipo,
+        ativo: true,
+      }),
 
-    // Buscar produtos com paginação
-    const produtos = await Produto.find({
-      tipo,
-      ativo: true,
-    })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limite);
-
-    console.log(
-      `✅ ${produtos.length} produtos encontrados do tipo ${tipo} (total: ${total})`
-    );
+      // Consulta para buscar produtos com projeção (selecionar apenas campos necessários)
+      Produto.find({
+        tipo,
+        ativo: true,
+      })
+        .select("nome descricao imagens tipo createdAt") // Seleciona apenas os campos necessários
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limite)
+        .lean(), // Retorna objetos JavaScript simples em vez de documentos Mongoose
+    ]);
 
     res.json({
       success: true,
@@ -408,10 +422,6 @@ app.post(
 
       const { nome, descricao, tipo } = req.body;
 
-      console.log("=== CRIANDO NOVO PRODUTO ===");
-      console.log("Dados recebidos:", { nome, descricao, tipo });
-      console.log("Número de imagens:", req.files ? req.files.length : 0);
-
       // Validações
       if (!nome || !descricao || !tipo) {
         return res.status(400).json({
@@ -434,8 +444,6 @@ app.post(
         });
       }
 
-      console.log("Fazendo upload das imagens para Firebase...");
-
       // Upload das imagens para Firebase
       const uploadPromises = req.files.map((file) =>
         uploadImageToFirebase(file)
@@ -451,8 +459,6 @@ app.post(
         });
       }
 
-      console.log("Salvando produto no MongoDB...");
-
       // Salvar produto no banco
       const novoProduto = new Produto({
         nome: nome.trim(),
@@ -462,9 +468,6 @@ app.post(
       });
 
       await novoProduto.save();
-
-      console.log("✅ Produto criado com sucesso:", novoProduto._id);
-      console.log("URLs das imagens:", validImageUrls);
 
       let mensagem;
       if (tipo === "vestidos") {
@@ -512,11 +515,6 @@ app.put(
       const { id } = req.params;
       const { nome, descricao } = req.body;
 
-      console.log("=== ATUALIZANDO PRODUTO ===");
-      console.log("ID do produto:", id);
-      console.log("Novos dados:", { nome, descricao });
-      console.log("Novas imagens:", req.files ? req.files.length : 0);
-
       const produto = await Produto.findById(id);
 
       if (!produto) {
@@ -532,8 +530,6 @@ app.put(
 
       // Se há novas imagens, fazer upload e substituir
       if (req.files && req.files.length > 0) {
-        console.log("Fazendo upload de novas imagens...");
-
         const uploadPromises = req.files.map((file) =>
           uploadImageToFirebase(file)
         );
@@ -543,13 +539,10 @@ app.put(
 
         if (validImageUrls.length > 0) {
           produto.imagens = validImageUrls;
-          console.log("Novas URLs das imagens:", validImageUrls);
         }
       }
 
       await produto.save();
-
-      console.log("✅ Produto atualizado com sucesso:", produto._id);
 
       // Notificar clientes via WebSocket
       io.emit("atualizacaoProdutos", {
@@ -581,9 +574,6 @@ app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
 
     const { id } = req.params;
 
-    console.log("=== EXCLUINDO PRODUTO ===");
-    console.log("ID do produto:", id);
-
     const produto = await Produto.findById(id);
 
     if (!produto) {
@@ -594,8 +584,6 @@ app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
     }
 
     await Produto.findByIdAndDelete(id);
-
-    console.log("✅ Produto excluído com sucesso:", id);
 
     // Notificar clientes via WebSocket
     io.emit("atualizacaoProdutos", {
@@ -623,9 +611,10 @@ app.get("/api/admin/produtos", verificarToken, async (req, res) => {
     // Garantir conexão com MongoDB
     await connectDB();
 
-    const produtos = await Produto.find().sort({ createdAt: -1 });
-
-    console.log(`✅ Admin: ${produtos.length} produtos encontrados`);
+    const produtos = await Produto.find()
+      .select("nome descricao imagens tipo createdAt ativo") // Selecionar apenas campos necessários
+      .sort({ createdAt: -1 })
+      .lean(); // Usar lean() para melhor performance
 
     res.json({
       success: true,
@@ -645,7 +634,6 @@ app.get("/api/admin/produtos", verificarToken, async (req, res) => {
 // Rota protegida para verificar autenticação
 app.get("/api/admin/verificar", verificarToken, async (req, res) => {
   try {
-    console.log("Autenticação verificada para:", req.user.email);
     res.json({
       success: true,
       message: "Autenticado com sucesso",
@@ -668,9 +656,7 @@ app.get("/api/contratos", verificarToken, async (req, res) => {
     // Garantir conexão com MongoDB
     await connectDB();
 
-    const contratos = await Contrato.find().sort({ dataCriacao: -1 });
-
-    console.log(`✅ ${contratos.length} contratos encontrados`);
+    const contratos = await Contrato.find().sort({ dataCriacao: -1 }).lean(); // Usar lean() para melhor performance
 
     res.json({
       success: true,
@@ -693,13 +679,8 @@ app.post("/api/contratos", verificarToken, async (req, res) => {
     // Garantir conexão com MongoDB
     await connectDB();
 
-    console.log("=== CRIANDO NOVO CONTRATO ===");
-    console.log("Dados recebidos:", req.body);
-
     const novoContrato = new Contrato(req.body);
     await novoContrato.save();
-
-    console.log("✅ Contrato criado com sucesso:", novoContrato._id);
 
     // Notificar clientes via WebSocket
     io.emit("atualizacaoContratos", {
@@ -730,9 +711,6 @@ app.put("/api/contratos/:id", verificarToken, async (req, res) => {
 
     const { id } = req.params;
 
-    console.log("=== ATUALIZANDO CONTRATO ===");
-    console.log("ID do contrato:", id);
-
     const contrato = await Contrato.findByIdAndUpdate(id, req.body, {
       new: true,
     });
@@ -743,8 +721,6 @@ app.put("/api/contratos/:id", verificarToken, async (req, res) => {
         message: "Contrato não encontrado",
       });
     }
-
-    console.log("✅ Contrato atualizado com sucesso:", contrato._id);
 
     // Notificar clientes via WebSocket
     io.emit("atualizacaoContratos", {
@@ -775,9 +751,6 @@ app.delete("/api/contratos/:id", verificarToken, async (req, res) => {
 
     const { id } = req.params;
 
-    console.log("=== EXCLUINDO CONTRATO ===");
-    console.log("ID do contrato:", id);
-
     const contrato = await Contrato.findByIdAndDelete(id);
 
     if (!contrato) {
@@ -786,8 +759,6 @@ app.delete("/api/contratos/:id", verificarToken, async (req, res) => {
         message: "Contrato não encontrado",
       });
     }
-
-    console.log("✅ Contrato excluído com sucesso:", id);
 
     // Notificar clientes via WebSocket
     io.emit("atualizacaoContratos", {
@@ -855,9 +826,8 @@ io.on("connection", (socket) => {
 
   // Eventos para contratos
   socket.on("novoContrato", async (data) => {
-    console.log("Evento novoContrato recebido:", data.id);
     try {
-      const contrato = await Contrato.findById(data.id);
+      const contrato = await Contrato.findById(data.id).lean();
       if (contrato) {
         io.emit("atualizacaoContratos", {
           tipo: "novo",
@@ -870,9 +840,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("atualizacaoContrato", async (data) => {
-    console.log("Evento atualizacaoContrato recebido:", data.id);
     try {
-      const contrato = await Contrato.findById(data.id);
+      const contrato = await Contrato.findById(data.id).lean();
       if (contrato) {
         io.emit("atualizacaoContratos", {
           tipo: "atualizacao",
@@ -885,7 +854,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("exclusaoContrato", (id) => {
-    console.log("Evento exclusaoContrato recebido:", id);
     io.emit("atualizacaoContratos", {
       tipo: "exclusao",
       id: id,
@@ -912,10 +880,6 @@ if (process.env.NODE_ENV !== "production") {
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Servidor HTTP e WebSocket rodando na porta ${PORT}`);
     console.log(`📍 Em ambiente local: http://localhost:${PORT}`);
-    console.log(`☁️  No Codespaces, acesse usando o URL fornecido pelo GitHub`);
-    console.log(`🔥 Firebase Storage configurado e pronto!`);
-    console.log(`📊 MongoDB integrado e funcionando!`);
-    console.log(`🔌 WebSocket configurado no caminho /ws`);
   });
 }
 

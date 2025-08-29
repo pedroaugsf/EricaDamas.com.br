@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { api } from "../services/AuthService";
 
@@ -13,52 +13,88 @@ const Vestidos = () => {
   const [totalVestidos, setTotalVestidos] = useState(0);
   const itensPorPagina = 12;
 
-  // Carregar vestidos da API usando o serviço centralizado
-  const carregarVestidos = async (paginaAtual = 1, acumular = false) => {
-    try {
-      if (paginaAtual === 1) {
-        setCarregando(true);
-      } else {
-        setCarregandoMais(true);
-      }
-
-      setErro("");
-      console.log(`Carregando vestidos da API (página ${paginaAtual})...`);
-
-      const response = await api.get(
-        `/produtos/vestidos?pagina=${paginaAtual}&limite=${itensPorPagina}`
-      );
-      const result = response.data;
-
-      if (result.success) {
-        if (acumular) {
-          setVestidos((prev) => [...prev, ...result.produtos]);
+  // Memoizar a função para evitar recriações desnecessárias
+  const carregarVestidos = useCallback(
+    async (paginaAtual = 1, acumular = false) => {
+      try {
+        if (paginaAtual === 1) {
+          setCarregando(true);
         } else {
-          setVestidos(result.produtos);
+          setCarregandoMais(true);
         }
 
-        setTotalVestidos(result.total);
-        setTemMais(result.produtos.length === itensPorPagina);
-        console.log(
-          `✅ ${result.produtos.length} vestidos carregados (total: ${result.total})`
+        setErro("");
+
+        // Adicionar timeout para cancelar requisição se demorar muito
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos timeout
+
+        const response = await api.get(
+          `/produtos/vestidos?pagina=${paginaAtual}&limite=${itensPorPagina}`,
+          { signal: controller.signal }
         );
-      } else {
-        setErro("Erro ao carregar vestidos: " + result.message);
-        console.error("Erro na API:", result.message);
+
+        clearTimeout(timeoutId);
+
+        const result = response.data;
+
+        if (result.success) {
+          // Processar imagens para pré-carregamento
+          const produtos = result.produtos.map((produto) => ({
+            ...produto,
+            // Adicionar propriedade para controlar se a imagem principal já foi carregada
+            imagemCarregada: false,
+          }));
+
+          if (acumular) {
+            setVestidos((prev) => [...prev, ...produtos]);
+          } else {
+            setVestidos(produtos);
+          }
+
+          setTotalVestidos(result.total);
+          setTemMais(result.produtos.length === itensPorPagina);
+        } else {
+          setErro("Erro ao carregar vestidos: " + result.message);
+        }
+      } catch (error) {
+        if (error.name === "AbortError") {
+          setErro("Tempo limite excedido. Verifique sua conexão.");
+        } else {
+          setErro("Erro ao conectar com o servidor");
+        }
+      } finally {
+        setCarregando(false);
+        setCarregandoMais(false);
       }
-    } catch (error) {
-      console.error("Erro ao carregar vestidos:", error);
-      setErro("Erro ao conectar com o servidor");
-    } finally {
-      setCarregando(false);
-      setCarregandoMais(false);
-    }
+    },
+    [itensPorPagina]
+  );
+
+  // Função para pré-carregar imagens
+  const preCarregarImagem = (src) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => resolve(src);
+      img.onerror = () => reject();
+    });
   };
 
   useEffect(() => {
     carregarVestidos();
 
-    // Configurar observador de interseção para lazy loading de imagens
+    // Limpar estado ao desmontar
+    return () => {
+      setVestidos([]);
+      setVestidoSelecionado(null);
+    };
+  }, [carregarVestidos]);
+
+  // Configurar observador de interseção para lazy loading
+  useEffect(() => {
+    if (vestidos.length === 0) return;
+
     const imgObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -66,14 +102,20 @@ const Vestidos = () => {
             const img = entry.target;
             const src = img.getAttribute("data-src");
             if (src) {
+              // Usar técnica de fade-in para imagens
+              img.style.opacity = "0";
               img.src = src;
+              img.onload = () => {
+                img.style.transition = "opacity 0.3s ease";
+                img.style.opacity = "1";
+              };
               img.removeAttribute("data-src");
               imgObserver.unobserve(img);
             }
           }
         });
       },
-      { rootMargin: "200px 0px" }
+      { rootMargin: "200px 0px", threshold: 0.1 }
     );
 
     // Observar todas as imagens com data-src
@@ -84,28 +126,86 @@ const Vestidos = () => {
     return () => {
       imgObserver.disconnect();
     };
-  }, []);
+  }, [vestidos]);
 
-  const carregarMais = () => {
+  const carregarMais = useCallback(() => {
     const proximaPagina = pagina + 1;
     setPagina(proximaPagina);
     carregarVestidos(proximaPagina, true);
-  };
+  }, [pagina, carregarVestidos]);
 
-  const abrirModal = (vestido) => {
+  const abrirModal = useCallback((vestido) => {
     setVestidoSelecionado(vestido);
     document.body.style.overflow = "hidden";
-  };
 
-  const fecharModal = () => {
+    // Pré-carregar todas as imagens do vestido selecionado
+    if (vestido.imagens && vestido.imagens.length > 0) {
+      vestido.imagens.forEach((src) => {
+        preCarregarImagem(src).catch(() => {
+          // Silenciosamente ignorar erros de pré-carregamento
+        });
+      });
+    }
+  }, []);
+
+  const fecharModal = useCallback(() => {
     setVestidoSelecionado(null);
     document.body.style.overflow = "auto";
-  };
+  }, []);
 
-  const gerarMensagemWhatsApp = (vestido) => {
-    const mensagem = `Olá! Gostaria de saber mais sobre o vestido "${vestido.nome}". Poderia me dar mais informações sobre disponibilidade e valores?`;
-    return `https://wa.me/5511999999999?text=${encodeURIComponent(mensagem)}`;
-  };
+  const gerarMensagemWhatsApp = useMemo(
+    () => (vestido) => {
+      const mensagem = `Olá! Gostaria de saber mais sobre o vestido "${vestido.nome}". Poderia me dar mais informações sobre disponibilidade e valores?`;
+      return `https://wa.me/5511999999999?text=${encodeURIComponent(mensagem)}`;
+    },
+    []
+  );
+
+  // Renderização condicional otimizada
+  const renderVestidosGrid = useMemo(() => {
+    if (vestidos.length === 0) return null;
+
+    return (
+      <div style={styles.vestidosGrid}>
+        {vestidos.map((vestido) => (
+          <div
+            key={vestido._id}
+            style={styles.vestidoCard}
+            onClick={() => abrirModal(vestido)}
+            className="vestido-card"
+          >
+            {vestido.imagens && vestido.imagens[0] && (
+              <div style={styles.vestidoImageContainer}>
+                <img
+                  src={vestido.imagens[0]} // Carregar diretamente para primeira renderização
+                  alt={vestido.nome}
+                  style={styles.vestidoImage}
+                  onError={(e) => {
+                    e.target.style.backgroundColor = "#f5f5f5";
+                    e.target.alt = "Imagem não disponível";
+                  }}
+                  loading="lazy"
+                />
+                {vestido.imagens.length > 1 && (
+                  <div style={styles.imageCount}>
+                    +{vestido.imagens.length - 1}
+                  </div>
+                )}
+              </div>
+            )}
+            <div style={styles.vestidoInfo}>
+              <h3 style={styles.vestidoName}>{vestido.nome}</h3>
+              <p style={styles.vestidoDescription}>
+                {vestido.descricao.length > 100
+                  ? vestido.descricao.substring(0, 100) + "..."
+                  : vestido.descricao}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }, [vestidos, abrirModal]);
 
   return (
     <section style={styles.vestidosContainer}>
@@ -119,6 +219,9 @@ const Vestidos = () => {
           name="keywords"
           content="vestidos de noiva, casamento, noiva, vestido"
         />
+        {/* Preload para melhorar performance */}
+        <link rel="preconnect" href={api.defaults.baseURL} />
+        <link rel="dns-prefetch" href={api.defaults.baseURL} />
       </Helmet>
 
       <div style={styles.tituloContainer}>
@@ -166,53 +269,7 @@ const Vestidos = () => {
         </div>
       ) : (
         <div>
-          <div style={styles.vestidosGrid}>
-            {vestidos.map((vestido) => (
-              <div
-                key={vestido._id}
-                style={styles.vestidoCard}
-                onClick={() => abrirModal(vestido)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-8px)";
-                  e.currentTarget.style.boxShadow =
-                    "0 12px 30px rgba(0,0,0,0.15)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow =
-                    "0 4px 20px rgba(0,0,0,0.08)";
-                }}
-              >
-                {vestido.imagens && vestido.imagens[0] && (
-                  <div style={styles.vestidoImageContainer}>
-                    <img
-                      src={vestido.imagens[0]}
-                      alt={vestido.nome}
-                      style={styles.vestidoImage}
-                      onError={(e) => {
-                        e.target.style.backgroundColor = "#f5f5f5";
-                        e.target.alt = "Imagem não disponível";
-                      }}
-                      loading="lazy"
-                    />
-                    {vestido.imagens.length > 1 && (
-                      <div style={styles.imageCount}>
-                        +{vestido.imagens.length - 1}
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div style={styles.vestidoInfo}>
-                  <h3 style={styles.vestidoName}>{vestido.nome}</h3>
-                  <p style={styles.vestidoDescription}>
-                    {vestido.descricao.length > 100
-                      ? vestido.descricao.substring(0, 100) + "..."
-                      : vestido.descricao}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+          {renderVestidosGrid}
 
           {temMais && (
             <div style={styles.loadMoreContainer}>
@@ -250,7 +307,6 @@ const Vestidos = () => {
                       src={vestidoSelecionado.imagens[0]}
                       alt={vestidoSelecionado.nome}
                       style={styles.modalImage}
-                      loading="lazy"
                     />
                   )}
 
@@ -291,14 +347,7 @@ const Vestidos = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={styles.whatsappButton}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#128C7E";
-                      e.currentTarget.style.transform = "translateY(-2px)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "#25D366";
-                      e.currentTarget.style.transform = "translateY(0)";
-                    }}
+                    className="whatsapp-button"
                   >
                     💬 Consultar no WhatsApp
                   </a>
@@ -317,6 +366,24 @@ const Vestidos = () => {
           100% {
             transform: rotate(360deg);
           }
+        }
+
+        .vestido-card {
+          transition: all 0.3s ease;
+        }
+
+        .vestido-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .whatsapp-button {
+          transition: all 0.3s ease;
+        }
+
+        .whatsapp-button:hover {
+          background-color: #128c7e;
+          transform: translateY(-2px);
         }
 
         @media (max-width: 768px) {
