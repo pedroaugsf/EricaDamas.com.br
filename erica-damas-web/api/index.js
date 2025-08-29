@@ -82,10 +82,7 @@ const connectDB = async () => {
       socketTimeoutMS: 45000,
       bufferCommands: false,
     });
-    console.log("✅ MongoDB conectado com sucesso!");
-  } catch (error) {
-    console.error("❌ Erro ao conectar ao MongoDB:", error);
-  }
+  } catch (error) {}
 };
 
 // Credenciais
@@ -149,7 +146,7 @@ app.post("/api/login", async (req, res) => {
         .json({ success: false, message: "Email ou senha incorretos" });
     }
   } catch (error) {
-    console.error("Erro no login:", error);
+    "Erro no login:", error;
     res
       .status(500)
       .json({ success: false, message: "Erro interno do servidor" });
@@ -176,7 +173,7 @@ app.get("/api/produtos/:tipo", async (req, res) => {
       message: `API funcionando - ${tipo} em breve`,
     });
   } catch (error) {
-    console.error("Erro:", error);
+    "Erro:", error;
     res.status(500).json({ success: false, message: "Erro interno" });
   }
 });
@@ -208,15 +205,13 @@ app.get("/api/contratos", verificarToken, async (req, res) => {
     await connectDB();
     const contratos = await Contrato.find().sort({ dataCriacao: -1 });
 
-    console.log(`✅ ${contratos.length} contratos encontrados`);
-
     res.json({
       success: true,
       contratos,
       total: contratos.length,
     });
   } catch (error) {
-    console.error("Erro ao buscar contratos:", error);
+    "Erro ao buscar contratos:", error;
     res.status(500).json({
       success: false,
       message: "Erro ao buscar contratos",
@@ -230,13 +225,8 @@ app.post("/api/contratos", verificarToken, async (req, res) => {
   try {
     await connectDB();
 
-    console.log("=== CRIANDO NOVO CONTRATO ===");
-    console.log("Dados recebidos:", req.body);
-
     const novoContrato = new Contrato(req.body);
     await novoContrato.save();
-
-    console.log("✅ Contrato criado com sucesso:", novoContrato._id);
 
     res.status(201).json({
       success: true,
@@ -244,7 +234,7 @@ app.post("/api/contratos", verificarToken, async (req, res) => {
       message: "Contrato criado com sucesso",
     });
   } catch (error) {
-    console.error("❌ Erro ao criar contrato:", error);
+    "❌ Erro ao criar contrato:", error;
     res.status(500).json({
       success: false,
       message: "Erro ao criar contrato",
@@ -260,9 +250,6 @@ app.put("/api/contratos/:id", verificarToken, async (req, res) => {
 
     const { id } = req.params;
 
-    console.log("=== ATUALIZANDO CONTRATO ===");
-    console.log("ID do contrato:", id);
-
     const contrato = await Contrato.findByIdAndUpdate(id, req.body, {
       new: true,
     });
@@ -274,15 +261,13 @@ app.put("/api/contratos/:id", verificarToken, async (req, res) => {
       });
     }
 
-    console.log("✅ Contrato atualizado com sucesso:", contrato._id);
-
     res.json({
       success: true,
       contrato,
       message: "Contrato atualizado com sucesso",
     });
   } catch (error) {
-    console.error("❌ Erro ao atualizar contrato:", error);
+    "❌ Erro ao atualizar contrato:", error;
     res.status(500).json({
       success: false,
       message: "Erro ao atualizar contrato",
@@ -298,9 +283,6 @@ app.delete("/api/contratos/:id", verificarToken, async (req, res) => {
 
     const { id } = req.params;
 
-    console.log("=== EXCLUINDO CONTRATO ===");
-    console.log("ID do contrato:", id);
-
     const contrato = await Contrato.findByIdAndDelete(id);
 
     if (!contrato) {
@@ -310,14 +292,12 @@ app.delete("/api/contratos/:id", verificarToken, async (req, res) => {
       });
     }
 
-    console.log("✅ Contrato excluído com sucesso:", id);
-
     res.json({
       success: true,
       message: "Contrato excluído com sucesso",
     });
   } catch (error) {
-    console.error("❌ Erro ao excluir contrato:", error);
+    "❌ Erro ao excluir contrato:", error;
     res.status(500).json({
       success: false,
       message: "Erro ao excluir contrato",
@@ -329,10 +309,7 @@ app.delete("/api/contratos/:id", verificarToken, async (req, res) => {
 // Para desenvolvimento local
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`📍 Em ambiente local: http://localhost:${PORT}`);
-  });
+  app.listen(PORT, () => {});
 }
 
 module.exports = app;

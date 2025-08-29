@@ -11,7 +11,6 @@ admin.initializeApp({
 const bucket = admin.storage().bucket();
 
 // Log para confirmar
-console.log("Bucket configurado:", bucket.name);
 
 module.exports = {
   bucket,

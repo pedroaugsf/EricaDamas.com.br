@@ -43,19 +43,19 @@ const GerenciadorProdutos = () => {
     try {
       setCarregando(true);
 
-      console.log("Carregando produtos da API:", `/produtos/${config.colecao}`);
+      "Carregando produtos da API:", `/produtos/${config.colecao}`;
 
       const response = await api.get(`/produtos/${config.colecao}`);
       const result = response.data;
 
       if (result.success) {
         setProdutos(result.produtos);
-        console.log(`✅ ${result.produtos.length} produtos carregados`);
+        `✅ ${result.produtos.length} produtos carregados`;
       } else {
         setErro("Erro ao carregar produtos: " + result.message);
       }
     } catch (error) {
-      console.error("Erro ao carregar produtos:", error);
+      "Erro ao carregar produtos:", error;
       setErro("Erro ao conectar com o servidor");
     } finally {
       setCarregando(false);
@@ -69,9 +69,9 @@ const GerenciadorProdutos = () => {
 
   // Função para criar produto
   const criarProduto = async (dadosProduto, arquivosImagem) => {
-    console.log("=== CRIANDO PRODUTO ===");
-    console.log("Dados:", dadosProduto);
-    console.log("Imagens:", arquivosImagem.length);
+    ("=== CRIANDO PRODUTO ===");
+    "Dados:", dadosProduto;
+    "Imagens:", arquivosImagem.length;
 
     const formData = new FormData();
     formData.append("nome", dadosProduto.nome);
@@ -93,10 +93,10 @@ const GerenciadorProdutos = () => {
 
   // Função para atualizar produto
   const atualizarProduto = async (id, dadosProduto, arquivosImagem = []) => {
-    console.log("=== ATUALIZANDO PRODUTO ===");
-    console.log("ID:", id);
-    console.log("Dados:", dadosProduto);
-    console.log("Novas imagens:", arquivosImagem.length);
+    ("=== ATUALIZANDO PRODUTO ===");
+    "ID:", id;
+    "Dados:", dadosProduto;
+    "Novas imagens:", arquivosImagem.length;
 
     const formData = new FormData();
     formData.append("nome", dadosProduto.nome);
@@ -117,8 +117,8 @@ const GerenciadorProdutos = () => {
 
   // Função para excluir produto
   const excluirProduto = async (id) => {
-    console.log("=== EXCLUINDO PRODUTO ===");
-    console.log("ID:", id);
+    ("=== EXCLUINDO PRODUTO ===");
+    "ID:", id;
 
     const response = await api.delete(`/produtos/${id}`);
     return response.data;
@@ -169,13 +169,13 @@ const GerenciadorProdutos = () => {
         const result = await excluirProduto(id);
 
         if (result.success) {
-          console.log("✅ Produto excluído com sucesso");
+          ("✅ Produto excluído com sucesso");
           await carregarProdutos(); // Recarregar lista
         } else {
           setErro("Erro ao excluir produto: " + result.message);
         }
       } catch (error) {
-        console.error("Erro ao excluir produto:", error);
+        "Erro ao excluir produto:", error;
         setErro("Erro ao excluir produto: " + error.message);
       } finally {
         setCarregando(false);
@@ -209,14 +209,14 @@ const GerenciadorProdutos = () => {
       }
 
       if (result.success) {
-        console.log("✅ Produto salvo com sucesso:", result.produto);
+        "✅ Produto salvo com sucesso:", result.produto;
         resetarFormulario();
         await carregarProdutos(); // Recarregar lista
       } else {
         throw new Error(result.message || "Erro ao salvar produto");
       }
     } catch (err) {
-      console.error("Erro ao salvar produto:", err);
+      "Erro ao salvar produto:", err;
       setErro(
         `Erro ao salvar ${config.tituloSingular.toLowerCase()}: ${err.message}`
       );

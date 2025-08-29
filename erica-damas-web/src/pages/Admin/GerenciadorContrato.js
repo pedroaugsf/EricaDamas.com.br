@@ -66,21 +66,19 @@ const GerenciadorContratos = () => {
 
       if (response.data.success) {
         setContratos(response.data.contratos);
-        console.log(
-          `✅ ${response.data.contratos.length} contratos carregados`
-        );
+        `✅ ${response.data.contratos.length} contratos carregados`;
       } else {
         throw new Error(response.data.message || "Erro ao carregar contratos");
       }
     } catch (error) {
-      console.error("Erro ao carregar contratos:", error);
+      "Erro ao carregar contratos:", error;
       setErro("Falha ao carregar contratos. " + (error.message || ""));
 
       // Fallback para localStorage se a API falhar
       const contratosSalvos = localStorage.getItem("contratos");
       if (contratosSalvos) {
         setContratos(JSON.parse(contratosSalvos));
-        console.log("⚠️ Usando contratos do localStorage como fallback");
+        ("⚠️ Usando contratos do localStorage como fallback");
       }
     } finally {
       setCarregando(false);
@@ -109,17 +107,12 @@ const GerenciadorContratos = () => {
       if (response.data.success) {
         // Recarregar a lista de contratos
         await carregarContratos();
-        console.log(
-          `✅ Contrato ${isUpdate ? "atualizado" : "criado"} com sucesso`
-        );
+        `✅ Contrato ${isUpdate ? "atualizado" : "criado"} com sucesso`;
       } else {
         throw new Error(response.data.message || "Erro ao salvar contrato");
       }
     } catch (error) {
-      console.error(
-        `Erro ao ${isUpdate ? "atualizar" : "criar"} contrato:`,
-        error
-      );
+      `Erro ao ${isUpdate ? "atualizar" : "criar"} contrato:`, error;
       setErro(
         `Falha ao ${isUpdate ? "atualizar" : "criar"} contrato. ${
           error.message || ""
@@ -143,7 +136,7 @@ const GerenciadorContratos = () => {
 
       localStorage.setItem("contratos", JSON.stringify(novosContratos));
       setContratos(novosContratos);
-      console.log("⚠️ Salvando no localStorage como fallback");
+      ("⚠️ Salvando no localStorage como fallback");
     } finally {
       setCarregando(false);
     }
@@ -159,12 +152,12 @@ const GerenciadorContratos = () => {
 
         if (response.data.success) {
           await carregarContratos();
-          console.log("✅ Contrato excluído com sucesso");
+          ("✅ Contrato excluído com sucesso");
         } else {
           throw new Error(response.data.message || "Erro ao excluir contrato");
         }
       } catch (error) {
-        console.error("Erro ao excluir contrato:", error);
+        "Erro ao excluir contrato:", error;
         setErro("Falha ao excluir contrato. " + (error.message || ""));
 
         // Fallback para localStorage se a API falhar
@@ -175,7 +168,7 @@ const GerenciadorContratos = () => {
         const novosContratos = contratosSalvos.filter((c) => c.id !== id);
         localStorage.setItem("contratos", JSON.stringify(novosContratos));
         setContratos(novosContratos);
-        console.log("⚠️ Excluindo do localStorage como fallback");
+        ("⚠️ Excluindo do localStorage como fallback");
       } finally {
         setCarregando(false);
       }

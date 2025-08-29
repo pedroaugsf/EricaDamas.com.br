@@ -7,19 +7,12 @@ const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
 const http = require("http");
 const { Server } = require("socket.io");
-const compression = require("compression"); // Adicionar compressão
 
 // Carregar variáveis de ambiente
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-
-// Aplicar compressão para todas as respostas
-app.use(compression({ level: 6 }));
-
-// Variável para rastrear tentativas de conexão MongoDB
-let isConnecting = false;
 
 // Configuração do Firebase (ajustada para Vercel)
 let bucket;
@@ -55,18 +48,15 @@ try {
   }
 
   bucket = admin.storage().bucket();
-  console.log("Firebase bucket configurado:", bucket.name);
-} catch (error) {
-  console.error("Erro ao configurar Firebase:", error);
-}
+} catch (error) {}
 
 // Importar modelo do Produto
 const Produto = require("./models/Produto");
 
-// Definir modelo de Contrato com índices
+// Definir modelo de Contrato
 const contratoSchema = new mongoose.Schema({
   cliente: {
-    nome: { type: String, index: true },
+    nome: String,
     rg: String,
     cpf: String,
     nacionalidade: String,
@@ -103,12 +93,8 @@ const contratoSchema = new mongoose.Schema({
     observacoesGerais: String,
   },
   total: Number,
-  dataCriacao: { type: Date, default: Date.now, index: true },
+  dataCriacao: { type: Date, default: Date.now },
 });
-
-// Adicionar índices para melhorar performance
-contratoSchema.index({ dataCriacao: -1 });
-contratoSchema.index({ "cliente.nome": 1 });
 
 const Contrato = mongoose.model("Contrato", contratoSchema);
 
@@ -119,56 +105,20 @@ const connectDB = async () => {
     return;
   }
 
-  // Se uma conexão já estiver em andamento, aguardar
-  if (isConnecting) {
-    await new Promise((resolve) => {
-      const checkConnection = setInterval(() => {
-        if (mongoose.connection.readyState === 1) {
-          clearInterval(checkConnection);
-          resolve();
-        }
-      }, 100);
-    });
-    return;
-  }
-
   try {
-    isConnecting = true;
-
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      maxPoolSize: 20, // Aumentar o pool de conexões
+      maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
       bufferCommands: false,
-      connectTimeoutMS: 10000,
     });
-
-    console.log("✅ MongoDB conectado com sucesso!");
-
-    // Configurar índices para melhorar performance
-    await setupIndexes();
   } catch (error) {
-    console.error("❌ Erro ao conectar ao MongoDB:", error);
+    // Na Vercel, não fazer exit, apenas logar o erro
     if (process.env.NODE_ENV !== "production") {
       process.exit(1);
     }
-  } finally {
-    isConnecting = false;
-  }
-};
-
-// Função para configurar índices
-const setupIndexes = async () => {
-  try {
-    // Criar índices para o modelo Produto
-    await Produto.collection.createIndex({ tipo: 1, ativo: 1 });
-    await Produto.collection.createIndex({ createdAt: -1 });
-
-    console.log("✅ Índices MongoDB configurados com sucesso!");
-  } catch (error) {
-    console.error("❌ Erro ao configurar índices MongoDB:", error);
   }
 };
 
@@ -202,7 +152,6 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.log("Origem bloqueada pelo CORS:", origin);
         callback(new Error("Bloqueado pelo CORS"));
       }
     },
@@ -267,21 +216,19 @@ app.post("/api/login", async (req, res) => {
         expiresIn: "24h",
       });
 
-      console.log("Login bem-sucedido para:", email);
       res.json({
         success: true,
         token,
         user: { name: "Administrador" },
       });
     } else {
-      console.log("Login falhou para:", email);
       res.status(401).json({
         success: false,
         message: "Email ou senha incorretos",
       });
     }
   } catch (error) {
-    console.error("Erro no login:", error);
+    "Erro no login:", error;
     res.status(500).json({
       success: false,
       message: "Erro interno do servidor",
@@ -306,7 +253,6 @@ const verificarToken = (req, res, next) => {
     req.user = verificado;
     next();
   } catch (error) {
-    console.log("Token inválido:", error.message);
     res.status(401).json({ message: "Token inválido" });
   }
 };
@@ -323,12 +269,10 @@ const uploadImageToFirebase = async (file) => {
       metadata: {
         contentType: file.mimetype,
       },
-      resumable: false, // Desativar upload resumable para melhorar velocidade
     });
 
     return new Promise((resolve, reject) => {
       blobStream.on("error", (error) => {
-        console.error("Erro no upload:", error);
         reject(error);
       });
 
@@ -338,7 +282,6 @@ const uploadImageToFirebase = async (file) => {
           const publicUrl = `https://storage.googleapis.com/${bucket.name}/produtos/${fileName}`;
           resolve(publicUrl);
         } catch (error) {
-          console.error("Erro ao tornar arquivo público:", error);
           reject(error);
         }
       });
@@ -346,13 +289,14 @@ const uploadImageToFirebase = async (file) => {
       blobStream.end(file.buffer);
     });
   } catch (error) {
-    console.error("Erro no upload para Firebase:", error);
+    "Erro no upload para Firebase:", error;
     return null;
   }
 };
 
 // ==================== ROTAS DA API DE PRODUTOS ====================
 
+// Buscar produtos por tipo (rota pública)
 // Buscar produtos por tipo (rota pública)
 app.get("/api/produtos/:tipo", async (req, res) => {
   try {
@@ -372,25 +316,20 @@ app.get("/api/produtos/:tipo", async (req, res) => {
       });
     }
 
-    // Executar consultas em paralelo para melhorar o desempenho
-    const [total, produtos] = await Promise.all([
-      // Consulta para contar documentos
-      Produto.countDocuments({
-        tipo,
-        ativo: true,
-      }),
+    // Buscar total de produtos para paginação
+    const total = await Produto.countDocuments({
+      tipo,
+      ativo: true,
+    });
 
-      // Consulta para buscar produtos com projeção (selecionar apenas campos necessários)
-      Produto.find({
-        tipo,
-        ativo: true,
-      })
-        .select("nome descricao imagens tipo createdAt") // Seleciona apenas os campos necessários
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limite)
-        .lean(), // Retorna objetos JavaScript simples em vez de documentos Mongoose
-    ]);
+    // Buscar produtos com paginação
+    const produtos = await Produto.find({
+      tipo,
+      ativo: true,
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limite);
 
     res.json({
       success: true,
@@ -401,7 +340,7 @@ app.get("/api/produtos/:tipo", async (req, res) => {
       paginas: Math.ceil(total / limite),
     });
   } catch (error) {
-    console.error("Erro ao buscar produtos:", error);
+    "Erro ao buscar produtos:", error;
     res.status(500).json({
       success: false,
       message: "Erro interno do servidor",
@@ -492,7 +431,7 @@ app.post(
         message: mensagem,
       });
     } catch (error) {
-      console.error("❌ Erro ao criar produto:", error);
+      "❌ Erro ao criar produto:", error;
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
@@ -556,7 +495,7 @@ app.put(
         message: "Produto atualizado com sucesso",
       });
     } catch (error) {
-      console.error("❌ Erro ao atualizar produto:", error);
+      "❌ Erro ao atualizar produto:", error;
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
@@ -596,7 +535,7 @@ app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
       message: "Produto excluído com sucesso",
     });
   } catch (error) {
-    console.error("❌ Erro ao excluir produto:", error);
+    "❌ Erro ao excluir produto:", error;
     res.status(500).json({
       success: false,
       message: "Erro interno do servidor",
@@ -611,10 +550,7 @@ app.get("/api/admin/produtos", verificarToken, async (req, res) => {
     // Garantir conexão com MongoDB
     await connectDB();
 
-    const produtos = await Produto.find()
-      .select("nome descricao imagens tipo createdAt ativo") // Selecionar apenas campos necessários
-      .sort({ createdAt: -1 })
-      .lean(); // Usar lean() para melhor performance
+    const produtos = await Produto.find().sort({ createdAt: -1 });
 
     res.json({
       success: true,
@@ -622,7 +558,7 @@ app.get("/api/admin/produtos", verificarToken, async (req, res) => {
       total: produtos.length,
     });
   } catch (error) {
-    console.error("Erro ao buscar produtos para admin:", error);
+    "Erro ao buscar produtos para admin:", error;
     res.status(500).json({
       success: false,
       message: "Erro interno do servidor",
@@ -640,7 +576,7 @@ app.get("/api/admin/verificar", verificarToken, async (req, res) => {
       user: { email: req.user.email },
     });
   } catch (error) {
-    console.error("Erro na verificação:", error);
+    "Erro na verificação:", error;
     res.status(500).json({
       success: false,
       message: "Erro interno do servidor",
@@ -656,7 +592,7 @@ app.get("/api/contratos", verificarToken, async (req, res) => {
     // Garantir conexão com MongoDB
     await connectDB();
 
-    const contratos = await Contrato.find().sort({ dataCriacao: -1 }).lean(); // Usar lean() para melhor performance
+    const contratos = await Contrato.find().sort({ dataCriacao: -1 });
 
     res.json({
       success: true,
@@ -664,7 +600,7 @@ app.get("/api/contratos", verificarToken, async (req, res) => {
       total: contratos.length,
     });
   } catch (error) {
-    console.error("Erro ao buscar contratos:", error);
+    "Erro ao buscar contratos:", error;
     res.status(500).json({
       success: false,
       message: "Erro ao buscar contratos",
@@ -694,7 +630,7 @@ app.post("/api/contratos", verificarToken, async (req, res) => {
       message: "Contrato criado com sucesso",
     });
   } catch (error) {
-    console.error("❌ Erro ao criar contrato:", error);
+    "❌ Erro ao criar contrato:", error;
     res.status(500).json({
       success: false,
       message: "Erro ao criar contrato",
@@ -734,7 +670,7 @@ app.put("/api/contratos/:id", verificarToken, async (req, res) => {
       message: "Contrato atualizado com sucesso",
     });
   } catch (error) {
-    console.error("❌ Erro ao atualizar contrato:", error);
+    "❌ Erro ao atualizar contrato:", error;
     res.status(500).json({
       success: false,
       message: "Erro ao atualizar contrato",
@@ -771,7 +707,7 @@ app.delete("/api/contratos/:id", verificarToken, async (req, res) => {
       message: "Contrato excluído com sucesso",
     });
   } catch (error) {
-    console.error("❌ Erro ao excluir contrato:", error);
+    "❌ Erro ao excluir contrato:", error;
     res.status(500).json({
       success: false,
       message: "Erro ao excluir contrato",
@@ -818,16 +754,12 @@ app.get("/api", (req, res) => {
 
 // WebSocket handlers
 io.on("connection", (socket) => {
-  console.log("Cliente WebSocket conectado:", socket.id);
-
-  socket.on("disconnect", () => {
-    console.log("Cliente WebSocket desconectado:", socket.id);
-  });
+  socket.on("disconnect", () => {});
 
   // Eventos para contratos
   socket.on("novoContrato", async (data) => {
     try {
-      const contrato = await Contrato.findById(data.id).lean();
+      const contrato = await Contrato.findById(data.id);
       if (contrato) {
         io.emit("atualizacaoContratos", {
           tipo: "novo",
@@ -835,13 +767,13 @@ io.on("connection", (socket) => {
         });
       }
     } catch (error) {
-      console.error("Erro ao processar novoContrato:", error);
+      "Erro ao processar novoContrato:", error;
     }
   });
 
   socket.on("atualizacaoContrato", async (data) => {
     try {
-      const contrato = await Contrato.findById(data.id).lean();
+      const contrato = await Contrato.findById(data.id);
       if (contrato) {
         io.emit("atualizacaoContratos", {
           tipo: "atualizacao",
@@ -849,7 +781,7 @@ io.on("connection", (socket) => {
         });
       }
     } catch (error) {
-      console.error("Erro ao processar atualizacaoContrato:", error);
+      "Erro ao processar atualizacaoContrato:", error;
     }
   });
 
@@ -863,7 +795,7 @@ io.on("connection", (socket) => {
 
 // Middleware de tratamento de erros
 app.use((error, req, res, next) => {
-  console.error("Erro não tratado:", error);
+  "Erro não tratado:", error;
   res.status(500).json({
     success: false,
     message: "Erro interno do servidor",
@@ -877,10 +809,7 @@ app.use((error, req, res, next) => {
 // Para desenvolvimento local
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5000;
-  server.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Servidor HTTP e WebSocket rodando na porta ${PORT}`);
-    console.log(`📍 Em ambiente local: http://localhost:${PORT}`);
-  });
+  server.listen(PORT, "0.0.0.0", () => {});
 }
 
 // Export para Vercel (OBRIGATÓRIO!)
