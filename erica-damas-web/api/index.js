@@ -16,6 +16,8 @@ app.use(
       "https://erica-damas-com-br-e5w2.vercel.app",
       "https://ominous-orbit-g4qq7vw57qj5c6jr-3000.app.github.dev",
       "http://localhost:3000",
+      "https://www.ericadamas.com",
+      "https://ericadamas.com",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
