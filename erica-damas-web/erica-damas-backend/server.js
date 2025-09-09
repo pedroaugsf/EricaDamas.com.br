@@ -132,11 +132,16 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // Limite de 5MB
 });
 
-// Lista de origens permitidas
+// ✅ Lista de origens permitidas ATUALIZADA
 const allowedOrigins = [
   // Produção
   "https://erica-damas-com-br-e5w2.vercel.app",
   "https://erica-damas-com-br-e5w2-git-main-pedros-projects-f4fedec9.vercel.app",
+
+  // ✅ NOVO DOMÍNIO ADICIONADO:
+  "https://www.ericadamas.com",
+  "https://ericadamas.com",
+
   // Desenvolvimento
   "http://localhost:3000",
   "http://localhost:5000",
@@ -228,7 +233,7 @@ app.post("/api/login", async (req, res) => {
       });
     }
   } catch (error) {
-    "Erro no login:", error;
+    console.error("Erro no login:", error);
     res.status(500).json({
       success: false,
       message: "Erro interno do servidor",
@@ -289,14 +294,13 @@ const uploadImageToFirebase = async (file) => {
       blobStream.end(file.buffer);
     });
   } catch (error) {
-    "Erro no upload para Firebase:", error;
+    console.error("Erro no upload para Firebase:", error);
     return null;
   }
 };
 
 // ==================== ROTAS DA API DE PRODUTOS ====================
 
-// Buscar produtos por tipo (rota pública)
 // Buscar produtos por tipo (rota pública)
 app.get("/api/produtos/:tipo", async (req, res) => {
   try {
@@ -340,7 +344,7 @@ app.get("/api/produtos/:tipo", async (req, res) => {
       paginas: Math.ceil(total / limite),
     });
   } catch (error) {
-    "Erro ao buscar produtos:", error;
+    console.error("Erro ao buscar produtos:", error);
     res.status(500).json({
       success: false,
       message: "Erro interno do servidor",
@@ -431,7 +435,7 @@ app.post(
         message: mensagem,
       });
     } catch (error) {
-      "❌ Erro ao criar produto:", error;
+      console.error("❌ Erro ao criar produto:", error);
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
@@ -495,7 +499,7 @@ app.put(
         message: "Produto atualizado com sucesso",
       });
     } catch (error) {
-      "❌ Erro ao atualizar produto:", error;
+      console.error("❌ Erro ao atualizar produto:", error);
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
@@ -535,7 +539,7 @@ app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
       message: "Produto excluído com sucesso",
     });
   } catch (error) {
-    "❌ Erro ao excluir produto:", error;
+    console.error("❌ Erro ao excluir produto:", error);
     res.status(500).json({
       success: false,
       message: "Erro interno do servidor",
@@ -558,7 +562,7 @@ app.get("/api/admin/produtos", verificarToken, async (req, res) => {
       total: produtos.length,
     });
   } catch (error) {
-    "Erro ao buscar produtos para admin:", error;
+    console.error("Erro ao buscar produtos para admin:", error);
     res.status(500).json({
       success: false,
       message: "Erro interno do servidor",
@@ -576,7 +580,7 @@ app.get("/api/admin/verificar", verificarToken, async (req, res) => {
       user: { email: req.user.email },
     });
   } catch (error) {
-    "Erro na verificação:", error;
+    console.error("Erro na verificação:", error);
     res.status(500).json({
       success: false,
       message: "Erro interno do servidor",
@@ -600,7 +604,7 @@ app.get("/api/contratos", verificarToken, async (req, res) => {
       total: contratos.length,
     });
   } catch (error) {
-    "Erro ao buscar contratos:", error;
+    console.error("Erro ao buscar contratos:", error);
     res.status(500).json({
       success: false,
       message: "Erro ao buscar contratos",
@@ -630,7 +634,7 @@ app.post("/api/contratos", verificarToken, async (req, res) => {
       message: "Contrato criado com sucesso",
     });
   } catch (error) {
-    "❌ Erro ao criar contrato:", error;
+    console.error("❌ Erro ao criar contrato:", error);
     res.status(500).json({
       success: false,
       message: "Erro ao criar contrato",
@@ -670,7 +674,7 @@ app.put("/api/contratos/:id", verificarToken, async (req, res) => {
       message: "Contrato atualizado com sucesso",
     });
   } catch (error) {
-    "❌ Erro ao atualizar contrato:", error;
+    console.error("❌ Erro ao atualizar contrato:", error);
     res.status(500).json({
       success: false,
       message: "Erro ao atualizar contrato",
@@ -707,7 +711,7 @@ app.delete("/api/contratos/:id", verificarToken, async (req, res) => {
       message: "Contrato excluído com sucesso",
     });
   } catch (error) {
-    "❌ Erro ao excluir contrato:", error;
+    console.error("❌ Erro ao excluir contrato:", error);
     res.status(500).json({
       success: false,
       message: "Erro ao excluir contrato",
@@ -767,7 +771,7 @@ io.on("connection", (socket) => {
         });
       }
     } catch (error) {
-      "Erro ao processar novoContrato:", error;
+      console.error("Erro ao processar novoContrato:", error);
     }
   });
 
@@ -781,7 +785,7 @@ io.on("connection", (socket) => {
         });
       }
     } catch (error) {
-      "Erro ao processar atualizacaoContrato:", error;
+      console.error("Erro ao processar atualizacaoContrato:", error);
     }
   });
 
@@ -795,7 +799,7 @@ io.on("connection", (socket) => {
 
 // Middleware de tratamento de erros
 app.use((error, req, res, next) => {
-  "Erro não tratado:", error;
+  console.error("Erro não tratado:", error);
   res.status(500).json({
     success: false,
     message: "Erro interno do servidor",
