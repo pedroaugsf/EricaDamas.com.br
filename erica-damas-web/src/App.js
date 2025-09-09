@@ -70,7 +70,7 @@ const Home = () => {
       <div id="localizacao">
         <Localizacao />
       </div>
-      <Depoimentos />
+      {/* <Depoimentos /> */}
       <FAQ />
     </div>
   );

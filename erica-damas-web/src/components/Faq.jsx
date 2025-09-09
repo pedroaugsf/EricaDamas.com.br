@@ -1,12 +1,21 @@
-import React, { useState } from "react";
-import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { FaChevronDown, FaChevronUp, FaWhatsapp } from "react-icons/fa";
 
 const FAQ = () => {
-  // Estado para controlar qual categoria está ativa
+  const [isMobile, setIsMobile] = useState(false);
   const [activeCategory, setActiveCategory] = useState("geral");
-
-  // Estado para controlar quais perguntas estão abertas
   const [openQuestions, setOpenQuestions] = useState({});
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Categorias de perguntas
   const categories = [
@@ -150,6 +159,269 @@ const FAQ = () => {
     setOpenQuestions({}); // Fecha todas as perguntas ao mudar de categoria
   };
 
+  if (isMobile) {
+    return (
+      <>
+        <style>
+          {`
+          .mobile-faq-container {
+            background: #ffffff;
+            font-family: 'Cormorant Garamond', serif;
+            padding: 2rem 1rem;
+          }
+          
+          .mobile-faq-header {
+            text-align: center;
+            margin-bottom: 2rem;
+          }
+          
+          .mobile-faq-title {
+            font-size: 1.8rem;
+            font-weight: 400;
+            color: #5d4037;
+            letter-spacing: 1px;
+            margin: 0 0 0.5rem 0;
+          }
+          
+          .mobile-faq-subtitle {
+            font-size: 0.9rem;
+            color: #666;
+            margin: 0;
+            line-height: 1.4;
+          }
+          
+          .mobile-category-nav {
+            display: flex;
+            overflow-x: auto;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            padding: 0 0.5rem 0.5rem;
+            -webkit-overflow-scrolling: touch;
+          }
+          
+          .mobile-category-nav::-webkit-scrollbar {
+            display: none;
+          }
+          
+          .mobile-category-button {
+            background: transparent;
+            border: 1px solid #b6a06a;
+            color: #5d4037;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-family: 'Cormorant Garamond', serif;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            white-space: nowrap;
+            flex-shrink: 0;
+          }
+          
+          .mobile-category-button.active {
+            background: #b6a06a;
+            color: white;
+            font-weight: 600;
+          }
+          
+          .mobile-questions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin-bottom: 2rem;
+          }
+          
+          .mobile-question-item {
+            background: #fafafa;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #f0f0f0;
+          }
+          
+          .mobile-question-button {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            text-align: left;
+            padding: 1rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+          }
+          
+          .mobile-question-button:active {
+            background: rgba(182, 160, 106, 0.05);
+          }
+          
+          .mobile-question-text {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #5d4037;
+            font-family: 'Cormorant Garamond', serif;
+            flex: 1;
+            line-height: 1.3;
+            padding-right: 1rem;
+          }
+          
+          .mobile-question-icon {
+            color: #b6a06a;
+            font-size: 0.8rem;
+            transition: transform 0.3s ease;
+            flex-shrink: 0;
+          }
+          
+          .mobile-answer-container {
+            overflow: hidden;
+            transition: all 0.3s ease;
+            background: white;
+          }
+          
+          .mobile-answer-text {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #666;
+            margin: 0;
+          }
+          
+          .mobile-help-section {
+            background: #f9f7f4;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 1rem;
+          }
+          
+          .mobile-help-title {
+            font-size: 1.1rem;
+            color: #5d4037;
+            margin: 0 0 0.5rem 0;
+            font-weight: 500;
+          }
+          
+          .mobile-help-text {
+            font-size: 0.85rem;
+            color: #666;
+            margin: 0 0 1rem 0;
+            line-height: 1.4;
+          }
+          
+          .mobile-whatsapp-button {
+            background: #b6a06a;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+          }
+          
+          .mobile-whatsapp-button:active {
+            transform: scale(0.95);
+            background: #a08c5a;
+          }
+          
+          /* Touch improvements */
+          @media (hover: none) and (pointer: coarse) {
+            .mobile-question-button,
+            .mobile-category-button,
+            .mobile-whatsapp-button {
+              -webkit-tap-highlight-color: transparent;
+            }
+          }
+        `}
+        </style>
+
+        <section className="mobile-faq-container">
+          {/* Header Simples */}
+          <div className="mobile-faq-header">
+            <h2 className="mobile-faq-title">FAQ</h2>
+            <p className="mobile-faq-subtitle">
+              Perguntas frequentes sobre nossos serviços
+            </p>
+          </div>
+
+          {/* Navegação de Categorias */}
+          <div className="mobile-category-nav">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => changeCategory(category.id)}
+                className={`mobile-category-button ${
+                  activeCategory === category.id ? "active" : ""
+                }`}
+              >
+                {category.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Lista de Perguntas */}
+          <div className="mobile-questions-list">
+            {faqItems[activeCategory].map((item, index) => {
+              const questionId = `${activeCategory}-${index}`;
+              const isOpen = openQuestions[questionId];
+
+              return (
+                <div key={questionId} className="mobile-question-item">
+                  <button
+                    onClick={() => toggleQuestion(questionId)}
+                    className="mobile-question-button"
+                    aria-expanded={isOpen}
+                  >
+                    <span className="mobile-question-text">
+                      {item.pergunta}
+                    </span>
+                    <span className="mobile-question-icon">
+                      {isOpen ? <FaChevronUp /> : <FaChevronDown />}
+                    </span>
+                  </button>
+
+                  <div
+                    className="mobile-answer-container"
+                    style={{
+                      maxHeight: isOpen ? "300px" : "0",
+                      padding: isOpen ? "0 1rem 1rem" : "0 1rem",
+                      opacity: isOpen ? 1 : 0,
+                    }}
+                  >
+                    <p className="mobile-answer-text">{item.resposta}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Seção de Ajuda */}
+          <div className="mobile-help-section">
+            <h3 className="mobile-help-title">Ainda tem dúvidas?</h3>
+            <p className="mobile-help-text">
+              Fale conosco diretamente pelo WhatsApp
+            </p>
+            <a
+              href="https://wa.me/5537999153738?text=Olá,%20tenho%20uma%20dúvida%20sobre%20o%20Ateliê%20Erica%20Damas"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mobile-whatsapp-button"
+            >
+              <FaWhatsapp />
+              Falar Conosco
+            </a>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  // Desktop version (unchanged)
   return (
     <section style={styles.faqContainer}>
       <div style={styles.faqContent}>
@@ -240,7 +512,7 @@ const FAQ = () => {
   );
 };
 
-// Estilos do componente
+// Estilos do componente (unchanged)
 const styles = {
   faqContainer: {
     padding: "5rem 2rem",

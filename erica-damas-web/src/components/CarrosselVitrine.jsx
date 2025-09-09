@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Slider from "react-slick";
 import { Link } from "react-router-dom";
 import { FaChevronRight, FaChevronLeft } from "react-icons/fa";
@@ -7,20 +7,20 @@ import "slick-carousel/slick/slick-theme.css";
 
 // Componentes personalizados para as setas de navegação
 const NextArrow = (props) => {
-  const { onClick } = props;
+  const { onClick, isMobile } = props;
   return (
     <div
       className="custom-arrow next-arrow"
       onClick={onClick}
       style={{
         position: "absolute",
-        right: "30px",
+        right: isMobile ? "15px" : "30px",
         top: "50%",
         transform: "translateY(-50%)",
         zIndex: 10,
         cursor: "pointer",
-        width: "50px",
-        height: "50px",
+        width: isMobile ? "40px" : "50px",
+        height: isMobile ? "40px" : "50px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -35,26 +35,26 @@ const NextArrow = (props) => {
         e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
       }}
     >
-      <FaChevronRight size={24} color="#fff" />
+      <FaChevronRight size={isMobile ? 18 : 24} color="#fff" />
     </div>
   );
 };
 
 const PrevArrow = (props) => {
-  const { onClick } = props;
+  const { onClick, isMobile } = props;
   return (
     <div
       className="custom-arrow prev-arrow"
       onClick={onClick}
       style={{
         position: "absolute",
-        left: "30px",
+        left: isMobile ? "15px" : "30px",
         top: "50%",
         transform: "translateY(-50%)",
         zIndex: 10,
         cursor: "pointer",
-        width: "50px",
-        height: "50px",
+        width: isMobile ? "40px" : "50px",
+        height: isMobile ? "40px" : "50px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -69,12 +69,28 @@ const PrevArrow = (props) => {
         e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
       }}
     >
-      <FaChevronLeft size={24} color="#fff" />
+      <FaChevronLeft size={isMobile ? 18 : 24} color="#fff" />
     </div>
   );
 };
 
 const CarrosselVitrine = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detectar se é dispositivo móvel
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkIfMobile();
+    window.addEventListener("resize", checkIfMobile);
+
+    return () => {
+      window.removeEventListener("resize", checkIfMobile);
+    };
+  }, []);
+
   const settings = {
     dots: true,
     infinite: true,
@@ -85,13 +101,13 @@ const CarrosselVitrine = () => {
     autoplaySpeed: 5000,
     fade: true,
     cssEase: "linear",
-    nextArrow: <NextArrow />,
-    prevArrow: <PrevArrow />,
+    nextArrow: <NextArrow isMobile={isMobile} />,
+    prevArrow: <PrevArrow isMobile={isMobile} />,
     appendDots: (dots) => (
       <div
         style={{
           position: "absolute",
-          bottom: "25px",
+          bottom: isMobile ? "15px" : "25px",
           width: "100%",
           padding: "0",
           margin: "0",
@@ -105,8 +121,8 @@ const CarrosselVitrine = () => {
     customPaging: (i) => (
       <div
         style={{
-          width: "12px",
-          height: "12px",
+          width: isMobile ? "8px" : "12px",
+          height: isMobile ? "8px" : "12px",
           margin: "0 5px",
           backgroundColor: "rgba(255, 255, 255, 0.5)",
           borderRadius: "50%",
@@ -157,27 +173,29 @@ const CarrosselVitrine = () => {
         marginTop: "0",
       }}
     >
-      {/* Indicador de navegação */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "80px",
-          right: "30px",
-          zIndex: 5,
-          backgroundColor: "rgba(255, 255, 255, 0.2)",
-          padding: "8px 15px",
-          borderRadius: "20px",
-          color: "white",
-          fontSize: "14px",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-        }}
-      >
-        <FaChevronLeft size={12} />
-        <span>Deslize para navegar</span>
-        <FaChevronRight size={12} />
-      </div>
+      {/* Indicador de navegação - escondido em mobile */}
+      {!isMobile && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "80px",
+            right: "30px",
+            zIndex: 5,
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+            padding: "8px 15px",
+            borderRadius: "20px",
+            color: "white",
+            fontSize: "14px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <FaChevronLeft size={12} />
+          <span>Deslize para navegar</span>
+          <FaChevronRight size={12} />
+        </div>
+      )}
 
       <Slider {...settings}>
         {colecoes.map((colecao) => (
@@ -197,20 +215,20 @@ const CarrosselVitrine = () => {
                 style={{
                   position: "absolute",
                   top: "50%",
-                  left: "10%",
+                  left: isMobile ? "5%" : "10%",
                   transform: "translateY(-50%)",
                   color: "white",
                   textAlign: "left",
-                  maxWidth: "600px",
+                  maxWidth: isMobile ? "90%" : "600px",
                   zIndex: 2,
                 }}
               >
                 <h2
                   style={{
-                    fontSize: "3.5rem",
+                    fontSize: isMobile ? "2.2rem" : "3.5rem",
                     fontWeight: 500,
                     fontFamily: '"Cormorant Garamond", serif',
-                    marginBottom: "1rem",
+                    marginBottom: isMobile ? "0.5rem" : "1rem",
                     textShadow: "1px 1px 3px rgba(0,0,0,0.5)",
                   }}
                 >
@@ -218,9 +236,9 @@ const CarrosselVitrine = () => {
                 </h2>
                 <p
                   style={{
-                    fontSize: "1.5rem",
+                    fontSize: isMobile ? "1.1rem" : "1.5rem",
                     fontWeight: 300,
-                    marginBottom: "2rem",
+                    marginBottom: isMobile ? "1.5rem" : "2rem",
                     textShadow: "1px 1px 2px rgba(0,0,0,0.5)",
                   }}
                 >
@@ -233,15 +251,18 @@ const CarrosselVitrine = () => {
                     alignItems: "center",
                     backgroundColor: "#b6a06a",
                     color: "white",
-                    padding: "12px 30px",
+                    padding: isMobile ? "10px 20px" : "12px 30px",
                     textDecoration: "none",
-                    fontSize: "1.1rem",
+                    fontSize: isMobile ? "1rem" : "1.1rem",
                     fontWeight: 500,
                     borderRadius: "4px",
                     transition: "all 0.3s ease",
                   }}
                 >
-                  {colecao.cta} <FaChevronRight style={{ marginLeft: "8px" }} />
+                  {isMobile && colecao.cta.length > 15
+                    ? colecao.cta.split(" ")[0] + "..."
+                    : colecao.cta}
+                  <FaChevronRight style={{ marginLeft: "8px" }} />
                 </Link>
               </div>
             </div>
