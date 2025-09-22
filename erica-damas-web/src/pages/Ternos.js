@@ -1,39 +1,126 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { Helmet } from "react-helmet";
 import { api } from "../services/AuthService";
 
 const Ternos = () => {
   const [ternos, setTernos] = useState([]);
+  const [ternosFiltrados, setTernosFiltrados] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [ternoSelecionado, setTernoSelecionado] = useState(null);
   const [erro, setErro] = useState("");
+  const [imagemModalAtual, setImagemModalAtual] = useState(0);
 
-  // Carregar ternos da API usando o serviço centralizado (otimizado com useCallback)
+  // Estados para paginação e filtros
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [filtroTexto, setFiltroTexto] = useState("");
+  const [filtroTextoDebounced, setFiltroTextoDebounced] = useState("");
+  const [filtroCategoria, setFiltroCategoria] = useState("todas");
+  const [ordenacao, setOrdenacao] = useState("nome");
+  const [carregandoMais, setCarregandoMais] = useState(false);
+  const [buscandoTexto, setBuscandoTexto] = useState(false);
+
+  // Refs para otimização
+  const debounceRef = useRef(null);
+  const ternosIndexadosRef = useRef(new Map());
+  const filtrosAnterioresRef = useRef({});
+
+  // Detectar se é mobile
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // Configurações de paginação
+  const ITENS_POR_PAGINA = isMobile ? 12 : 20;
+  const DEBOUNCE_DELAY = 150;
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Função para criar índice de busca otimizado
+  const criarIndiceBusca = useCallback((produtos) => {
+    const indice = new Map();
+
+    produtos.forEach((produto, index) => {
+      const textoBusca = `${produto.nome} ${produto.descricao}`
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      const palavras = textoBusca
+        .split(/\s+/)
+        .filter((palavra) => palavra.length > 1);
+
+      indice.set(produto._id, {
+        index,
+        produto,
+        textoBusca,
+        palavras,
+        categoria: produto.categoria?.toLowerCase() || "",
+      });
+    });
+
+    return indice;
+  }, []);
+
+  // Debounce otimizado para busca
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    setBuscandoTexto(true);
+
+    debounceRef.current = setTimeout(() => {
+      setFiltroTextoDebounced(filtroTexto);
+      setBuscandoTexto(false);
+    }, DEBOUNCE_DELAY);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [filtroTexto, DEBOUNCE_DELAY]);
+
+  // Carregar ternos da API
   const carregarTernos = useCallback(async () => {
     try {
       setCarregando(true);
       setErro("");
 
-      // Adicionar timeout para cancelar requisição se demorar muito
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       const response = await api.get("/produtos/ternos", {
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
-
       const result = response.data;
 
       if (result.success) {
-        // Processar imagens para pré-carregamento
         const produtosProcessados = result.produtos.map((produto) => ({
           ...produto,
           imagemCarregada: false,
         }));
 
         setTernos(produtosProcessados);
+
+        // Criar índice de busca
+        ternosIndexadosRef.current = criarIndiceBusca(produtosProcessados);
+
+        // Aplicar filtros iniciais
+        setTernosFiltrados(produtosProcessados);
       } else {
         setErro("Erro ao carregar ternos: " + result.message);
       }
@@ -46,31 +133,212 @@ const Ternos = () => {
     } finally {
       setCarregando(false);
     }
+  }, [criarIndiceBusca]);
+
+  // Algoritmo de busca ultra-rápido
+  const buscarTernos = useCallback((texto, categoria, ordenacaoTipo) => {
+    const indice = ternosIndexadosRef.current;
+    if (!indice.size) return [];
+
+    const performance_start = performance.now();
+
+    const textoNormalizado = texto
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+    let resultados = [];
+
+    if (!textoNormalizado) {
+      resultados = Array.from(indice.values()).map((item) => item.produto);
+    } else {
+      const palavrasBusca = textoNormalizado
+        .split(/\s+/)
+        .filter((p) => p.length > 0);
+
+      const resultadosComScore = [];
+
+      for (const [id, item] of indice) {
+        let score = 0;
+        let matches = 0;
+
+        if (item.produto.nome.toLowerCase().includes(textoNormalizado)) {
+          score += 100;
+          matches++;
+        }
+
+        for (const palavraBusca of palavrasBusca) {
+          if (item.produto.nome.toLowerCase().includes(palavraBusca)) {
+            score += 50;
+            matches++;
+          }
+
+          if (item.palavras.some((palavra) => palavra.includes(palavraBusca))) {
+            score += 20;
+            matches++;
+          }
+
+          if (item.textoBusca.includes(palavraBusca)) {
+            score += 10;
+            matches++;
+          }
+        }
+
+        if (matches > 0) {
+          if (matches === palavrasBusca.length) {
+            score += 30;
+          }
+
+          resultadosComScore.push({ produto: item.produto, score });
+        }
+      }
+
+      resultados = resultadosComScore
+        .sort((a, b) => b.score - a.score)
+        .map((item) => item.produto);
+    }
+
+    if (categoria !== "todas") {
+      resultados = resultados.filter(
+        (produto) =>
+          produto.categoria?.toLowerCase() === categoria.toLowerCase()
+      );
+    }
+
+    resultados.sort((a, b) => {
+      switch (ordenacaoTipo) {
+        case "nome":
+          return a.nome.localeCompare(b.nome);
+        case "nome-desc":
+          return b.nome.localeCompare(a.nome);
+        case "recente":
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        case "antigo":
+          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+        default:
+          return 0;
+      }
+    });
+
+    const performance_end = performance.now();
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `🔍 Busca executada em ${(performance_end - performance_start).toFixed(
+          2
+        )}ms`
+      );
+      console.log(
+        `📊 ${resultados.length} resultados encontrados de ${indice.size} total`
+      );
+    }
+
+    return resultados;
   }, []);
 
-  // Função para pré-carregar imagens
-  const preCarregarImagem = (src) => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.src = src;
-      img.onload = () => resolve(src);
-      img.onerror = () => reject();
-    });
-  };
+  // Memoização da busca com cache inteligente
+  const ternosFiltradosMemo = useMemo(() => {
+    const cacheKey = `${filtroTextoDebounced}-${filtroCategoria}-${ordenacao}`;
+
+    if (filtrosAnterioresRef.current.key === cacheKey) {
+      return filtrosAnterioresRef.current.resultados;
+    }
+
+    const resultados = buscarTernos(
+      filtroTextoDebounced,
+      filtroCategoria,
+      ordenacao
+    );
+
+    filtrosAnterioresRef.current = {
+      key: cacheKey,
+      resultados,
+    };
+
+    return resultados;
+  }, [filtroTextoDebounced, filtroCategoria, ordenacao, buscarTernos]);
+
+  // Atualizar estado quando filtros mudarem
+  useEffect(() => {
+    setTernosFiltrados(ternosFiltradosMemo);
+    setPaginaAtual(1);
+  }, [ternosFiltradosMemo]);
+
+  // Obter categorias únicas (memoizado)
+  const categorias = useMemo(() => {
+    const categoriasUnicas = [
+      ...new Set(ternos.map((terno) => terno.categoria).filter(Boolean)),
+    ];
+    return categoriasUnicas;
+  }, [ternos]);
+
+  // Ternos para exibir (paginação otimizada)
+  const ternosParaExibir = useMemo(() => {
+    const inicio = 0;
+    const fim = paginaAtual * ITENS_POR_PAGINA;
+    return ternosFiltrados.slice(inicio, fim);
+  }, [ternosFiltrados, paginaAtual, ITENS_POR_PAGINA]);
+
+  // Verificar se há mais itens para carregar
+  const temMaisItens = ternosParaExibir.length < ternosFiltrados.length;
+
+  // Carregar mais itens
+  const carregarMaisItens = useCallback(async () => {
+    if (carregandoMais || !temMaisItens) return;
+
+    setCarregandoMais(true);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    setPaginaAtual((prev) => prev + 1);
+    setCarregandoMais(false);
+  }, [carregandoMais, temMaisItens]);
+
+  // Handler otimizado para mudança de texto
+  const handleTextoChange = useCallback((e) => {
+    const novoTexto = e.target.value;
+    setFiltroTexto(novoTexto);
+  }, []);
+
+  // Scroll infinito otimizado para mobile
+  useEffect(() => {
+    if (!isMobile) return;
+
+    let isThrottled = false;
+
+    const handleScroll = () => {
+      if (isThrottled) return;
+
+      isThrottled = true;
+      requestAnimationFrame(() => {
+        if (
+          window.innerHeight + document.documentElement.scrollTop >=
+          document.documentElement.offsetHeight - 1000
+        ) {
+          carregarMaisItens();
+        }
+        isThrottled = false;
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isMobile, carregarMaisItens]);
 
   useEffect(() => {
     carregarTernos();
 
-    // Limpar estado ao desmontar
     return () => {
       setTernos([]);
       setTernoSelecionado(null);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
     };
   }, [carregarTernos]);
 
-  // Configurar observador de interseção para lazy loading
+  // Intersection Observer otimizado
   useEffect(() => {
-    if (ternos.length === 0) return;
+    if (ternosParaExibir.length === 0) return;
 
     const imgObserver = new IntersectionObserver(
       (entries) => {
@@ -79,7 +347,6 @@ const Ternos = () => {
             const img = entry.target;
             const src = img.getAttribute("data-src");
             if (src) {
-              // Usar técnica de fade-in para imagens
               img.style.opacity = "0";
               img.src = src;
               img.onload = () => {
@@ -92,37 +359,67 @@ const Ternos = () => {
           }
         });
       },
-      { rootMargin: "200px 0px", threshold: 0.1 }
+      { rootMargin: "100px 0px", threshold: 0.1 }
     );
 
-    // Observar todas as imagens com data-src
-    document.querySelectorAll("img[data-src]").forEach((img) => {
-      imgObserver.observe(img);
-    });
+    const observeImages = () => {
+      document.querySelectorAll("img[data-src]").forEach((img) => {
+        imgObserver.observe(img);
+      });
+    };
+
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(observeImages);
+    } else {
+      setTimeout(observeImages, 0);
+    }
 
     return () => {
       imgObserver.disconnect();
     };
-  }, [ternos]);
+  }, [ternosParaExibir]);
 
   const abrirModal = useCallback((terno) => {
     setTernoSelecionado(terno);
+    setImagemModalAtual(0);
     document.body.style.overflow = "hidden";
 
-    // Pré-carregar todas as imagens do terno selecionado
     if (terno.imagens && terno.imagens.length > 0) {
-      terno.imagens.forEach((src) => {
-        preCarregarImagem(src).catch(() => {
-          // Silenciosamente ignorar erros de pré-carregamento
+      const img = new Image();
+      img.src = terno.imagens[0];
+
+      if (terno.imagens.length > 1) {
+        requestIdleCallback(() => {
+          terno.imagens.slice(1).forEach((src) => {
+            const img = new Image();
+            img.src = src;
+          });
         });
-      });
+      }
     }
   }, []);
 
   const fecharModal = useCallback(() => {
     setTernoSelecionado(null);
+    setImagemModalAtual(0);
     document.body.style.overflow = "auto";
   }, []);
+
+  const proximaImagem = useCallback(() => {
+    if (ternoSelecionado && ternoSelecionado.imagens) {
+      setImagemModalAtual((prev) =>
+        prev === ternoSelecionado.imagens.length - 1 ? 0 : prev + 1
+      );
+    }
+  }, [ternoSelecionado]);
+
+  const imagemAnterior = useCallback(() => {
+    if (ternoSelecionado && ternoSelecionado.imagens) {
+      setImagemModalAtual((prev) =>
+        prev === 0 ? ternoSelecionado.imagens.length - 1 : prev - 1
+      );
+    }
+  }, [ternoSelecionado]);
 
   const gerarMensagemWhatsApp = useMemo(
     () => (terno) => {
@@ -132,65 +429,157 @@ const Ternos = () => {
     []
   );
 
-  // Renderização condicional otimizada
+  // Renderizar filtros otimizados
+  const renderFiltros = useMemo(
+    () => (
+      <div style={styles.filtrosContainer}>
+        <div style={styles.filtrosRow}>
+          <div style={styles.filtroItem}>
+            <div style={styles.inputContainer}>
+              <input
+                type="text"
+                placeholder="Buscar ternos..."
+                value={filtroTexto}
+                onChange={handleTextoChange}
+                style={{
+                  ...styles.inputBusca,
+                  ...(buscandoTexto ? styles.inputBuscando : {}),
+                }}
+              />
+              {buscandoTexto && (
+                <div style={styles.buscaIndicador}>
+                  <div style={styles.miniSpinner}></div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {categorias.length > 0 && (
+            <div style={styles.filtroItem}>
+              <select
+                value={filtroCategoria}
+                onChange={(e) => setFiltroCategoria(e.target.value)}
+                style={styles.selectFiltro}
+              >
+                <option value="todas">Todas as categorias</option>
+                {categorias.map((categoria) => (
+                  <option key={categoria} value={categoria}>
+                    {categoria}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div style={styles.filtroItem}>
+            <select
+              value={ordenacao}
+              onChange={(e) => setOrdenacao(e.target.value)}
+              style={styles.selectFiltro}
+            >
+              <option value="nome">Nome ↑</option>
+              <option value="nome-desc">Nome ↓</option>
+              <option value="recente">Mais recentes</option>
+              <option value="antigo">Mais antigos</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={styles.resultadosInfo}>
+          {ternosFiltrados.length > 0 ? (
+            <span>
+              Exibindo {ternosParaExibir.length} de {ternosFiltrados.length}{" "}
+              ternos
+              {filtroTextoDebounced && (
+                <span style={styles.textoBusca}>
+                  • Busca: "{filtroTextoDebounced}"
+                </span>
+              )}
+            </span>
+          ) : filtroTextoDebounced || filtroCategoria !== "todas" ? (
+            <span style={styles.nenhumResultado}>
+              Nenhum terno encontrado para os filtros aplicados
+            </span>
+          ) : null}
+        </div>
+      </div>
+    ),
+    [
+      filtroTexto,
+      filtroTextoDebounced,
+      filtroCategoria,
+      ordenacao,
+      categorias,
+      ternosFiltrados.length,
+      ternosParaExibir.length,
+      buscandoTexto,
+      handleTextoChange,
+    ]
+  );
+
+  // Renderização da grid super otimizada com UX/UI de e-commerce premium
   const renderTernosGrid = useMemo(() => {
-    if (ternos.length === 0) return null;
+    if (ternosParaExibir.length === 0) return null;
 
     return (
       <div style={styles.ternosGrid}>
-        {ternos.map((terno) => (
+        {ternosParaExibir.map((terno, index) => (
           <div
-            key={terno._id}
+            key={`${terno._id}-${index}`}
             style={styles.ternoCard}
             onClick={() => abrirModal(terno)}
             className="terno-card"
           >
-            {terno.imagens && terno.imagens[0] && (
-              <div style={styles.ternoImageContainer}>
-                <img
-                  src={terno.imagens[0]} // Carregar diretamente para primeira renderização
-                  alt={terno.nome}
-                  style={styles.ternoImage}
-                  onError={(e) => {
-                    e.target.style.backgroundColor = "#f5f5f5";
-                    e.target.alt = "Imagem não disponível";
-                  }}
-                  loading="lazy"
-                />
-                {terno.imagens.length > 1 && (
-                  <div style={styles.imageCount}>
-                    +{terno.imagens.length - 1}
-                  </div>
-                )}
+            <div style={styles.ternoImageContainer}>
+              <img
+                data-src={terno.imagens[0]}
+                alt={terno.nome}
+                style={styles.ternoImage}
+                onError={(e) => {
+                  e.target.style.backgroundColor = "#f8f8f8";
+                  e.target.alt = "Imagem não disponível";
+                }}
+                loading="lazy"
+              />
+              {terno.imagens && terno.imagens.length > 1 && (
+                <div style={styles.imageCount}>+{terno.imagens.length - 1}</div>
+              )}
+              <div style={styles.hoverOverlay}>
+                <span style={styles.viewDetailsText}>Ver Detalhes</span>
               </div>
-            )}
+            </div>
             <div style={styles.ternoInfo}>
               <h3 style={styles.ternoName}>{terno.nome}</h3>
               <p style={styles.ternoDescription}>
-                {terno.descricao.length > 100
-                  ? terno.descricao.substring(0, 100) + "..."
+                {terno.descricao.length > (isMobile ? 70 : 85)
+                  ? terno.descricao.substring(0, isMobile ? 70 : 85) + "..."
                   : terno.descricao}
               </p>
+              <div style={styles.disponibilidadeIndicador}>
+                <span style={styles.disponibilidadeTexto}>
+                  Disponível para consulta
+                </span>
+              </div>
             </div>
           </div>
         ))}
       </div>
     );
-  }, [ternos, abrirModal]);
+  }, [ternosParaExibir, abrirModal, isMobile]);
 
   return (
     <section style={styles.ternosContainer}>
       <Helmet>
-        <title>Erica Damas - Ternos</title>
+        <title>{`Erica Damas - Ternos (${ternosFiltrados.length} modelos)`}</title>
         <meta
           name="description"
-          content="Conheça nossa coleção exclusiva de ternos elegantes e sofisticados."
+          content={`Conheça nossa coleção exclusiva de ${ternosFiltrados.length} ternos elegantes e sofisticados.`}
         />
         <meta
           name="keywords"
           content="ternos, casamento, noivo, terno masculino"
         />
-        {/* Preload para melhorar performance */}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="preconnect" href={api.defaults.baseURL} />
         <link rel="dns-prefetch" href={api.defaults.baseURL} />
       </Helmet>
@@ -202,7 +591,7 @@ const Ternos = () => {
 
       {erro && (
         <div style={styles.erro}>
-          {erro}
+          <div style={styles.erroTexto}>{erro}</div>
           <button onClick={carregarTernos} style={styles.retryButton}>
             Tentar novamente
           </button>
@@ -216,8 +605,8 @@ const Ternos = () => {
         </div>
       ) : ternos.length === 0 ? (
         <div style={styles.emptyMessage}>
-          <h2>Em breve, novos ternos exclusivos</h2>
-          <p>
+          <h2 style={styles.emptyTitle}>Em breve, novos ternos exclusivos</h2>
+          <p style={styles.emptyText}>
             Nossa coleção está sendo atualizada. Entre em contato para conhecer
             nossas opções disponíveis.
           </p>
@@ -232,28 +621,119 @@ const Ternos = () => {
           </a>
         </div>
       ) : (
-        renderTernosGrid
+        <React.Fragment>
+          {renderFiltros}
+          {renderTernosGrid}
+          {/* Carregar mais - Desktop */}
+          {!isMobile && temMaisItens && (
+            <div style={styles.carregarMaisContainer}>
+              <button
+                onClick={carregarMaisItens}
+                disabled={carregandoMais}
+                style={styles.carregarMaisButton}
+                className="carregar-mais-button"
+              >
+                {carregandoMais ? (
+                  <React.Fragment>
+                    <div style={styles.miniSpinner}></div>
+                    Carregando...
+                  </React.Fragment>
+                ) : (
+                  `Carregar mais (${
+                    ternosFiltrados.length - ternosParaExibir.length
+                  } restantes)`
+                )}
+              </button>
+            </div>
+          )}
+          {/* Loading infinito - Mobile */}
+          {isMobile && carregandoMais && (
+            <div style={styles.loadingInfinito}>
+              <div style={styles.miniSpinner}></div>
+              <span>Carregando mais ternos...</span>
+            </div>
+          )}
+        </React.Fragment>
       )}
 
       {ternoSelecionado && (
         <div style={styles.modalOverlay} onClick={fecharModal}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+          <div
+            style={{
+              ...styles.modalContent,
+              ...(isMobile ? styles.modalContentMobile : {}),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <button style={styles.closeButton} onClick={fecharModal}>
               ×
             </button>
 
-            <div style={styles.modalGrid}>
-              <div style={styles.modalImageSection}>
+            <div
+              style={{
+                ...styles.modalGrid,
+                ...(isMobile ? styles.modalGridMobile : {}),
+              }}
+            >
+              <div
+                style={{
+                  ...styles.modalImageSection,
+                  ...(isMobile ? styles.modalImageSectionMobile : {}),
+                }}
+              >
                 {ternoSelecionado.imagens &&
                   ternoSelecionado.imagens.length > 0 && (
-                    <img
-                      src={ternoSelecionado.imagens[0]}
-                      alt={ternoSelecionado.nome}
-                      style={styles.modalImage}
-                    />
+                    <div style={styles.imageCarousel}>
+                      <img
+                        src={ternoSelecionado.imagens[imagemModalAtual]}
+                        alt={ternoSelecionado.nome}
+                        style={{
+                          ...styles.modalImage,
+                          ...(isMobile ? styles.modalImageMobile : {}),
+                        }}
+                      />
+
+                      {ternoSelecionado.imagens.length > 1 && (
+                        <React.Fragment>
+                          <button
+                            style={{
+                              ...styles.navButton,
+                              ...styles.navButtonPrev,
+                            }}
+                            onClick={imagemAnterior}
+                          >
+                            ‹
+                          </button>
+                          <button
+                            style={{
+                              ...styles.navButton,
+                              ...styles.navButtonNext,
+                            }}
+                            onClick={proximaImagem}
+                          >
+                            ›
+                          </button>
+                          <div style={styles.imageIndicators}>
+                            {ternoSelecionado.imagens.map((_, index) => (
+                              <div
+                                key={index}
+                                style={{
+                                  ...styles.indicator,
+                                  ...(index === imagemModalAtual
+                                    ? styles.indicatorActive
+                                    : {}),
+                                }}
+                                onClick={() => setImagemModalAtual(index)}
+                              />
+                            ))}
+                          </div>
+                        </React.Fragment>
+                      )}
+                    </div>
                   )}
 
-                {ternoSelecionado.imagens &&
+                {!isMobile &&
+                  ternoSelecionado.imagens &&
                   ternoSelecionado.imagens.length > 1 && (
                     <div style={styles.thumbnailContainer}>
                       {ternoSelecionado.imagens
@@ -265,22 +745,39 @@ const Ternos = () => {
                             alt={`${ternoSelecionado.nome} - imagem ${
                               index + 1
                             }`}
-                            style={styles.thumbnail}
-                            onClick={(e) => {
-                              // Trocar imagem principal ao clicar na miniatura
-                              const mainImg =
-                                e.currentTarget.parentNode.previousSibling;
-                              mainImg.src = img;
+                            style={{
+                              ...styles.thumbnail,
+                              ...(index === imagemModalAtual
+                                ? styles.thumbnailActive
+                                : {}),
                             }}
+                            onClick={() => setImagemModalAtual(index)}
                           />
                         ))}
                     </div>
                   )}
               </div>
 
-              <div style={styles.modalInfoSection}>
-                <h2 style={styles.modalTitle}>{ternoSelecionado.nome}</h2>
-                <div style={styles.modalDescription}>
+              <div
+                style={{
+                  ...styles.modalInfoSection,
+                  ...(isMobile ? styles.modalInfoSectionMobile : {}),
+                }}
+              >
+                <h2
+                  style={{
+                    ...styles.modalTitle,
+                    ...(isMobile ? styles.modalTitleMobile : {}),
+                  }}
+                >
+                  {ternoSelecionado.nome}
+                </h2>
+                <div
+                  style={{
+                    ...styles.modalDescription,
+                    ...(isMobile ? styles.modalDescriptionMobile : {}),
+                  }}
+                >
                   {ternoSelecionado.descricao}
                 </div>
 
@@ -289,7 +786,10 @@ const Ternos = () => {
                     href={gerarMensagemWhatsApp(ternoSelecionado)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={styles.whatsappButton}
+                    style={{
+                      ...styles.whatsappButton,
+                      ...(isMobile ? styles.whatsappButtonMobile : {}),
+                    }}
                     className="whatsapp-button"
                   >
                     💬 Consultar no WhatsApp
@@ -311,25 +811,54 @@ const Ternos = () => {
           }
         }
 
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
         .terno-card {
-          transition: all 0.3s ease;
+          transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          animation: fadeInUp 0.6s ease forwards;
         }
 
         .terno-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+          transform: translateY(-8px);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1) !important;
         }
 
-        .whatsapp-button {
+        .terno-card:hover .terno-image {
+          transform: scale(1.08);
+        }
+
+        .terno-card:hover .hover-overlay {
+          opacity: 1;
+        }
+
+        .carregar-mais-button {
           transition: all 0.3s ease;
+        }
+
+        .carregar-mais-button:hover:not(:disabled) {
+          background-color: #9a8655;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(154, 134, 85, 0.3);
+        }
+
+        .carregar-mais-button:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
         }
 
         .whatsapp-button:hover {
           background-color: #128c7e;
-        }
-
-        .contact-button {
-          transition: all 0.3s ease;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(37, 211, 102, 0.3);
         }
 
         .contact-button:hover {
@@ -338,24 +867,23 @@ const Ternos = () => {
         }
 
         @media (max-width: 768px) {
-          .modalGrid {
-            grid-template-columns: 1fr !important;
+          .terno-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.08) !important;
           }
 
-          .ternosContainer {
-            padding: 2rem 1rem !important;
+          .terno-card:hover .terno-image {
+            transform: scale(1.03);
+          }
+        }
+
+        @media (max-width: 480px) {
+          .terno-card:hover {
+            transform: translateY(-2px);
           }
 
-          .titulo {
-            font-size: 2rem !important;
-          }
-
-          .ternosGrid {
-            grid-template-columns: repeat(
-              auto-fill,
-              minmax(250px, 1fr)
-            ) !important;
-            gap: 1.5rem !important;
+          .terno-card:hover .terno-image {
+            transform: scale(1.02);
           }
         }
       `}</style>
@@ -365,58 +893,353 @@ const Ternos = () => {
 
 const styles = {
   ternosContainer: {
-    maxWidth: "1200px",
+    maxWidth: "1400px",
     margin: "0 auto",
-    padding: "4rem 2rem",
+    padding: "2rem 1rem",
     fontFamily: '"Cormorant Garamond", serif',
+    backgroundColor: "#ffffff",
+    "@media (min-width: 768px)": {
+      padding: "4rem 2rem",
+    },
   },
+
   tituloContainer: {
     textAlign: "center",
     marginBottom: "3rem",
+    "@media (min-width: 768px)": {
+      marginBottom: "4rem",
+    },
   },
+
   titulo: {
-    fontSize: "2.5rem",
+    fontSize: "2rem",
     fontWeight: "300",
     letterSpacing: "3px",
-    color: "#5d4037",
-    marginBottom: "1rem",
+    color: "#2c2c2c",
+    marginBottom: "1.5rem",
     textTransform: "uppercase",
+    lineHeight: "1.2",
+    "@media (min-width: 768px)": {
+      fontSize: "2.8rem",
+      letterSpacing: "4px",
+    },
   },
+
   divisor: {
     width: "80px",
     height: "2px",
     backgroundColor: "#b6a06a",
     margin: "0 auto",
+    "@media (min-width: 768px)": {
+      width: "100px",
+    },
   },
+
+  filtrosContainer: {
+    marginBottom: "3rem",
+    padding: "2rem",
+    backgroundColor: "#fafafa",
+    borderRadius: "12px",
+    border: "1px solid #f0f0f0",
+    "@media (min-width: 768px)": {
+      marginBottom: "4rem",
+    },
+  },
+
+  filtrosRow: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1.2rem",
+    marginBottom: "1.5rem",
+    "@media (min-width: 768px)": {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: "1.5rem",
+    },
+  },
+
+  filtroItem: {
+    flex: 1,
+    minWidth: "200px",
+  },
+
+  inputContainer: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+  },
+
+  inputBusca: {
+    width: "100%",
+    padding: "1rem 1.2rem",
+    paddingRight: "3.5rem",
+    border: "2px solid #e8e8e8",
+    borderRadius: "10px",
+    fontSize: "1rem",
+    fontFamily: "inherit",
+    transition: "all 0.3s ease",
+    outline: "none",
+    backgroundColor: "white",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+  },
+
+  inputBuscando: {
+    borderColor: "#b6a06a",
+    boxShadow: "0 0 0 4px rgba(182, 160, 106, 0.1)",
+  },
+
+  buscaIndicador: {
+    position: "absolute",
+    right: "15px",
+    display: "flex",
+    alignItems: "center",
+  },
+
+  selectFiltro: {
+    width: "100%",
+    padding: "1rem 1.2rem",
+    border: "2px solid #e8e8e8",
+    borderRadius: "10px",
+    fontSize: "1rem",
+    fontFamily: "inherit",
+    backgroundColor: "white",
+    cursor: "pointer",
+    outline: "none",
+    transition: "all 0.3s ease",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+  },
+
+  resultadosInfo: {
+    fontSize: "0.95rem",
+    color: "#666",
+    textAlign: "center",
+    fontStyle: "italic",
+    fontWeight: "400",
+  },
+
+  textoBusca: {
+    color: "#b6a06a",
+    fontWeight: "600",
+    marginLeft: "0.5rem",
+  },
+
+  nenhumResultado: {
+    color: "#c62828",
+    fontWeight: "500",
+  },
+
+  // GRID DE PRODUTOS - UX/UI PREMIUM E-COMMERCE
+  ternosGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    gap: "2rem",
+    marginTop: "2rem",
+    "@media (min-width: 640px)": {
+      gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+      gap: "2.5rem",
+    },
+    "@media (min-width: 768px)": {
+      gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+      gap: "3rem",
+    },
+    "@media (min-width: 1024px)": {
+      gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))",
+      gap: "3.5rem",
+    },
+  },
+
+  ternoCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: "0",
+    overflow: "hidden",
+    boxShadow: "none",
+    cursor: "pointer",
+    transition: "all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+    position: "relative",
+    border: "none",
+  },
+
+  ternoImageContainer: {
+    height: "420px",
+    overflow: "hidden",
+    position: "relative",
+    backgroundColor: "#fafafa",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    "@media (min-width: 768px)": {
+      height: "500px",
+    },
+    "@media (min-width: 1024px)": {
+      height: "520px",
+    },
+  },
+
+  ternoImage: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    objectPosition: "center top",
+    transition: "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+    className: "terno-image",
+  },
+
+  imageCount: {
+    position: "absolute",
+    top: "16px",
+    right: "16px",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    color: "#2c2c2c",
+    padding: "0.5rem 0.9rem",
+    borderRadius: "25px",
+    fontSize: "0.8rem",
+    fontWeight: "600",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+    backdropFilter: "blur(8px)",
+    border: "1px solid rgba(255,255,255,0.3)",
+    letterSpacing: "0.5px",
+    "@media (min-width: 768px)": {
+      top: "20px",
+      right: "20px",
+      fontSize: "0.85rem",
+      padding: "0.6rem 1rem",
+    },
+  },
+
+  hoverOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0,
+    transition: "opacity 0.3s ease",
+    className: "hover-overlay",
+  },
+
+  viewDetailsText: {
+    color: "white",
+    fontSize: "1.1rem",
+    fontWeight: "600",
+    letterSpacing: "1px",
+    textTransform: "uppercase",
+    padding: "0.8rem 2rem",
+    border: "2px solid white",
+    borderRadius: "2px",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backdropFilter: "blur(4px)",
+  },
+
+  ternoInfo: {
+    padding: "2rem 1rem 2.5rem",
+    textAlign: "left",
+    backgroundColor: "#ffffff",
+    "@media (min-width: 768px)": {
+      padding: "2.5rem 1.5rem 3rem",
+    },
+  },
+
+  ternoName: {
+    fontSize: "1.15rem",
+    fontWeight: "600",
+    color: "#1a1a1a",
+    marginBottom: "0.8rem",
+    lineHeight: "1.3",
+    letterSpacing: "0.3px",
+    fontFamily: '"Cormorant Garamond", serif',
+    "@media (min-width: 768px)": {
+      fontSize: "1.3rem",
+      marginBottom: "1rem",
+    },
+  },
+
+  ternoDescription: {
+    fontSize: "0.9rem",
+    color: "#666",
+    lineHeight: "1.5",
+    marginBottom: "1.2rem",
+    fontWeight: "400",
+    "@media (min-width: 768px)": {
+      fontSize: "0.95rem",
+      lineHeight: "1.6",
+      marginBottom: "1.5rem",
+    },
+  },
+
+  disponibilidadeIndicador: {
+    marginTop: "auto",
+  },
+
+  disponibilidadeTexto: {
+    fontSize: "0.8rem",
+    color: "#28a745",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    display: "inline-flex",
+    alignItems: "center",
+    "&::before": {
+      content: "•",
+      marginRight: "0.5rem",
+      fontSize: "1.2rem",
+    },
+  },
+
+  // OUTROS ESTILOS PERMANECEM IGUAIS...
   erro: {
     backgroundColor: "#ffebee",
     color: "#c62828",
-    padding: "1rem",
-    borderRadius: "8px",
+    padding: "1.5rem",
+    borderRadius: "12px",
     marginBottom: "2rem",
     textAlign: "center",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: "1rem",
-    flexWrap: "wrap",
+    flexDirection: "column",
+    "@media (min-width: 768px)": {
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
   },
+
+  erroTexto: {
+    fontSize: "0.95rem",
+    lineHeight: "1.4",
+    "@media (min-width: 768px)": {
+      fontSize: "1rem",
+    },
+  },
+
   retryButton: {
     backgroundColor: "#c62828",
     color: "white",
     border: "none",
-    padding: "0.5rem 1rem",
-    borderRadius: "4px",
+    padding: "0.8rem 1.5rem",
+    borderRadius: "8px",
     cursor: "pointer",
     fontSize: "0.9rem",
     transition: "background-color 0.3s",
+    minWidth: "140px",
+    fontWeight: "600",
   },
+
   loading: {
     textAlign: "center",
-    fontSize: "1.2rem",
+    fontSize: "1.1rem",
     color: "#666",
     padding: "4rem 0",
+    "@media (min-width: 768px)": {
+      fontSize: "1.3rem",
+      padding: "5rem 0",
+    },
   },
+
   spinner: {
     width: "40px",
     height: "40px",
@@ -424,204 +1247,398 @@ const styles = {
     borderTop: "3px solid #b6a06a",
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
-    margin: "0 auto 1rem",
+    margin: "0 auto 1.5rem",
+    "@media (min-width: 768px)": {
+      width: "50px",
+      height: "50px",
+    },
   },
+
+  miniSpinner: {
+    width: "18px",
+    height: "18px",
+    border: "2px solid #f3f3f3",
+    borderTop: "2px solid #b6a06a",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
+    display: "inline-block",
+  },
+
   emptyMessage: {
     textAlign: "center",
-    padding: "4rem 2rem",
-    backgroundColor: "#f9f9f9",
-    borderRadius: "12px",
-    margin: "2rem 0",
+    padding: "3rem 1.5rem",
+    backgroundColor: "#fafafa",
+    borderRadius: "16px",
+    margin: "3rem 0",
+    "@media (min-width: 768px)": {
+      padding: "5rem 3rem",
+    },
   },
+
+  emptyTitle: {
+    fontSize: "1.6rem",
+    marginBottom: "1.2rem",
+    color: "#2c2c2c",
+    fontWeight: "400",
+    "@media (min-width: 768px)": {
+      fontSize: "2rem",
+    },
+  },
+
+  emptyText: {
+    fontSize: "1.05rem",
+    lineHeight: "1.6",
+    color: "#666",
+    marginBottom: "2rem",
+  },
+
   contactButton: {
     display: "inline-block",
     backgroundColor: "#b6a06a",
     color: "white",
     padding: "1rem 2rem",
-    borderRadius: "6px",
+    borderRadius: "8px",
     textDecoration: "none",
     marginTop: "1rem",
     transition: "all 0.3s",
-    fontWeight: "500",
+    fontWeight: "600",
+    fontSize: "1rem",
+    letterSpacing: "0.5px",
+    "@media (min-width: 768px)": {
+      padding: "1.2rem 2.5rem",
+      fontSize: "1.1rem",
+    },
   },
-  ternosGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-    gap: "2rem",
-    marginTop: "2rem",
+
+  carregarMaisContainer: {
+    textAlign: "center",
+    marginTop: "4rem",
   },
-  ternoCard: {
-    backgroundColor: "#fff",
-    borderRadius: "12px",
-    overflow: "hidden",
-    boxShadow: "0 4px 15px rgba(0,0,0,0.08)",
+
+  carregarMaisButton: {
+    backgroundColor: "#b6a06a",
+    color: "white",
+    border: "none",
+    padding: "1.2rem 2.5rem",
+    borderRadius: "10px",
+    fontSize: "1.05rem",
+    fontWeight: "600",
     cursor: "pointer",
     transition: "all 0.3s ease",
-    position: "relative",
-    border: "1px solid #f0f0f0",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.8rem",
+    margin: "0 auto",
+    minWidth: "220px",
+    letterSpacing: "0.5px",
   },
-  ternoImageContainer: {
-    height: "350px",
-    overflow: "hidden",
-    position: "relative",
-    backgroundColor: "#f8f8f8",
-  },
-  ternoImage: {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-    transition: "transform 0.5s ease",
-  },
-  imageCount: {
-    position: "absolute",
-    top: "12px",
-    right: "12px",
-    backgroundColor: "rgba(0,0,0,0.75)",
-    color: "white",
-    padding: "0.3rem 0.6rem",
-    borderRadius: "15px",
-    fontSize: "0.8rem",
-    fontWeight: "500",
-  },
-  ternoInfo: {
-    padding: "1.5rem",
-    textAlign: "center",
-    backgroundColor: "#fff",
-  },
-  ternoName: {
-    fontSize: "1.4rem",
-    fontWeight: "400",
-    color: "#5d4037",
-    marginBottom: "0.8rem",
-    lineHeight: "1.3",
-  },
-  ternoDescription: {
-    fontSize: "0.95rem",
+
+  loadingInfinito: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "1rem",
+    padding: "3rem 0",
     color: "#666",
-    lineHeight: "1.5",
-    margin: "0",
+    fontSize: "1rem",
   },
+
   modalOverlay: {
     position: "fixed",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.85)",
+    backgroundColor: "rgba(0,0,0,0.92)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
     padding: "1rem",
-    backdropFilter: "blur(2px)",
+    backdropFilter: "blur(4px)",
+    "@media (min-width: 768px)": {
+      backgroundColor: "rgba(0,0,0,0.88)",
+      padding: "2rem",
+    },
   },
+
   modalContent: {
     backgroundColor: "#fff",
     borderRadius: "12px",
-    maxWidth: "1000px",
+    maxWidth: "1200px",
     width: "100%",
-    maxHeight: "90vh",
+    maxHeight: "95vh",
     overflow: "auto",
     position: "relative",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+    boxShadow: "0 25px 50px rgba(0,0,0,0.4)",
+    "@media (min-width: 768px)": {
+      borderRadius: "16px",
+      maxHeight: "90vh",
+      boxShadow: "0 30px 60px rgba(0,0,0,0.4)",
+    },
   },
+
+  modalContentMobile: {
+    margin: "0",
+    borderRadius: "12px",
+    maxHeight: "95vh",
+  },
+
   closeButton: {
     position: "absolute",
     top: "15px",
     right: "20px",
     fontSize: "1.8rem",
-    background: "rgba(0,0,0,0.6)",
+    background: "rgba(0,0,0,0.8)",
     color: "white",
     border: "none",
     borderRadius: "50%",
-    width: "40px",
-    height: "40px",
+    width: "45px",
+    height: "45px",
     cursor: "pointer",
     zIndex: 10,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    transition: "background-color 0.3s",
+    transition: "all 0.3s",
     fontWeight: "300",
+    "@media (min-width: 768px)": {
+      top: "25px",
+      right: "30px",
+      fontSize: "2rem",
+      width: "50px",
+      height: "50px",
+    },
   },
+
   modalGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    display: "flex",
+    flexDirection: "column",
     minHeight: "500px",
+    "@media (min-width: 768px)": {
+      display: "grid",
+      gridTemplateColumns: "1.3fr 1fr",
+      minHeight: "600px",
+    },
   },
+
+  modalGridMobile: {
+    display: "flex",
+    flexDirection: "column",
+  },
+
   modalImageSection: {
-    padding: "2rem",
+    padding: "2rem 1.5rem",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#fafafa",
+    position: "relative",
+    "@media (min-width: 768px)": {
+      padding: "3.5rem",
+    },
   },
+
+  modalImageSectionMobile: {
+    padding: "1.5rem",
+    minHeight: "350px",
+  },
+
+  imageCarousel: {
+    position: "relative",
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   modalImage: {
     width: "100%",
     height: "auto",
-    maxHeight: "60vh",
+    maxHeight: "500px",
     objectFit: "contain",
     borderRadius: "8px",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+    boxShadow: "0 8px 25px rgba(0,0,0,0.15)",
+    "@media (min-width: 768px)": {
+      maxHeight: "70vh",
+      borderRadius: "12px",
+      boxShadow: "0 12px 30px rgba(0,0,0,0.2)",
+    },
   },
+
+  modalImageMobile: {
+    maxHeight: "350px",
+  },
+
+  navButton: {
+    position: "absolute",
+    top: "50%",
+    transform: "translateY(-50%)",
+    backgroundColor: "rgba(0,0,0,0.75)",
+    color: "white",
+    border: "none",
+    borderRadius: "50%",
+    width: "45px",
+    height: "45px",
+    fontSize: "1.6rem",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "all 0.3s",
+    zIndex: 5,
+  },
+
+  navButtonPrev: {
+    left: "15px",
+  },
+
+  navButtonNext: {
+    right: "15px",
+  },
+
+  imageIndicators: {
+    position: "absolute",
+    bottom: "20px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    display: "flex",
+    gap: "10px",
+    zIndex: 5,
+  },
+
+  indicator: {
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
+    backgroundColor: "rgba(255,255,255,0.5)",
+    cursor: "pointer",
+    transition: "all 0.3s",
+  },
+
+  indicatorActive: {
+    backgroundColor: "white",
+    transform: "scale(1.3)",
+  },
+
   thumbnailContainer: {
     display: "flex",
     gap: "10px",
-    marginTop: "15px",
+    marginTop: "20px",
     justifyContent: "center",
     flexWrap: "wrap",
   },
+
   thumbnail: {
     width: "60px",
     height: "60px",
     objectFit: "cover",
-    borderRadius: "4px",
+    borderRadius: "6px",
     cursor: "pointer",
-    border: "2px solid transparent",
-    transition: "all 0.2s",
+    border: "3px solid transparent",
+    transition: "all 0.3s",
+    opacity: 0.7,
+    "@media (min-width: 768px)": {
+      width: "70px",
+      height: "70px",
+    },
   },
+
+  thumbnailActive: {
+    border: "3px solid #b6a06a",
+    opacity: 1,
+    transform: "scale(1.05)",
+  },
+
   modalInfoSection: {
-    padding: "2.5rem",
+    padding: "2.5rem 2rem",
     display: "flex",
     flexDirection: "column",
     backgroundColor: "#fff",
+    "@media (min-width: 768px)": {
+      padding: "3.5rem 2.5rem",
+    },
   },
+
+  modalInfoSectionMobile: {
+    padding: "2rem 1.5rem",
+  },
+
   modalTitle: {
-    fontSize: "2.2rem",
+    fontSize: "1.8rem",
     fontWeight: "400",
-    color: "#5d4037",
+    color: "#2c2c2c",
     marginBottom: "1.5rem",
     lineHeight: "1.3",
+    fontFamily: '"Cormorant Garamond", serif',
+    "@media (min-width: 768px)": {
+      fontSize: "2.4rem",
+      marginBottom: "2rem",
+    },
   },
+
+  modalTitleMobile: {
+    fontSize: "1.6rem",
+    marginBottom: "1.2rem",
+  },
+
   modalDescription: {
-    fontSize: "1.1rem",
-    lineHeight: "1.8",
+    fontSize: "1.05rem",
+    lineHeight: "1.7",
     color: "#555",
     marginBottom: "2.5rem",
     flex: 1,
+    "@media (min-width: 768px)": {
+      fontSize: "1.15rem",
+      lineHeight: "1.8",
+      marginBottom: "3rem",
+    },
   },
+
+  modalDescriptionMobile: {
+    fontSize: "1rem",
+    lineHeight: "1.6",
+    marginBottom: "2rem",
+  },
+
   modalActions: {
     display: "flex",
     flexDirection: "column",
-    gap: "1rem",
+    gap: "1.2rem",
   },
+
   whatsappButton: {
     backgroundColor: "#25D366",
     color: "white",
-    padding: "1.2rem",
-    borderRadius: "8px",
+    padding: "1.3rem",
+    borderRadius: "10px",
     textAlign: "center",
     textDecoration: "none",
     fontSize: "1.1rem",
-    fontWeight: "500",
+    fontWeight: "600",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: "0.8rem",
-    transition: "all 0.3s",
+    transition: "all 0.3s ease",
+    boxShadow: "0 6px 15px rgba(37, 211, 102, 0.3)",
     border: "none",
     cursor: "pointer",
+    letterSpacing: "0.5px",
+    "@media (min-width: 768px)": {
+      padding: "1.5rem",
+      borderRadius: "12px",
+      fontSize: "1.2rem",
+      gap: "1rem",
+      boxShadow: "0 8px 20px rgba(37, 211, 102, 0.35)",
+    },
+  },
+
+  whatsappButtonMobile: {
+    padding: "1.2rem",
+    fontSize: "1.05rem",
   },
 };
 
