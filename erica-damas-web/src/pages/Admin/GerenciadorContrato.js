@@ -442,7 +442,8 @@ const GerenciadorContratos = () => {
     getContratosFiltrados();
   const totalPaginas = Math.ceil(totalContratos / itensPorPagina);
 
-  // Imprimir contrato
+  // Imprimir contrato - ESTRUTURA EXATA SOLICITADA EM 2 FOLHAS
+  // Imprimir contrato - ESTRUTURA EXATA SOLICITADA EM 2 FOLHAS
   const imprimirContrato = (contrato) => {
     const { cliente, contrato: dadosContrato, total } = contrato;
 
@@ -456,7 +457,7 @@ const GerenciadorContratos = () => {
       <title>Contrato de Locação - ${cliente.nome}</title>
       <style>
         @page {
-          margin: 2cm 1.5cm;
+          margin: 1.2cm;
           size: A4;
         }
         
@@ -468,291 +469,223 @@ const GerenciadorContratos = () => {
         
         body {
           font-family: 'Times New Roman', serif;
-          font-size: 11pt;
-          line-height: 1.4;
+          font-size: 9.5pt;
+          line-height: 1.15;
           color: #000;
           background: white;
-        }
-        
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-          border-bottom: 2px solid #000;
-          padding-bottom: 15px;
-        }
-        
-        .company-name {
-          font-size: 16pt;
-          font-weight: bold;
-          letter-spacing: 1px;
-          margin-bottom: 5px;
-        }
-        
-        .company-info {
-          font-size: 10pt;
-          color: #333;
+          padding: 10px;
         }
         
         .contract-title {
-          font-size: 14pt;
+          font-size: 11pt;
           font-weight: bold;
           text-align: center;
-          margin: 25px 0;
+          margin: 3px 0 8px 0;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          border-bottom: 1px solid #000;
+          padding-bottom: 3px;
         }
         
         .section {
-          margin-bottom: 25px;
-        }
-        
-        .section-title {
-          font-size: 12pt;
-          font-weight: bold;
-          margin-bottom: 15px;
-          text-transform: uppercase;
-          border-bottom: 1px solid #ccc;
-          padding-bottom: 5px;
-        }
-        
-        .parties {
-          margin-bottom: 20px;
+          margin-bottom: 8px;
         }
         
         .party {
-          margin-bottom: 15px;
+          margin-bottom: 6px;
+          text-align: justify;
+          font-size: 9.5pt;
         }
         
-        .party-label {
-          font-weight: bold;
-          text-transform: uppercase;
+        .underline {
+          border-bottom: 1px solid #000;
+          display: inline-block;
+          min-width: 160px;
+          margin: 0 2px;
+          height: 12px;
         }
         
-        .client-info {
-          margin-left: 20px;
-          line-height: 1.6;
+        .underline-small {
+          border-bottom: 1px solid #000;
+          display: inline-block;
+          min-width: 60px;
+          margin: 0 2px;
+          height: 12px;
         }
         
-        .dates-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 15px 0;
+        .underline-large {
+          border-bottom: 1px solid #000;
+          display: inline-block;
+          min-width: 250px;
+          margin: 0 2px;
+          height: 12px;
         }
         
-        .dates-table td {
-          padding: 8px 12px;
-          border: 1px solid #333;
-          font-weight: bold;
-          text-align: center;
-        }
-        
-        .dates-table .label {
-          background-color: #f0f0f0;
-          font-weight: bold;
-          text-transform: uppercase;
-          font-size: 10pt;
+        .dates-line {
+          margin: 4px 0;
+          font-size: 9.5pt;
         }
         
         .items-table {
           width: 100%;
           border-collapse: collapse;
-          margin: 15px 0;
+          margin: 6px 0;
+          font-size: 8.5pt;
         }
         
         .items-table th {
-          background-color: #333;
-          color: white;
-          padding: 10px 8px;
-          text-align: center;
-          font-size: 10pt;
-          text-transform: uppercase;
+          padding: 3px;
+          text-align: left;
           font-weight: bold;
+          border-bottom: 1px solid #000;
+          background-color: #f5f5f5;
         }
         
         .items-table td {
-          padding: 8px;
-          border: 1px solid #333;
+          padding: 3px;
           text-align: left;
           vertical-align: top;
-        }
-        
-        .items-table .center {
-          text-align: center;
-        }
-        
-        .items-table .right {
-          text-align: right;
-        }
-        
-        .total-row {
-          background-color: #f8f8f8;
-          font-weight: bold;
-        }
-        
-        .payment-section {
-          background-color: #f9f9f9;
-          padding: 15px;
-          border: 1px solid #ccc;
-          margin: 15px 0;
-        }
-        
-        .installments-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 10px;
-        }
-        
-        .installments-table th {
-          background-color: #e0e0e0;
-          padding: 8px;
-          border: 1px solid #333;
-          text-align: center;
-          font-size: 10pt;
-          font-weight: bold;
-        }
-        
-        .installments-table td {
-          padding: 6px 8px;
-          border: 1px solid #333;
-          text-align: center;
-          font-size: 10pt;
-        }
-        
-        .signature-section {
-          margin-top: 40px;
-          border-top: 1px solid #ccc;
-          padding-top: 20px;
-        }
-        
-        .signature-box {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 30px;
-        }
-        
-        .signature-line {
-          width: 45%;
-          text-align: center;
-          border-bottom: 1px solid #000;
-          padding-bottom: 5px;
-          margin-bottom: 5px;
-        }
-        
-        .signature-label {
-          font-size: 10pt;
-          font-weight: bold;
-          text-transform: uppercase;
-        }
-        
-        .clause {
-          text-align: justify;
-          margin-bottom: 15px;
-          text-indent: 20px;
+          border-bottom: 1px solid #ddd;
         }
         
         .clause-title {
           font-weight: bold;
+          margin: 8px 0 3px 0;
           text-decoration: underline;
-          margin-bottom: 10px;
+          font-size: 9.5pt;
         }
         
-        .footer {
-          margin-top: 30px;
-          text-align: center;
+        .clause-content {
+          text-align: justify;
+          margin-bottom: 4px;
+          line-height: 1.2;
           font-size: 9pt;
-          color: #666;
-          border-top: 1px solid #ccc;
-          padding-top: 15px;
         }
         
+        .signature-section {
+          margin: 10px 0;
+        }
+        
+        .signature-line {
+          margin: 15px 0;
+          font-size: 9.5pt;
+        }
+        
+        .witness-section {
+          margin-top: 20px;
+        }
+        
+        .witness {
+          margin-bottom: 12px;
+          font-size: 8.5pt;
+        }
+        
+        .page-break {
+          page-break-before: always;
+          margin-top: 15px;
+        }
+        
+        .compact-text {
+          font-size: 9pt;
+          line-height: 1.15;
+        }
+        
+        .no-spacing {
+          margin: 0;
+          padding: 0;
+        }
+        
+        .tight-section {
+          margin-bottom: 6px;
+        }
+        
+        .ultra-compact {
+          font-size: 8.5pt;
+          line-height: 1.1;
+        }
+
         @media print {
-          body { print-color-adjust: exact; }
-          .no-print { display: none; }
+          body { 
+            print-color-adjust: exact;
+            font-size: 9pt;
+          }
         }
       </style>
     </head>
     <body>
-      <div class="header">
-        <div class="company-name">ÉRICA DAMAS LINO EIRELI</div>
-        <div class="company-info">
-          Rua Goiás, 275 - São José - Pará de Minas/MG<br>
-          CNPJ: 11.791.386/0001-13 | Telefone: (37) 3231-0000
-        </div>
-      </div>
-
+      <!-- PRIMEIRA FOLHA -->
       <div class="contract-title">
-        CONTRATO EXTRAJUDICIAL DE RESERVA E LOCAÇÃO<br>
-        DE VESTIDOS, TRAJES E ACESSÓRIOS
+        CONTRATO EXTRAJUDICIAL DE RESERVA E LOCAÇÃO
       </div>
 
-      <div class="section">
-        <div class="section-title">1. IDENTIFICAÇÃO DAS PARTES</div>
+      <div class="section tight-section">
+        <div class="party ultra-compact">
+          Pelo presente instrumento particular de contrato de locação, as partes a seguir identificadas:
+        </div>
         
-        <div class="parties">
-          <div class="party">
-            <div class="party-label">LOCADORA:</div>
-            <div style="margin-left: 20px; margin-top: 8px;">
-              <strong>ÉRICA DAMAS LINO EIRELI</strong>, pessoa jurídica de direito privado, estabelecida na Rua Goiás, 275, São José, Pará de Minas/MG, inscrita no CNPJ sob nº 11.791.386/0001-13.
-            </div>
-          </div>
-          
-          <div class="party">
-            <div class="party-label">LOCATÁRIO(A):</div>
-            <div class="client-info">
-              <strong>${cliente.nome.toUpperCase()}</strong><br>
-              RG: ${formatarRG(cliente.rg)} | CPF: ${formatarCPF(
-      cliente.cpf
-    )}<br>
-              Nacionalidade: ${
-                cliente.nacionalidade
-              } | Data Nasc.: ${formatarDataBrasileira(
-      cliente.dataNascimento
-    )}<br>
-              Profissão: ${cliente.profissao}<br>
-              Endereço: ${cliente.endereco}, ${cliente.numero} - ${
-      cliente.bairro
-    }<br>
-              Cidade: ${cliente.cidade}<br>
-              Telefone: ${formatarTelefone(
-                cliente.telefone
-              )} | Celular: ${formatarTelefone(cliente.celular)}
-            </div>
-          </div>
+        <div class="party ultra-compact">
+          <strong>LOCADORA:</strong> Érica Damas Lino EIRELI, pessoa jurídica de direito privado, inscrita no CNPJ sob nº 11.791386/0001-13, com sede na cidade de Pará de Minas/MG, a Rua Goiás, 275, Bairro: São José, doravante denominada "LOCADORA";
+        </div>
+        
+        <div class="party ultra-compact">
+          <strong>LOCATÁRIO</strong>
+          <span class="underline-large">${cliente.nome.toUpperCase()}</span>
+          , Nacionalidade: 
+          <span class="underline">${
+            cliente.nacionalidade || "Brasileira"
+          }</span>
+          , Profissão: 
+          <span class="underline">${cliente.profissao || ""}</span>
+          , portador(a) do CPF nº 
+          <span class="underline">${formatarCPF(cliente.cpf)}</span>
+          , residente e domiciliado(a) à Rua 
+          <span class="underline">${cliente.endereco || ""}</span>
+          Nº 
+          <span class="underline-small">${cliente.numero || ""}</span>
+          , Bairro: 
+          <span class="underline">${cliente.bairro || ""}</span>
+          , Cidade: 
+          <span class="underline">${cliente.cidade || ""}</span>
+          , Estado: MG, doravante denominado(a) "LOCATÁRIO";
         </div>
 
-        <p class="clause">
-          As partes acima identificadas têm, entre si, justos e acertados o presente <strong>CONTRATO DE RESERVA E LOCAÇÃO</strong>, que se regerá pelas cláusulas seguintes e pelas condições de preço, forma e termo de pagamento descritas no presente instrumento.
-        </p>
+        <div class="party ultra-compact">
+          As partes identificadas acima têm, entre si, justos e acertados o presente CONTRATO EXTRAJUDICIAL DE RESERVA E LOCAÇÃO, que se regerá pelas cláusulas seguintes e pelas condições de preço, forma e termo de pagamentos descritas no presente.
+        </div>
 
-        <table class="dates-table">
-          <tr>
-            <td class="label">Data da Venda</td>
-            <td class="label">Data do Ajuste</td>
-            <td class="label">Data da Retirada</td>
-            <td class="label">Data da Entrega</td>
-          </tr>
-          <tr>
-            <td>${formatarDataBrasileira(dadosContrato.dataVenda)}</td>
-            <td>${formatarDataBrasileira(dadosContrato.dataAjuste)}</td>
-            <td>${formatarDataBrasileira(dadosContrato.dataRetirada)}</td>
-            <td>${formatarDataBrasileira(dadosContrato.dataEntrega)}</td>
-          </tr>
-        </table>
+        <div class="dates-line ultra-compact">
+          <strong>DATA VENDA:</strong> <span class="underline">${formatarDataBrasileira(
+            dadosContrato.dataVenda
+          )}</span>
+        </div>
+        <div class="dates-line ultra-compact">
+          <strong>DATA AJUSTE:</strong> <span class="underline">${formatarDataBrasileira(
+            dadosContrato.dataAjuste
+          )}</span>
+        </div>
+        <div class="dates-line ultra-compact">
+          <strong>DATA DA RETIRADA DA LOCAÇÃO:</strong> <span class="underline">${formatarDataBrasileira(
+            dadosContrato.dataRetirada
+          )}</span>
+        </div>
+        <div class="dates-line ultra-compact">
+          <strong>DATA DA ENTREGA (DEVOLUÇÃO) DA LOCAÇÃO:</strong> <span class="underline">${formatarDataBrasileira(
+            dadosContrato.dataEntrega
+          )}</span>
+        </div>
       </div>
 
-      <div class="section">
-        <div class="section-title">2. DO OBJETO DO CONTRATO</div>
-        
-        <p class="clause">
-          <span class="clause-title">Cláusula 1ª.</span> É objeto do presente contrato a locação dos seguintes trajes e acessórios:
-        </p>
+      <div class="section tight-section">
+        <div class="clause-title">2. DO OBJETO DO CONTRATO</div>
+        <div class="clause-content ultra-compact">
+          <strong>Cláusula 1ª.</strong> É objeto do presente contrato a locação dos seguintes trajes e acessórios.
+        </div>
 
         <table class="items-table">
           <thead>
             <tr>
-              <th style="width: 10%">CÓDIGO</th>
-              <th style="width: 65%">ESPECIFICAÇÃO</th>
-              <th style="width: 25%">VALOR (R$)</th>
+              <th style="width: 15%">CÓDIGO</th>
+              <th style="width: 55%">ESPECIFICAÇÃO</th>
+              <th style="width: 30%">VALOR</th>
             </tr>
           </thead>
           <tbody>
@@ -760,115 +693,254 @@ const GerenciadorContratos = () => {
               .map(
                 (item) => `
               <tr>
-                <td class="center">${item.codigo || "-"}</td>
-                <td>${item.especificacao || "-"}</td>
-                <td class="right">R$ ${formatarValor(item.valor)}</td>
+                <td>${item.codigo || ""}</td>
+                <td>${item.especificacao || ""}</td>
+                <td>R$ ${formatarValor(item.valor)}</td>
               </tr>
             `
               )
               .join("")}
-            <tr class="total-row">
-              <td colspan="2" class="right"><strong>VALOR TOTAL:</strong></td>
-              <td class="right"><strong>R$ ${formatarValor(total)}</strong></td>
+            <tr style="background-color: #f8f8f8;">
+              <td colspan="2" style="text-align: right;"><strong>Total bruto: R$</strong></td>
+              <td><strong>${formatarValor(total)}</strong></td>
+            </tr>
+            <tr>
+              <td colspan="2" style="text-align: right;"><strong>Desconto aplicado: R$</strong></td>
+              <td><strong>0,00</strong></td>
+            </tr>
+            <tr style="background-color: #f0f0f0;">
+              <td colspan="2" style="text-align: right;"><strong>Total liquido da locação: R$</strong></td>
+              <td><strong>${formatarValor(total)}</strong></td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div class="section">
-        <div class="section-title">3. FORMA DE PAGAMENTO CONTRATADA</div>
-        
-        <div class="payment-section">
-          <p><strong>Forma de pagamento especificada:</strong> ${
-            dadosContrato.formaPagamento || "A definir"
-          }</p>
-          
-          ${
-            dadosContrato.parcelas.length > 0
-              ? `
-            <p style="margin-top: 15px;"><strong>Parcelamento acordado:</strong></p>
-            <table class="installments-table">
-              <thead>
-                <tr>
-                  <th>Parcela</th>
-                  <th>Valor (R$)</th>
-                  <th>Vencimento</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${dadosContrato.parcelas
-                  .map(
-                    (parcela) => `
-                  <tr>
-                    <td>${parcela.numero}ª</td>
-                    <td>R$ ${formatarValor(parcela.valor)}</td>
-                    <td>${formatarDataBrasileira(parcela.vencimento)}</td>
-                  </tr>
-                `
-                  )
-                  .join("")}
-              </tbody>
-            </table>
-          `
-              : ""
-          }
+      <div class="section tight-section">
+        <div class="clause-title">3. FORMA DE PAGAMENTO CONTRATADA:</div>
+        <div class="clause-content ultra-compact">
+          Especificar: <span class="underline-large">${
+            FORMAS_PAGAMENTO.find(
+              (f) => f.value === dadosContrato.formaPagamento
+            )?.label ||
+            dadosContrato.formaPagamento ||
+            ""
+          }</span>
         </div>
-      </div>
+        
+        <div class="clause-content ultra-compact">
+          Observação: <span class="underline-large">${
+            dadosContrato.observacoesPagamento || ""
+          }</span>
+        </div>
 
-      <div class="section">
-        <div class="section-title">4. DAS OBRIGAÇÕES E RESPONSABILIDADES</div>
+        <div class="clause-content ultra-compact no-spacing">
+          Todos os ajustes foram feitos na hora, aprovados e conferidos pela cliente, a mesma efetuou os ajustes e está levando o vestido de imediato.
+        </div>
         
-        <p class="clause">
-          <span class="clause-title">Cláusula 2ª.</span> O LOCATÁRIO compromete-se a retirar a(s) peça(s) na data acordada, em perfeito estado de conservação, limpa(s) e devidamente ajustada(s).
-        </p>
-        
-        <p class="clause">
-          <span class="clause-title">Cláusula 3ª.</span> O LOCATÁRIO obriga-se a devolver a(s) peça(s) na data estabelecida, no mesmo estado em que foi(ram) retirada(s), sob pena de arcar com os custos de limpeza, reparos ou reposição.
-        </p>
-        
-        <p class="clause">
-          <span class="clause-title">Cláusula 4ª.</span> Em caso de danos, manchas ou avarias na(s) peça(s), o LOCATÁRIO será responsável pelo pagamento integral do valor de reposição da peça danificada.
-        </p>
-      </div>
+        <div class="clause-content ultra-compact no-spacing">
+          Recebi a peça conforme combinado, com ajustes, limpa, sem danos e na data combinada.
+        </div>
 
-      <div class="signature-section">
-        <p style="text-align: center; margin-bottom: 20px;">
-          <strong>TERMO DE RECEBIMENTO</strong>
-        </p>
-        
-        <p class="clause">
-          Declaro que recebi a(s) peça(s) conforme especificado neste contrato, em perfeito estado de conservação, limpa(s), sem danos e devidamente ajustada(s), comprometendo-me a devolvê-la(s) na data acordada.
-        </p>
-
-        <div style="display: flex; justify-content: space-between; margin-top: 40px;">
-          <div style="width: 30%; text-align: center;">
-            <div style="border-bottom: 1px solid #000; margin-bottom: 5px; height: 40px;"></div>
-            <div class="signature-label">Data: ___/___/______</div>
+        <div class="signature-section tight-section">
+          <div class="clause-content ultra-compact no-spacing">
+            Pará de Minas – MG, 
+            <span class="underline-small">${new Date().getDate()}</span>
+            de 
+            <span class="underline-small">${new Date().toLocaleDateString(
+              "pt-BR",
+              { month: "long" }
+            )}</span>
+            de 
+            <span class="underline-small">${new Date().getFullYear()}</span>
           </div>
           
-          <div style="width: 60%; text-align: center;">
-            <div style="border-bottom: 1px solid #000; margin-bottom: 5px; height: 40px;"></div>
-            <div class="signature-label">Assinatura do Locatário</div>
-            <div style="font-size: 9pt; margin-top: 5px;">${cliente.nome}</div>
+          <div class="clause-content ultra-compact no-spacing">
+            Assinatura do cliente recebedor: <span class="underline-large"></span>
           </div>
         </div>
 
-        <div style="display: flex; justify-content: center; margin-top: 40px;">
-          <div style="width: 60%; text-align: center;">
-            <div style="border-bottom: 1px solid #000; margin-bottom: 5px; height: 40px;"></div>
-            <div class="signature-label">Érica Damas Lino Eireli</div>
-            <div style="font-size: 9pt; margin-top: 5px;">Locadora</div>
-          </div>
+        <div class="clause-content ultra-compact no-spacing">
+          têm entre si justo e contratado o que segue, com base nas cláusulas e condições abaixo:
         </div>
       </div>
 
-      <div class="footer">
-        Pará de Minas/MG, ${new Date().toLocaleDateString("pt-BR", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        })}<br>
-        Este contrato foi gerado eletronicamente e possui validade jurídica.
+      <!-- CLÁUSULAS 1-4 NA PRIMEIRA FOLHA -->
+      <div class="section tight-section">
+        <div class="clause-title">CLÁUSULA 1 – OBJETO</div>
+        <div class="clause-content ultra-compact">
+          1.1 O presente contrato tem por objeto a locação de trajes e acessórios, conforme especificações acordadas entre as partes no ato da contratação.
+        </div>
+      </div>
+
+      <div class="section tight-section">
+        <div class="clause-title">CLÁUSULA 2 – OBRIGAÇÕES DO LOCATÁRIO</div>
+        <div class="clause-content ultra-compact">
+          2.1 Informações e Ajustes: O LOCATÁRIO deverá fornecer todas as informações necessárias para a locação e comparecer na data agendada para prova e ajuste das peças, utilizando os sapatos que usará no evento. A ausência ou descumprimento dessas obrigações isenta a LOCADORA de possíveis falhas ao realizar os ajustes, ou até mesmo de realizar os ajustes.
+        </div>
+        <div class="clause-content ultra-compact">
+          2.2 Limitações dos Ajustes: Os ajustes realizados são simples, manuais e sem corte de tecido, consistindo apenas em dobras costuradas à mão. Tais ajustes podem apresentar marcas aparentes, folgas ou papos, sendo considerados provisórios. Costuras manuais não têm a mesma resistência das feitas à máquina e podem se soltar durante o uso.
+        </div>
+        <div class="clause-content ultra-compact">
+          2.3 Estado das Peças: As peças locadas são adaptadas ao cliente para uso único, sem garantia de ajuste perfeito. Não são realizados rebordados ou alterações estruturais, apenas ajustes simples.
+        </div>
+        <div class="clause-content ultra-compact">
+          2.4 Primeiro Aluguel: A LOCADORA não realiza nem garante primeiro aluguel em peças prontas para locação.
+        </div>
+        <div class="clause-content ultra-compact">
+          2.5 Responsabilidade por Acessórios: Os acessórios entregues (bolsas, sapatos, cintos, cabides, capas etc.) serão fornecidos em perfeitas condições. O LOCATÁRIO responderá pelo valor de reposição em caso de danos ou extravio.
+        </div>
+      </div>
+
+      <!-- SEGUNDA FOLHA -->
+      <div class="page-break"></div>
+
+      <!-- CONTINUAÇÃO CLÁUSULA 2 -->
+      <div class="section tight-section">
+        <div class="clause-content ultra-compact">
+          2.6 Proibição de Alterações Não Autorizadas: É vedado ao LOCATÁRIO realizar qualquer alteração nos ajustes feitos pela LOCADORA sem autorização expressa e por escrito. O descumprimento implicará multa de até 5 (cinco) vezes o valor da locação.
+        </div>
+        <div class="clause-content ultra-compact">
+          2.7 Conferência e Aceite das Peças: Todas as peças devem ser conferidas ao todo, higienização das peças, fechos, zíper, ajustes efetuados, barras, costuras no geral e outros mais, e apenas após provadas, efetuar a assinatura do termo de retirada,(assinatura do cliente recebedor).
+        </div>
+        <div class="clause-content ultra-compact">
+          O LOCATÁRIO assume integral responsabilidade pela guarda, conservação e devolução das peças, não sendo aceitas reclamações posteriores.
+        </div>
+        <div class="clause-content ultra-compact">
+          2.8 Pagamento: A liberação dos itens locados está condicionada à quitação total do valor contratual até a data da retirada. São aceitas as seguintes formas de pagamento: Pix, dinheiro e cartão de crédito (bandeiras Visa e Mastercard).Na falta da quitação total da retirada, valores pagos anteriores serão retidos a título de reserva e não serão devolvidos.
+        </div>
+      </div>
+
+      <div class="section tight-section">
+        <div class="clause-title">CLÁUSULA 3 – OBRIGAÇÕES DA LOCADORA</div>
+        <div class="clause-content ultra-compact">
+          3.1 Disponibilidade: A LOCADORA disponibilizará a loja para retirada e devolução de peças de segunda a sexta-feira, das 9h às 18h, e aos sábados das 9h às 12h, exceto feriados.
+        </div>
+        <div class="clause-content ultra-compact">
+          3.2 Retirada de Itens: O LOCATÁRIO compromete-se a retirar os itens na data estipulada. A LOCADORA não se responsabiliza por peças não retiradas, sendo devido o valor integral da locação, ainda que a peça não tenha sido utilizada.
+        </div>
+        <div class="clause-content ultra-compact">
+          3.3 Substituição de Peças: A LOCADORA poderá substituir peças por similares, de acordo com a disponibilidade ou necessidade estética, sem necessidade de autorização prévia.
+        </div>
+      </div>
+
+      <div class="section tight-section">
+        <div class="clause-title">CLÁUSULA 4 – CANCELAMENTO, MULTAS, TROCAS E CRÉDITO</div>
+        <div class="clause-content ultra-compact">
+          4.1 Rescisão: O contrato poderá ser rescindido por qualquer das partes mediante aviso prévio por escrito. Aplicam-se as seguintes penalidades:
+        </div>
+        <div class="clause-content ultra-compact">
+          20% (vinte por cento) do valor total do contrato, no caso de peças sem ajustes;
+        </div>
+        <div class="clause-content ultra-compact">
+          100% (cem por cento) do valor total, no caso de peças ajustadas ou não retiradas na data combinada.
+        </div>
+        <div class="clause-content ultra-compact">
+          4.2 Sinal (Arras): Após o pagamento do sinal, não haverá devolução do valor em caso de cancelamento por parte do LOCATÁRIO. O valor poderá ser convertido em crédito, válido por 365 dias, descontadas eventuais penalidades. Após esse prazo, o crédito perderá a validade.
+        </div>
+        <div class="clause-content ultra-compact">
+          4.3 Cancelamento pela LOCADORA: No caso de cancelamento por parte da LOCADORA, serão devolvidos ao LOCATÁRIO os valores referentes aos serviços não prestados.
+        </div>
+        <div class="clause-content ultra-compact">
+          4.4 Troca de Reserva: A troca de reserva estará sujeita a cobrança de taxa correspondente a 10% (dez por cento) do valor da peça retirada do contrato.
+        </div>
+      </div>
+
+      <div class="section tight-section">
+        <div class="clause-title">CLÁUSULA 5 – CONDIÇÕES GERAIS, CUIDADOS E MULTAS</div>
+        <div class="clause-content ultra-compact">
+          5.1 Sujeira e Manchas: Será aplicada multa de R$ 50,00 (cinquenta reais) por peça devolvida com sujeira excessiva, manchas ou arrasto de barra.
+        </div>
+        <div class="clause-content ultra-compact">
+          5.2 Danos e Extravio: Em caso de danos irreparáveis ou extravio, o LOCATÁRIO pagará indenização correspondente a 5 (cinco) vezes o valor da locação do item.
+        </div>
+        <div class="clause-content ultra-compact">
+          5.3 Atraso na Devolução: A devolução fora do prazo gerará multa diária de 10% (dez por cento) sobre o valor da locação.
+        </div>
+        <div class="clause-content ultra-compact">
+          5.4 Extravio: A não devolução após 10 (dez) dias será considerada extravio, sujeitando o LOCATÁRIO à indenização de 5 (cinco) vezes o valor da peça, com prazo de pagamento de até 30 dias.
+        </div>
+        <div class="clause-content ultra-compact">
+          5.5 Avaliação das Peças: A LOCADORA terá o prazo de até 10 (dez) dias úteis, a contar da data da devolução, para realizar a avaliação das peças. Em caso de constatação de danos, o LOCATÁRIO será notificado.
+        </div>
+        <div class="clause-content ultra-compact">
+          5.6 Alterações Proibidas: É terminantemente proibida qualquer modificação física nas peças locadas, tais como corte, bainha, costura ou outras intervenções.
+        </div>
+      </div>
+
+      <div class="section tight-section">
+        <div class="clause-title">CLÁUSULA 6 – USO DE IMAGEM</div>
+        <div class="clause-content ultra-compact">
+          6.1 O LOCATÁRIO autoriza, de forma gratuita e irrevogável, o uso de sua imagem, decorrente do uso das peças locadas, para fins de divulgação da LOCADORA, em quaisquer meios de comunicação, físicos ou digitais.
+        </div>
+      </div>
+
+      <div class="section tight-section">
+        <div class="clause-title">CLÁUSULA 7 – TÍTULO EXECUTIVO</div>
+        <div class="clause-content ultra-compact">
+          7.1 Este contrato constitui título executivo extrajudicial, nos termos do artigo 784, inciso III, do Código de Processo Civil, para fins de cobrança de valores não pagos, bem como de indenizações por danos ou extravios dos itens locados.
+        </div>
+      </div>
+
+      <div class="section tight-section">
+        <div class="clause-title">CLÁUSULA 8 – FORO</div>
+        <div class="clause-content ultra-compact">
+          8.1 Para dirimir quaisquer controvérsias oriundas deste contrato, as partes elegem o foro da Comarca de Pará de Minas/MG, renunciando a qualquer outro, por mais privilegiado que seja.
+        </div>
+      </div>
+
+      <div class="section tight-section">
+        <div class="clause-content ultra-compact">
+          E, por estarem justas e contratadas, as partes assinam o presente instrumento em 2 (duas) vias de igual teor, juntamente com as testemunhas abaixo.
+        </div>
+        
+        <div class="clause-content ultra-compact">
+          Pará de Minas/MG, 
+          <span class="underline-small">${new Date().getDate()}</span>
+          de 
+          <span class="underline-small">${new Date().toLocaleDateString(
+            "pt-BR",
+            { month: "long" }
+          )}</span>
+          de 
+          <span class="underline-small">20${new Date()
+            .getFullYear()
+            .toString()
+            .slice(-2)}</span>
+        </div>
+      </div>
+
+      <div class="signature-section tight-section">
+        <div class="signature-line ultra-compact">
+          <strong>LOCADORA:</strong><br>
+          Érica Damas Lino Eireli<br>
+          Representante Legal: <span class="underline-large"></span>
+        </div>
+        
+        <div class="signature-line ultra-compact">
+          <strong>LOCATÁRIO:</strong><span class="underline-large"></span><br>
+          Nome: <span class="underline">${
+            cliente.nome
+          }</span> CPF: <span class="underline">${formatarCPF(
+      cliente.cpf
+    )}</span>
+        </div>
+      </div>
+
+      <div class="witness-section">
+        <div class="witness ultra-compact">
+          <strong>TESTEMUNHA 1:</strong><br>
+          Nome:<br>
+          CPF:<br>
+          Assinatura: <span class="underline-large"></span>
+        </div>
+        
+        <div class="witness ultra-compact">
+          <strong>TESTEMUNHA 2:</strong><br>
+          Nome:<br>
+          CPF:<br>
+          Assinatura: <span class="underline-large"></span>
+        </div>
       </div>
 
       <script>
@@ -882,7 +954,6 @@ const GerenciadorContratos = () => {
 
     janela.document.close();
   };
-
   return (
     <div style={styles.container}>
       <button
