@@ -22,8 +22,8 @@ const produtoSchema = new mongoose.Schema(
     tipo: {
       type: String,
       enum: {
-        values: ["vestidos", "ternos"],
-        message: "Tipo deve ser vestidos ou ternos",
+        values: ["vestidos", "ternos", "debutantes"], // ✅ ADICIONE "debutantes"
+        message: "Tipo deve ser vestidos, ternos ou debutantes", // ✅ ATUALIZE a mensagem
       },
       required: [true, "Tipo é obrigatório"],
     },
