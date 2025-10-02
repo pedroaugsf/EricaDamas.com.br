@@ -134,13 +134,14 @@ const AboutPage = () => {
           .mobile-cta {
             padding: 3.5rem 1.25rem !important;
             text-align: center !important;
-            background: linear-gradient(135deg, #5d4037 0%, #4a2c20 100%) !important;
+            background: #ffffff !important;
+            border-top: 1px solid rgba(182, 160, 106, 0.2) !important;
           }
           
           .mobile-cta-title {
             font-size: 2rem !important;
             margin-bottom: 1.25rem !important;
-            color: #fff !important;
+            color: #5d4037 !important;
             font-weight: 500 !important;
           }
           
@@ -148,7 +149,7 @@ const AboutPage = () => {
             font-size: 1.1rem !important;
             margin-bottom: 2.5rem !important;
             line-height: 1.6 !important;
-            color: rgba(255,255,255,0.95) !important;
+            color: #444 !important;
             max-width: 400px !important;
             margin-left: auto !important;
             margin-right: auto !important;
@@ -426,7 +427,7 @@ const AboutPage = () => {
   );
 };
 
-// Styles permanecem exatamente iguais para desktop
+// Styles atualizados para a seção CTA com fundo branco
 const styles = {
   container: {
     maxWidth: "100%",
@@ -512,11 +513,11 @@ const styles = {
     color: "#666",
   },
   ctaSection: {
-    backgroundColor: "#5d4037",
-    color: "#fff",
+    backgroundColor: "#ffffff",
+    color: "#333",
     padding: "4rem 2rem",
     textAlign: "center",
-    background: "linear-gradient(135deg, #5d4037 0%, #4a2c20 100%)",
+    borderTop: "1px solid rgba(182, 160, 106, 0.2)",
   },
   ctaContent: {
     maxWidth: "600px",
@@ -526,12 +527,12 @@ const styles = {
     fontSize: "2.2rem",
     fontWeight: "400",
     marginBottom: "1rem",
-    color: "#fff",
+    color: "#5d4037",
   },
   ctaText: {
     fontSize: "1.1rem",
     marginBottom: "2rem",
-    color: "#fff",
+    color: "#444",
     opacity: 0.9,
     lineHeight: "1.6",
   },

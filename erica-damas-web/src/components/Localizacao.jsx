@@ -350,7 +350,7 @@ const mobileStyles = {
   },
 };
 
-// Estilos Desktop (originais)
+// Estilos Desktop (atualizados - fundo marrom trocado por preto)
 const desktopStyles = {
   container: {
     padding: "0",
@@ -382,7 +382,7 @@ const desktopStyles = {
     gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
   },
   infoContainer: {
-    backgroundColor: "#3a2a24",
+    backgroundColor: "#000000", // Mudei de #3a2a24 (marrom) para #000000 (preto)
     color: "#fff",
     display: "flex",
     flexDirection: "column",

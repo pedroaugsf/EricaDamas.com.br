@@ -137,7 +137,7 @@ const NossosServicos = () => {
         display: flex;
         flex-direction: column;
         height: auto;
-        min-height: 320px;
+        min-height: 280px;
         border: 1px solid rgba(182, 160, 106, 0.15);
       }
       
@@ -179,54 +179,10 @@ const NossosServicos = () => {
         color: #666;
         line-height: 1.6;
         text-align: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 0;
         flex-grow: 1;
-      }
-      
-      .servico-btn {
-        background: linear-gradient(to right, #b6a06a, #d4c194);
-        color: white;
-        border: none;
-        padding: 0.9rem 1.8rem;
-        border-radius: 50px;
-        font-weight: 500;
-        font-size: 0.9rem;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        align-self: center;
-        box-shadow: 0 4px 15px rgba(182, 160, 106, 0.3);
-        letter-spacing: 0.5px;
-      }
-      
-      .servico-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(182, 160, 106, 0.4);
-      }
-      
-      .servico-btn:active {
-        transform: translateY(0);
-      }
-      
-      /* Indicadores de scroll */
-      .scroll-indicators {
         display: flex;
-        justify-content: center;
-        margin-top: 1.5rem;
-        gap: 0.6rem;
-      }
-      
-      .scroll-indicator {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: rgba(182, 160, 106, 0.3);
-        transition: all 0.3s ease;
-      }
-      
-      .scroll-indicator.active {
-        background: #b6a06a;
-        width: 20px;
-        border-radius: 10px;
+        align-items: center;
       }
       
       /* Versão expandida para tablets e desktop */
@@ -243,7 +199,7 @@ const NossosServicos = () => {
         .servico-card-mobile {
           flex: none;
           margin-right: 0;
-          min-height: 300px;
+          min-height: 260px;
         }
         
         .scroll-indicators {
@@ -257,7 +213,7 @@ const NossosServicos = () => {
         }
         
         .servico-card-mobile {
-          min-height: 320px;
+          min-height: 280px;
         }
       }
       
@@ -350,12 +306,6 @@ const NossosServicos = () => {
               <div className="servico-decorator"></div>
               <h3 className="servico-titulo-mobile">{servico.titulo}</h3>
               <p className="servico-descricao-mobile">{servico.descricao}</p>
-              <button
-                className="servico-btn"
-                aria-label={`Saiba mais sobre ${servico.titulo}`}
-              >
-                Saiba mais
-              </button>
             </div>
           ))}
         </div>
