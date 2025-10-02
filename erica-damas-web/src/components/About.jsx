@@ -27,7 +27,7 @@ const AboutPage = () => {
   return (
     <>
       <Helmet>
-        <title>Erica Damas| Quem Somos</title>
+        <title>Erica Damas- Loja de noivas em Pará de Minas</title>
         <meta
           name="description"
           content="Loja especializada em vestidos de noiva e ternos finos. Referência em criar peças únicas para momentos especiais."
