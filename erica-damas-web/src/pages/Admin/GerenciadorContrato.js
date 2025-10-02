@@ -15,6 +15,7 @@ const GerenciadorContratos = () => {
   const [itensPorPagina, setItensPorPagina] = useState(10);
   const [filtroData, setFiltroData] = useState("semana"); // todos, semana, mes
   const [pesquisa, setPesquisa] = useState("");
+  const [mostrarContratos, setMostrarContratos] = useState(false);
 
   // Estados do formulário
   const [dadosCliente, setDadosCliente] = useState({
@@ -88,6 +89,10 @@ const GerenciadorContratos = () => {
   useEffect(() => {
     carregarContratos();
   }, []);
+
+  const toggleMostrarContratos = () => {
+    setMostrarContratos(!mostrarContratos);
+  };
 
   // Salvar contratos no banco de dados e localStorage
   const salvarContratos = async (novoContrato, isUpdate = false) => {
@@ -982,6 +987,18 @@ const GerenciadorContratos = () => {
         >
           + Novo Contrato
         </button>
+
+        <button
+          onClick={toggleMostrarContratos}
+          style={{
+            ...styles.newButton,
+            backgroundColor: mostrarContratos ? "#6c757d" : "#b6a06a",
+            position: "relative",
+          }}
+          disabled={carregando}
+        >
+          {mostrarContratos ? "Ocultar Contratos" : "Ver Contratos Feitos"}
+        </button>
       </div>
 
       {mostrarFormulario && (
@@ -1520,193 +1537,191 @@ const GerenciadorContratos = () => {
         </div>
       )}
 
-      {/* FILTROS E PESQUISA */}
-      <div style={styles.filtrosContainer}>
-        <div style={styles.filtroItem}>
-          <label>Período:</label>
-          <select
-            value={filtroData}
-            onChange={(e) => setFiltroData(e.target.value)}
-            style={styles.filtroSelect}
-          >
-            <option value="semana">Esta semana</option>
-            <option value="mes">Este mês</option>
-            <option value="todos">Todos</option>
-          </select>
-        </div>
+      {/* ⭐⭐ ENVOLVER TODO O BLOCO DE CONTRATOS ⭐⭐ */}
+      {mostrarContratos && (
+        <div style={styles.contractsSection}>
+          {/* FILTROS E PESQUISA */}
+          <div style={styles.filtrosContainer}>
+            <div style={styles.filtroItem}>
+              <label>Período:</label>
+              <select
+                value={filtroData}
+                onChange={(e) => setFiltroData(e.target.value)}
+                style={styles.filtroSelect}
+              >
+                <option value="semana">Esta semana</option>
+                <option value="mes">Este mês</option>
+                <option value="todos">Todos</option>
+              </select>
+            </div>
 
-        <div style={styles.filtroItem}>
-          <label>Itens por página:</label>
-          <select
-            value={itensPorPagina}
-            onChange={(e) => setItensPorPagina(Number(e.target.value))}
-            style={styles.filtroSelect}
-          >
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-          </select>
-        </div>
+            <div style={styles.filtroItem}>
+              <label>Itens por página:</label>
+              <select
+                value={itensPorPagina}
+                onChange={(e) => setItensPorPagina(Number(e.target.value))}
+                style={styles.filtroSelect}
+              >
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+              </select>
+            </div>
 
-        <div style={styles.pesquisaContainer}>
-          <input
-            type="text"
-            placeholder="Pesquisar por nome, CPF ou item..."
-            value={pesquisa}
-            onChange={(e) => setPesquisa(e.target.value)}
-            style={styles.pesquisaInput}
-          />
-        </div>
-      </div>
-
-      {/* LISTA DE CONTRATOS */}
-      <div style={styles.contractsList}>
-        <h2 style={styles.subtitulo}>
-          Contratos{" "}
-          {filtroData === "semana"
-            ? "da Semana"
-            : filtroData === "mes"
-            ? "do Mês"
-            : ""}
-          <span style={styles.contratosCount}>
-            {totalContratos} {totalContratos === 1 ? "contrato" : "contratos"}
-          </span>
-        </h2>
-
-        {carregando && (
-          <div style={styles.loading}>
-            <div style={styles.spinner}></div>
-            <p>Carregando contratos...</p>
+            <div style={styles.pesquisaContainer}>
+              <input
+                type="text"
+                placeholder="Pesquisar por nome, CPF ou item..."
+                value={pesquisa}
+                onChange={(e) => setPesquisa(e.target.value)}
+                style={styles.pesquisaInput}
+              />
+            </div>
           </div>
-        )}
 
-        {!carregando && contratosPaginados.length === 0 ? (
-          <div style={styles.emptyMessage}>
-            <p>Nenhum contrato encontrado para os filtros selecionados.</p>
-          </div>
-        ) : (
-          <div style={styles.compactContractsList}>
-            {contratosPaginados.map((contrato) => (
-              <div key={contrato.id} style={styles.compactContractCard}>
-                <div style={styles.compactContractInfo}>
-                  <div style={styles.compactContractHeader}>
-                    <h3 style={styles.compactContractName}>
-                      {contrato.cliente.nome}
-                    </h3>
-                    <span style={styles.compactContractTotal}>
-                      R$ {formatarValor(contrato.total)}
-                    </span>
-                  </div>
+          {/* LISTA DE CONTRATOS */}
+          <div style={styles.contractsList}>
+            <h2 style={styles.subtitulo}>
+              Contratos{" "}
+              {filtroData === "semana"
+                ? "da Semana"
+                : filtroData === "mes"
+                ? "do Mês"
+                : ""}
+              <span style={styles.contratosCount}>
+                {totalContratos}{" "}
+                {totalContratos === 1 ? "contrato" : "contratos"}
+              </span>
+            </h2>
 
-                  <div style={styles.compactContractDetails}>
-                    <div style={styles.compactContractDetail}>
-                      <span style={styles.detailLabel}>Retirada:</span>
-                      <span>
-                        {formatarDataBrasileira(contrato.contrato.dataRetirada)}
-                      </span>
-                    </div>
-                    <div style={styles.compactContractDetail}>
-                      <span style={styles.detailLabel}>Entrega:</span>
-                      <span>
-                        {formatarDataBrasileira(contrato.contrato.dataEntrega)}
-                      </span>
-                    </div>
-                    <div style={styles.compactContractDetail}>
-                      <span style={styles.detailLabel}>Itens:</span>
-                      <span>{contrato.contrato.itens.length}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={styles.compactContractActions}>
-                  <button
-                    onClick={() => imprimirContrato(contrato)}
-                    style={styles.compactActionButton}
-                    title="Imprimir Contrato"
-                  >
-                    🖨️
-                  </button>
-                  <button
-                    onClick={() => editarContrato(contrato)}
-                    style={styles.compactActionButton}
-                    title="Editar Contrato"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    onClick={() => excluirContrato(contrato.id)}
-                    style={styles.compactActionButton}
-                    title="Excluir Contrato"
-                  >
-                    🗑️
-                  </button>
-                </div>
+            {carregando && (
+              <div style={styles.loading}>
+                <div style={styles.spinner}></div>
+                <p>Carregando contratos...</p>
               </div>
-            ))}
+            )}
+
+            {!carregando && contratosPaginados.length === 0 ? (
+              <div style={styles.emptyMessage}>
+                <p>Nenhum contrato encontrado para os filtros selecionados.</p>
+              </div>
+            ) : (
+              <div style={styles.compactContractsList}>
+                {contratosPaginados.map((contrato) => (
+                  <div key={contrato.id} style={styles.compactContractCard}>
+                    <div style={styles.compactContractInfo}>
+                      <div style={styles.compactContractHeader}>
+                        <h3 style={styles.compactContractName}>
+                          {contrato.cliente.nome}
+                        </h3>
+                        <span style={styles.compactContractTotal}>
+                          R$ {formatarValor(contrato.total)}
+                        </span>
+                      </div>
+
+                      <div style={styles.compactContractDetails}>
+                        <div style={styles.compactContractDetail}>
+                          <span style={styles.detailLabel}>Retirada:</span>
+                          <span>
+                            {formatarDataBrasileira(
+                              contrato.contrato.dataRetirada
+                            )}
+                          </span>
+                        </div>
+                        <div style={styles.compactContractDetail}>
+                          <span style={styles.detailLabel}>Entrega:</span>
+                          <span>
+                            {formatarDataBrasileira(
+                              contrato.contrato.dataEntrega
+                            )}
+                          </span>
+                        </div>
+                        <div style={styles.compactContractDetail}>
+                          <span style={styles.detailLabel}>Itens:</span>
+                          <span>{contrato.contrato.itens.length}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={styles.compactContractActions}>
+                      <button
+                        onClick={() => imprimirContrato(contrato)}
+                        style={styles.compactActionButton}
+                        title="Imprimir Contrato"
+                      >
+                        🖨️
+                      </button>
+                      <button
+                        onClick={() => editarContrato(contrato)}
+                        style={styles.compactActionButton}
+                        title="Editar Contrato"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => excluirContrato(contrato.id)}
+                        style={styles.compactActionButton}
+                        title="Excluir Contrato"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* PAGINAÇÃO */}
+            {totalPaginas > 1 && (
+              <div style={styles.paginacao}>
+                <button
+                  onClick={() => setPaginaAtual(1)}
+                  disabled={paginaAtual === 1}
+                  style={
+                    paginaAtual === 1
+                      ? styles.paginaBotaoDesabilitado
+                      : styles.paginaBotao
+                  }
+                >
+                  &laquo;
+                </button>
+
+                <button
+                  onClick={() => setPaginaAtual(paginaAtual - 1)}
+                  disabled={paginaAtual === 1}
+                  style={
+                    paginaAtual === 1
+                      ? styles.paginaBotaoDesabilitado
+                      : styles.paginaBotao
+                  }
+                >
+                  &lt;
+                </button>
+
+                <span style={styles.paginaInfo}>
+                  Página {paginaAtual} de {totalPaginas}
+                </span>
+
+                <button
+                  onClick={() => setPaginaAtual(paginaAtual + 1)}
+                  disabled={paginaAtual === totalPaginas}
+                  style={
+                    paginaAtual === totalPaginas
+                      ? styles.paginaBotaoDesabilitado
+                      : styles.paginaBotao
+                  }
+                >
+                  &gt;
+                </button>
+              </div>
+            )}
           </div>
-        )}
-
-        {/* PAGINAÇÃO */}
-        {totalPaginas > 1 && (
-          <div style={styles.paginacao}>
-            <button
-              onClick={() => setPaginaAtual(1)}
-              disabled={paginaAtual === 1}
-              style={
-                paginaAtual === 1
-                  ? styles.paginaBotaoDesabilitado
-                  : styles.paginaBotao
-              }
-            >
-              &laquo;
-            </button>
-
-            <button
-              onClick={() => setPaginaAtual(paginaAtual - 1)}
-              disabled={paginaAtual === 1}
-              style={
-                paginaAtual === 1
-                  ? styles.paginaBotaoDesabilitado
-                  : styles.paginaBotao
-              }
-            >
-              &lt;
-            </button>
-
-            <span style={styles.paginaInfo}>
-              Página {paginaAtual} de {totalPaginas}
-            </span>
-
-            <button
-              onClick={() => setPaginaAtual(paginaAtual + 1)}
-              disabled={paginaAtual === totalPaginas}
-              style={
-                paginaAtual === totalPaginas
-                  ? styles.paginaBotaoDesabilitado
-                  : styles.paginaBotao
-              }
-            >
-              &gt;
-            </button>
-
-            <button
-              onClick={() => setPaginaAtual(totalPaginas)}
-              disabled={paginaAtual === totalPaginas}
-              style={
-                paginaAtual === totalPaginas
-                  ? styles.paginaBotaoDesabilitado
-                  : styles.paginaBotao
-              }
-            >
-              &raquo;
-            </button>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+      {/* ⭐⭐ FIM DO BLOCO ENVOLVIDO ⭐⭐ */}
     </div>
   );
 };
-
 // Estilos atualizados
 const styles = {
   container: {
@@ -1748,8 +1763,12 @@ const styles = {
     borderRadius: "15px",
   },
   actionsContainer: {
-    textAlign: "center",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "1rem",
     marginBottom: "2rem",
+    flexWrap: "wrap",
   },
   newButton: {
     backgroundColor: "#b6a06a",
@@ -2149,6 +2168,41 @@ const styles = {
   },
   parcelaNumero: {
     fontWeight: "500",
+  },
+  // Adicione estes estilos no final do objeto styles, antes do };
+  toggleButton: {
+    backgroundColor: "#6c757d",
+    color: "white",
+    border: "none",
+    padding: "1rem 2rem",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "1.1rem",
+    marginLeft: "1rem",
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+
+  badge: {
+    backgroundColor: "#dc3545",
+    color: "white",
+    borderRadius: "50%",
+    width: "20px",
+    height: "20px",
+    fontSize: "0.8rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "absolute",
+    top: "-5px",
+    right: "-5px",
+  },
+
+  contractsSection: {
+    marginTop: "2rem",
+    animation: "fadeIn 0.3s ease-in",
   },
 };
 

@@ -21,12 +21,12 @@ const Localizacao = () => {
       bairro: "São José",
       cidade: "Pará de Minas",
       estado: "MG",
-      cep: "35660-000",
+      cep: "35660-124",
     },
     telefone: "(37) 99915-3738",
     horarios: {
-      semana: "Segunda a Sexta: 09h às 18h",
-      sabado: "Sábado: 09h às 13h",
+      semana: "Segunda a Sexta: 8:30 às 18",
+      sabado: "Sábado: 08:30 às 12",
       domingo: "Domingo: Fechado",
     },
   };
@@ -96,10 +96,10 @@ const Localizacao = () => {
               <h3 style={mobileStyles.cardTitle}>Funcionamento</h3>
               <div style={mobileStyles.scheduleContainer}>
                 <p style={mobileStyles.scheduleItem}>
-                  Seg - Sex: <span>09h às 18h</span>
+                  Seg - Sex: <span>08:30h às 18h</span>
                 </p>
                 <p style={mobileStyles.scheduleItem}>
-                  Sábado: <span>09h às 13h</span>
+                  Sábado: <span>08:30h às 12h</span>
                 </p>
                 <p style={mobileStyles.scheduleItem}>
                   Domingo: <span>Fechado</span>
@@ -119,7 +119,7 @@ const Localizacao = () => {
               style={mobileStyles.map}
               allowFullScreen=""
               loading="lazy"
-              title="Localização Erica Damas Ateliê"
+              title="Localização Erica Damas"
               referrerPolicy="no-referrer-when-downgrade"
             />
             <div style={mobileStyles.mapOverlay}>
@@ -145,7 +145,7 @@ const Localizacao = () => {
         {/* Informações básicas */}
         <div style={desktopStyles.infoContainer}>
           <div style={desktopStyles.infoContent}>
-            <h3 style={desktopStyles.infoTitle}>Nosso Ateliê</h3>
+            <h3 style={desktopStyles.infoTitle}>Erica Damas</h3>
 
             <div style={desktopStyles.infoGroup}>
               <div style={desktopStyles.infoItem}>
@@ -195,7 +195,7 @@ const Localizacao = () => {
             style={desktopStyles.map}
             allowFullScreen=""
             loading="lazy"
-            title="Localização Erica Damas Ateliê"
+            title="Localização Erica Damas"
             referrerPolicy="no-referrer-when-downgrade"
           />
         </div>

@@ -34,7 +34,7 @@ const Vestidos = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   // Configurações
-  const ITENS_POR_PAGINA = isMobile ? 12 : 20;
+  const ITENS_POR_PAGINA = isMobile ? 8 : 12;
   const DEBOUNCE_DELAY = 150;
 
   useEffect(() => {
@@ -112,14 +112,11 @@ const Vestidos = () => {
         const produtosProcessados = result.produtos.map((produto) => ({
           ...produto,
           imagemCarregada: false,
+          preco: produto.preco || "Consulte",
         }));
 
         setVestidos(produtosProcessados);
-
-        // Criar índice de busca
         vestidosIndexadosRef.current = criarIndiceBusca(produtosProcessados);
-
-        // Aplicar filtros iniciais
         setVestidosFiltrados(produtosProcessados);
       } else {
         setErro("Erro ao carregar vestidos: " + result.message);
@@ -139,8 +136,6 @@ const Vestidos = () => {
   const buscarVestidos = useCallback((texto, categoria, ordenacaoTipo) => {
     const indice = vestidosIndexadosRef.current;
     if (!indice.size) return [];
-
-    const performance_start = performance.now();
 
     const textoNormalizado = texto
       .toLowerCase()
@@ -189,7 +184,6 @@ const Vestidos = () => {
           if (matches === palavrasBusca.length) {
             score += 30;
           }
-
           resultadosComScore.push({ produto: item.produto, score });
         }
       }
@@ -220,19 +214,6 @@ const Vestidos = () => {
           return 0;
       }
     });
-
-    const performance_end = performance.now();
-
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        `🔍 Busca executada em ${(performance_end - performance_start).toFixed(
-          2
-        )}ms`
-      );
-      console.log(
-        `📊 ${resultados.length} resultados encontrados de ${indice.size} total`
-      );
-    }
 
     return resultados;
   }, []);
@@ -517,7 +498,7 @@ const Vestidos = () => {
     ]
   );
 
-  // Renderização da grid super otimizada com UX/UI de e-commerce premium
+  // Renderização da grid estilo Louis Vuitton
   const renderVestidosGrid = useMemo(() => {
     if (vestidosParaExibir.length === 0) return null;
 
@@ -527,9 +508,10 @@ const Vestidos = () => {
           <div
             key={`${vestido._id}-${index}`}
             style={styles.vestidoCard}
-            onClick={() => abrirModal(vestido)}
             className="vestido-card"
+            onClick={() => abrirModal(vestido)}
           >
+            {/* Container da Imagem */}
             <div style={styles.vestidoImageContainer}>
               <img
                 data-src={vestido.imagens[0]}
@@ -541,33 +523,29 @@ const Vestidos = () => {
                 }}
                 loading="lazy"
               />
-              {vestido.imagens && vestido.imagens.length > 1 && (
-                <div style={styles.imageCount}>
-                  +{vestido.imagens.length - 1}
-                </div>
-              )}
-              <div style={styles.hoverOverlay}>
+
+              {/* Overlay de hover */}
+              <div style={styles.hoverOverlay} className="hover-overlay">
                 <span style={styles.viewDetailsText}>Ver Detalhes</span>
               </div>
             </div>
+
+            {/* Informações do Produto */}
             <div style={styles.vestidoInfo}>
               <h3 style={styles.vestidoName}>{vestido.nome}</h3>
-              <p style={styles.vestidoDescription}>
-                {vestido.descricao.length > (isMobile ? 70 : 85)
-                  ? vestido.descricao.substring(0, isMobile ? 70 : 85) + "..."
-                  : vestido.descricao}
+              <p style={styles.vestidoPrice}>
+                {typeof vestido.preco === "number"
+                  ? `R$ ${vestido.preco.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                    })}`
+                  : "Consulte o preço"}
               </p>
-              <div style={styles.disponibilidadeIndicador}>
-                <span style={styles.disponibilidadeTexto}>
-                  Disponível para consulta
-                </span>
-              </div>
             </div>
           </div>
         ))}
       </div>
     );
-  }, [vestidosParaExibir, abrirModal, isMobile]);
+  }, [vestidosParaExibir, abrirModal]);
 
   return (
     <section style={styles.vestidosContainer}>
@@ -622,7 +600,7 @@ const Vestidos = () => {
           </a>
         </div>
       ) : (
-        <div>
+        <React.Fragment>
           {renderFiltros}
           {renderVestidosGrid}
 
@@ -656,9 +634,10 @@ const Vestidos = () => {
               <span>Carregando mais vestidos...</span>
             </div>
           )}
-        </div>
+        </React.Fragment>
       )}
 
+      {/* Modal permanece igual ao seu código original */}
       {vestidoSelecionado && (
         <div style={styles.modalOverlay} onClick={fecharModal}>
           <div
@@ -826,25 +805,21 @@ const Vestidos = () => {
         }
 
         .vestido-card {
-          transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
           animation: fadeInUp 0.6s ease forwards;
         }
 
         .vestido-card:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1) !important;
+          transform: translateY(-4px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
 
         .vestido-card:hover .vestido-image {
-          transform: scale(1.08);
+          transform: scale(1.05);
         }
 
         .vestido-card:hover .hover-overlay {
           opacity: 1;
-        }
-
-        .carregar-mais-button {
-          transition: all 0.3s ease;
         }
 
         .carregar-mais-button:hover:not(:disabled) {
@@ -853,40 +828,16 @@ const Vestidos = () => {
           box-shadow: 0 8px 20px rgba(154, 134, 85, 0.3);
         }
 
-        .carregar-mais-button:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
         .whatsapp-button:hover {
           background-color: #128c7e;
           transform: translateY(-2px);
           box-shadow: 0 8px 20px rgba(37, 211, 102, 0.3);
         }
 
-        .contact-button:hover {
-          background-color: #9a8655;
-          transform: translateY(-2px);
-        }
-
         @media (max-width: 768px) {
           .vestido-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.08) !important;
-          }
-
-          .vestido-card:hover .vestido-image {
-            transform: scale(1.03);
-          }
-        }
-
-        @media (max-width: 480px) {
-          .vestido-card:hover {
             transform: translateY(-2px);
-          }
-
-          .vestido-card:hover .vestido-image {
-            transform: scale(1.02);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
           }
         }
       `}</style>
@@ -901,31 +852,21 @@ const styles = {
     padding: "2rem 1rem",
     fontFamily: '"Cormorant Garamond", serif',
     backgroundColor: "#ffffff",
-    "@media (min-width: 768px)": {
-      padding: "4rem 2rem",
-    },
   },
 
   tituloContainer: {
     textAlign: "center",
     marginBottom: "3rem",
-    "@media (min-width: 768px)": {
-      marginBottom: "4rem",
-    },
   },
 
   titulo: {
-    fontSize: "2rem",
+    fontSize: "2.5rem",
     fontWeight: "300",
     letterSpacing: "3px",
     color: "#2c2c2c",
     marginBottom: "1.5rem",
     textTransform: "uppercase",
     lineHeight: "1.2",
-    "@media (min-width: 768px)": {
-      fontSize: "2.8rem",
-      letterSpacing: "4px",
-    },
   },
 
   divisor: {
@@ -933,9 +874,6 @@ const styles = {
     height: "2px",
     backgroundColor: "#b6a06a",
     margin: "0 auto",
-    "@media (min-width: 768px)": {
-      width: "100px",
-    },
   },
 
   filtrosContainer: {
@@ -944,9 +882,6 @@ const styles = {
     backgroundColor: "#fafafa",
     borderRadius: "12px",
     border: "1px solid #f0f0f0",
-    "@media (min-width: 768px)": {
-      marginBottom: "4rem",
-    },
   },
 
   filtrosRow: {
@@ -1031,23 +966,19 @@ const styles = {
     fontWeight: "500",
   },
 
-  // GRID DE PRODUTOS - UX/UI PREMIUM E-COMMERCE
+  // GRID ESTILO LOUIS VUITTON
   vestidosGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
     gap: "2rem",
     marginTop: "2rem",
-    "@media (min-width: 640px)": {
-      gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+    "@media (min-width: 768px)": {
+      gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
       gap: "2.5rem",
     },
-    "@media (min-width: 768px)": {
-      gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-      gap: "3rem",
-    },
-    "@media (min-width: 1024px)": {
-      gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))",
-      gap: "3.5rem",
+    "@media (min-width: 1200px)": {
+      gridTemplateColumns: "repeat(4, 1fr)",
+      gap: "2rem",
     },
   },
 
@@ -1055,62 +986,29 @@ const styles = {
     backgroundColor: "#ffffff",
     borderRadius: "0",
     overflow: "hidden",
-    boxShadow: "none",
     cursor: "pointer",
-    transition: "all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+    transition: "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
     position: "relative",
     border: "none",
-    "&:hover": {
-      transform: "translateY(-8px)",
-      boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
-    },
+    boxShadow: "none",
   },
 
   vestidoImageContainer: {
-    height: "420px",
+    height: "450px",
     overflow: "hidden",
     position: "relative",
-    backgroundColor: "#fafafa",
+    backgroundColor: "#f8f8f8",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    "@media (min-width: 768px)": {
-      height: "500px",
-    },
-    "@media (min-width: 1024px)": {
-      height: "520px",
-    },
   },
 
   vestidoImage: {
     width: "100%",
     height: "100%",
     objectFit: "cover",
-    objectPosition: "center top",
-    transition: "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-    className: "vestido-image",
-  },
-
-  imageCount: {
-    position: "absolute",
-    top: "16px",
-    right: "16px",
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    color: "#2c2c2c",
-    padding: "0.5rem 0.9rem",
-    borderRadius: "25px",
-    fontSize: "0.8rem",
-    fontWeight: "600",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-    backdropFilter: "blur(8px)",
-    border: "1px solid rgba(255,255,255,0.3)",
-    letterSpacing: "0.5px",
-    "@media (min-width: 768px)": {
-      top: "20px",
-      right: "20px",
-      fontSize: "0.85rem",
-      padding: "0.6rem 1rem",
-    },
+    objectPosition: "center",
+    transition: "transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
   },
 
   hoverOverlay: {
@@ -1119,84 +1017,54 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     opacity: 0,
     transition: "opacity 0.3s ease",
-    className: "hover-overlay",
   },
 
   viewDetailsText: {
     color: "white",
-    fontSize: "1.1rem",
+    fontSize: "1rem",
     fontWeight: "600",
     letterSpacing: "1px",
     textTransform: "uppercase",
-    padding: "0.8rem 2rem",
+    padding: "0.8rem 1.5rem",
     border: "2px solid white",
-    borderRadius: "2px",
+    borderRadius: "0",
     backgroundColor: "rgba(255, 255, 255, 0.1)",
     backdropFilter: "blur(4px)",
   },
 
+  // Informações do produto estilo LV
   vestidoInfo: {
-    padding: "2rem 1rem 2.5rem",
+    padding: "1.5rem 0 2rem 0",
     textAlign: "left",
     backgroundColor: "#ffffff",
-    "@media (min-width: 768px)": {
-      padding: "2.5rem 1.5rem 3rem",
-    },
   },
 
   vestidoName: {
-    fontSize: "1.15rem",
-    fontWeight: "600",
-    color: "#1a1a1a",
-    marginBottom: "0.8rem",
-    lineHeight: "1.3",
-    letterSpacing: "0.3px",
-    fontFamily: '"Cormorant Garamond", serif',
-    "@media (min-width: 768px)": {
-      fontSize: "1.3rem",
-      marginBottom: "1rem",
-    },
-  },
-
-  vestidoDescription: {
-    fontSize: "0.9rem",
-    color: "#666",
-    lineHeight: "1.5",
-    marginBottom: "1.2rem",
+    fontSize: "1.1rem",
     fontWeight: "400",
-    "@media (min-width: 768px)": {
-      fontSize: "0.95rem",
-      lineHeight: "1.6",
-      marginBottom: "1.5rem",
-    },
-  },
-
-  disponibilidadeIndicador: {
-    marginTop: "auto",
-  },
-
-  disponibilidadeTexto: {
-    fontSize: "0.8rem",
-    color: "#28a745",
-    fontWeight: "600",
-    textTransform: "uppercase",
+    color: "#1a1a1a",
+    marginBottom: "0.5rem",
+    lineHeight: "1.3",
     letterSpacing: "0.5px",
-    display: "inline-flex",
-    alignItems: "center",
-    "&::before": {
-      content: "•",
-      marginRight: "0.5rem",
-      fontSize: "1.2rem",
-    },
+    fontFamily: '"Helvetica Neue", Arial, sans-serif',
+    textTransform: "capitalize",
   },
 
-  // OUTROS ESTILOS PERMANECEM IGUAIS...
+  vestidoPrice: {
+    fontSize: "1rem",
+    color: "#666",
+    fontWeight: "500",
+    letterSpacing: "0.3px",
+    fontFamily: '"Helvetica Neue", Arial, sans-serif',
+  },
+
+  // Outros estilos permanecem iguais...
   erro: {
     backgroundColor: "#ffebee",
     color: "#c62828",
@@ -1209,18 +1077,11 @@ const styles = {
     justifyContent: "center",
     gap: "1rem",
     flexDirection: "column",
-    "@media (min-width: 768px)": {
-      flexDirection: "row",
-      flexWrap: "wrap",
-    },
   },
 
   erroTexto: {
     fontSize: "0.95rem",
     lineHeight: "1.4",
-    "@media (min-width: 768px)": {
-      fontSize: "1rem",
-    },
   },
 
   retryButton: {
@@ -1241,10 +1102,6 @@ const styles = {
     fontSize: "1.1rem",
     color: "#666",
     padding: "4rem 0",
-    "@media (min-width: 768px)": {
-      fontSize: "1.3rem",
-      padding: "5rem 0",
-    },
   },
 
   spinner: {
@@ -1255,10 +1112,6 @@ const styles = {
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
     margin: "0 auto 1.5rem",
-    "@media (min-width: 768px)": {
-      width: "50px",
-      height: "50px",
-    },
   },
 
   miniSpinner: {
@@ -1277,9 +1130,6 @@ const styles = {
     backgroundColor: "#fafafa",
     borderRadius: "16px",
     margin: "3rem 0",
-    "@media (min-width: 768px)": {
-      padding: "5rem 3rem",
-    },
   },
 
   emptyTitle: {
@@ -1287,9 +1137,6 @@ const styles = {
     marginBottom: "1.2rem",
     color: "#2c2c2c",
     fontWeight: "400",
-    "@media (min-width: 768px)": {
-      fontSize: "2rem",
-    },
   },
 
   emptyText: {
@@ -1311,10 +1158,6 @@ const styles = {
     fontWeight: "600",
     fontSize: "1rem",
     letterSpacing: "0.5px",
-    "@media (min-width: 768px)": {
-      padding: "1.2rem 2.5rem",
-      fontSize: "1.1rem",
-    },
   },
 
   carregarMaisContainer: {
@@ -1351,6 +1194,7 @@ const styles = {
     fontSize: "1rem",
   },
 
+  // Modal styles permanecem iguais ao código original
   modalOverlay: {
     position: "fixed",
     top: 0,
@@ -1364,10 +1208,6 @@ const styles = {
     zIndex: 1000,
     padding: "1rem",
     backdropFilter: "blur(4px)",
-    "@media (min-width: 768px)": {
-      backgroundColor: "rgba(0,0,0,0.88)",
-      padding: "2rem",
-    },
   },
 
   modalContent: {
@@ -1379,11 +1219,6 @@ const styles = {
     overflow: "auto",
     position: "relative",
     boxShadow: "0 25px 50px rgba(0,0,0,0.4)",
-    "@media (min-width: 768px)": {
-      borderRadius: "16px",
-      maxHeight: "90vh",
-      boxShadow: "0 30px 60px rgba(0,0,0,0.4)",
-    },
   },
 
   modalContentMobile: {
@@ -1410,13 +1245,6 @@ const styles = {
     justifyContent: "center",
     transition: "all 0.3s",
     fontWeight: "300",
-    "@media (min-width: 768px)": {
-      top: "25px",
-      right: "30px",
-      fontSize: "2rem",
-      width: "50px",
-      height: "50px",
-    },
   },
 
   modalGrid: {
@@ -1443,9 +1271,6 @@ const styles = {
     justifyContent: "center",
     backgroundColor: "#fafafa",
     position: "relative",
-    "@media (min-width: 768px)": {
-      padding: "3.5rem",
-    },
   },
 
   modalImageSectionMobile: {
@@ -1468,11 +1293,6 @@ const styles = {
     objectFit: "contain",
     borderRadius: "8px",
     boxShadow: "0 8px 25px rgba(0,0,0,0.15)",
-    "@media (min-width: 768px)": {
-      maxHeight: "70vh",
-      borderRadius: "12px",
-      boxShadow: "0 12px 30px rgba(0,0,0,0.2)",
-    },
   },
 
   modalImageMobile: {
@@ -1496,10 +1316,6 @@ const styles = {
     justifyContent: "center",
     transition: "all 0.3s",
     zIndex: 5,
-    "&:hover": {
-      backgroundColor: "rgba(0,0,0,0.9)",
-      transform: "translateY(-50%) scale(1.1)",
-    },
   },
 
   navButtonPrev: {
@@ -1551,10 +1367,6 @@ const styles = {
     border: "3px solid transparent",
     transition: "all 0.3s",
     opacity: 0.7,
-    "@media (min-width: 768px)": {
-      width: "70px",
-      height: "70px",
-    },
   },
 
   thumbnailActive: {
@@ -1568,9 +1380,6 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     backgroundColor: "#fff",
-    "@media (min-width: 768px)": {
-      padding: "3.5rem 2.5rem",
-    },
   },
 
   modalInfoSectionMobile: {
@@ -1584,10 +1393,6 @@ const styles = {
     marginBottom: "1.5rem",
     lineHeight: "1.3",
     fontFamily: '"Cormorant Garamond", serif',
-    "@media (min-width: 768px)": {
-      fontSize: "2.4rem",
-      marginBottom: "2rem",
-    },
   },
 
   modalTitleMobile: {
@@ -1601,11 +1406,6 @@ const styles = {
     color: "#555",
     marginBottom: "2.5rem",
     flex: 1,
-    "@media (min-width: 768px)": {
-      fontSize: "1.15rem",
-      lineHeight: "1.8",
-      marginBottom: "3rem",
-    },
   },
 
   modalDescriptionMobile: {
@@ -1638,13 +1438,6 @@ const styles = {
     border: "none",
     cursor: "pointer",
     letterSpacing: "0.5px",
-    "@media (min-width: 768px)": {
-      padding: "1.5rem",
-      borderRadius: "12px",
-      fontSize: "1.2rem",
-      gap: "1rem",
-      boxShadow: "0 8px 20px rgba(37, 211, 102, 0.35)",
-    },
   },
 
   whatsappButtonMobile: {

@@ -32,15 +32,15 @@ const FAQ = () => {
       {
         pergunta: "Qual a diferença entre aluguel e compra de trajes?",
         resposta:
-          "O aluguel é uma opção econômica para quem deseja usar um traje de alta qualidade por um preço mais acessível. Inclui ajustes básicos e limpeza após o uso. Já a compra é ideal para quem deseja um traje totalmente personalizado ou pretende utilizá-lo em outras ocasiões. Ambas as opções incluem nosso atendimento exclusivo e consultoria de estilo.",
+          "O aluguel é uma opção econômica para quem deseja usar um traje de alta qualidade por um preço mais acessível. Inclui ajustes básicos e limpeza após o uso. Nossa especialidade é o aluguel de ternos, oferecendo um atendimento exclusivo e consultoria de estilo para garantir que você encontre a opção perfeita para sua ocasião especial.",
       },
       {
         pergunta: "Vocês atendem em outras cidades?",
         resposta:
-          "Nosso ateliê está localizado em Pará de Minas/MG, mas atendemos clientes de todo o Brasil. Para clientes de outras cidades, oferecemos consultoria online inicial e organizamos as provas presenciais de forma otimizada. Em casos especiais, nossa equipe pode se deslocar até você, mediante consulta de disponibilidade e custos adicionais.",
+          "Nosso espaço está localizado em Pará de Minas/MG, mas atendemos clientes de todo o Brasil. Para clientes de outras cidades, oferecemos consultoria online inicial e organizamos as provas presenciais de forma otimizada. Em casos especiais, nossa equipe pode se deslocar até você, mediante consulta de disponibilidade e custos adicionais.",
       },
       {
-        pergunta: "Quanto tempo de antecedência devo procurar o ateliê?",
+        pergunta: "Quanto tempo de antecedência devo procurar o espaço?",
         resposta:
           "Recomendamos iniciar a busca pelo vestido de noiva com 8 a 12 meses de antecedência, e para ternos e vestidos de festa, 3 a 6 meses antes do evento. Para peças sob medida, o prazo ideal é de 6 a 10 meses. No entanto, também temos opções para casamentos com prazos mais curtos - entre em contato para verificarmos as possibilidades.",
       },
@@ -79,9 +79,9 @@ const FAQ = () => {
     ],
     noivos: [
       {
-        pergunta: "Quais estilos de ternos vocês oferecem?",
+        pergunta: "Quais estilos de ternos vocês oferecem para aluguel?",
         resposta:
-          "Nosso acervo inclui uma ampla variedade de estilos, desde ternos clássicos slim e tradicionais até smokings, fraque, morning coat e opções mais contemporâneas. Trabalhamos com marcas renomadas e também oferecemos confecção sob medida. Temos opções em diversas cores, tecidos e acabamentos para complementar qualquer estilo de casamento.",
+          "Nosso acervo inclui uma ampla variedade de estilos para aluguel, desde ternos clássicos slim e tradicionais até smokings, fraque, morning coat e opções mais contemporâneas. Trabalhamos com marcas renomadas e temos opções em diversas cores, tecidos e acabamentos para complementar qualquer estilo de casamento. Somos especializados exclusivamente em aluguel de ternos para garantir a melhor qualidade e variedade.",
       },
       {
         pergunta: "Como escolher a cor ideal do terno para meu casamento?",
@@ -91,19 +91,19 @@ const FAQ = () => {
       {
         pergunta: "Vocês oferecem acessórios para complementar o traje?",
         resposta:
-          "Sim, oferecemos uma seleção completa de acessórios, incluindo gravatas, gravatas borboleta, lenços de bolso, abotoaduras, coletes, suspensórios e sapatos. Nossos consultores ajudarão a criar um look harmonioso e elegante, garantindo que todos os elementos complementem perfeitamente seu traje principal.",
+          "Sim, oferecemos uma seleção completa de acessórios para aluguel, incluindo gravatas, gravatas borboleta, lenços de bolso, abotoaduras, coletes, suspensórios e sapatos. Nossos consultores ajudarão a criar um look harmonioso e elegante, garantindo que todos os elementos complementem perfeitamente seu traje principal.",
       },
       {
-        pergunta: "Quanto tempo antes devo escolher meu terno?",
+        pergunta: "Quanto tempo antes devo escolher meu terno para aluguel?",
         resposta:
-          "Recomendamos iniciar a busca pelo traje ideal com 3 a 6 meses de antecedência. Para ternos sob medida, o prazo ideal é de 4 a 6 meses antes do evento. Este tempo permite realizar todas as provas necessárias e garantir que os ajustes sejam feitos com perfeição. Para casamentos com prazo mais curto, temos opções prontas que podem ser ajustadas em menos tempo.",
+          "Recomendamos iniciar a busca pelo traje ideal com 3 a 6 meses de antecedência. Este tempo permite realizar todas as provas necessárias e garantir que os ajustes sejam feitos com perfeição. Para casamentos com prazo mais curto, temos opções prontas que podem ser ajustadas em menos tempo. Como somos especializados em aluguel de ternos, mantemos um amplo estoque atualizado para atender diferentes necessidades.",
       },
     ],
     pagamento: [
       {
         pergunta: "Quais formas de pagamento são aceitas?",
         resposta:
-          "Aceitamos diversas formas de pagamento para sua conveniência: dinheiro, PIX, transferência bancária, cartões de débito e crédito das principais bandeiras (Visa, Mastercard, American Express, Elo). Para compras ou aluguéis de maior valor, oferecemos parcelamento em até 10x sem juros nos cartões de crédito.",
+          "Aceitamos diversas formas de pagamento para sua conveniência: dinheiro, PIX, transferência bancária, cartões de débito e crédito das principais bandeiras (Visa, Mastercard, American Express, Elo). Para aluguéis de maior valor, oferecemos parcelamento em até 10x sem juros nos cartões de crédito.",
       },
       {
         pergunta: "Como funciona o pagamento para aluguel de trajes?",
@@ -113,24 +113,24 @@ const FAQ = () => {
       {
         pergunta: "Qual a política de cancelamento?",
         resposta:
-          "Em caso de cancelamento com mais de 90 dias de antecedência da data do evento, devolvemos 70% do valor pago. Para cancelamentos entre 90 e 60 dias, a devolução é de 50%. Com menos de 60 dias de antecedência, infelizmente não é possível realizar reembolso, mas o valor pode ser convertido em crédito para outros serviços do ateliê, válido por 12 meses.",
+          "Em caso de cancelamento com mais de 90 dias de antecedência da data do evento, devolvemos 70% do valor pago. Para cancelamentos entre 90 e 60 dias, a devolução é de 50%. Com menos de 60 dias de antecedência, infelizmente não é possível realizar reembolso, mas o valor pode ser convertido em crédito para outros serviços do nosso espaço, válido por 12 meses.",
       },
       {
         pergunta: "Vocês oferecem descontos para pacotes completos?",
         resposta:
-          "Sim! Temos pacotes especiais para noivos e noivas que incluem o traje principal e acessórios com condições diferenciadas. Também oferecemos descontos para grupos, como padrinhos e madrinhas. Durante sua consulta, apresentaremos as opções disponíveis que melhor atendem às suas necessidades e orçamento.",
+          "Sim! Temos pacotes especiais para noivos que incluem o traje principal e acessórios com condições diferenciadas. Também oferecemos descontos para grupos, como padrinhos. Durante sua consulta, apresentaremos as opções disponíveis que melhor atendem às suas necessidades e orçamento. Como somos especializados em aluguel de ternos, conseguimos oferecer condições especiais para grupos.",
       },
     ],
     agendamento: [
       {
-        pergunta: "Como agendar uma visita ao ateliê?",
+        pergunta: "Como agendar uma visita ao espaço?",
         resposta:
           "Você pode agendar sua visita através do nosso WhatsApp (37) 99915-3738, por telefone, e-mail ou preenchendo o formulário em nosso site. Recomendamos o agendamento prévio para garantirmos um atendimento exclusivo e personalizado. Ao agendar, informe o tipo de evento e suas preferências iniciais para que possamos preparar uma seleção prévia de peças.",
       },
       {
-        pergunta: "Qual o horário de funcionamento do ateliê?",
+        pergunta: "Qual o horário de funcionamento do espaço?",
         resposta:
-          "Nosso ateliê funciona de segunda a sexta-feira, das 10h às 19h, e aos sábados das 10h às 16h. Para sua comodidade, também oferecemos horários especiais mediante agendamento prévio. Aos domingos e feriados, atendemos apenas com agendamento antecipado e para casos especiais.",
+          "Nosso espaço funciona de segunda a sexta-feira, das 10h às 19h, e aos sábados das 10h às 16h. Para sua comodidade, também oferecemos horários especiais mediante agendamento prévio. Aos domingos e feriados, atendemos apenas com agendamento antecipado e para casos especiais.",
       },
       {
         pergunta: "Quanto tempo dura uma consulta inicial?",
@@ -138,9 +138,9 @@ const FAQ = () => {
           "Nossa consulta inicial tem duração média de 1h30 a 2 horas. Este tempo permite conhecer suas preferências, apresentar nossas opções e realizar as primeiras provas. Para noivas, recomendamos reservar um pouco mais de tempo, cerca de 2 a 3 horas, especialmente se deseja experimentar vários modelos diferentes.",
       },
       {
-        pergunta: "É necessário agendar para apenas conhecer o ateliê?",
+        pergunta: "É necessário agendar para apenas conhecer o espaço?",
         resposta:
-          "Sim, trabalhamos exclusivamente com atendimento agendado, mesmo para visitas de reconhecimento. Isso nos permite oferecer a atenção personalizada que nossos clientes merecem. A visita inicial não gera nenhum compromisso de compra ou aluguel, e é uma ótima oportunidade para conhecer nosso acervo e serviços.",
+          "Sim, trabalhamos exclusivamente com atendimento agendado, mesmo para visitas de reconhecimento. Isso nos permite oferecer a atenção personalizada que nossos clientes merecem. A visita inicial não gera nenhum compromisso de aluguel, e é uma ótima oportunidade para conhecer nosso acervo e serviços.",
       },
     ],
   };
@@ -407,7 +407,7 @@ const FAQ = () => {
               Fale conosco diretamente pelo WhatsApp
             </p>
             <a
-              href="https://wa.me/5537999153738?text=Olá,%20tenho%20uma%20dúvida%20sobre%20o%20Ateliê%20Erica%20Damas"
+              href="https://wa.me/5537999153738?text=Olá,%20tenho%20uma%20dúvida%20sobre%20o%20aluguel%20de%20ternos"
               target="_blank"
               rel="noopener noreferrer"
               className="mobile-whatsapp-button"
@@ -421,7 +421,7 @@ const FAQ = () => {
     );
   }
 
-  // Desktop version (unchanged)
+  // Desktop version
   return (
     <section style={styles.faqContainer}>
       <div style={styles.faqContent}>
@@ -431,7 +431,7 @@ const FAQ = () => {
           <div style={styles.faqDivider}></div>
           <p style={styles.faqSubtitle}>
             Encontre respostas para as dúvidas mais comuns sobre nossos serviços
-            e processos
+            e processos de aluguel de ternos
           </p>
         </div>
 
@@ -494,11 +494,11 @@ const FAQ = () => {
           </h3>
           <p style={styles.additionalHelpText}>
             Entre em contato conosco diretamente e teremos prazer em esclarecer
-            todas as suas dúvidas.
+            todas as suas dúvidas sobre nosso serviço de aluguel de ternos.
           </p>
           <div style={styles.contactButtons}>
             <a
-              href="https://wa.me/5537999153738?text=Olá,%20tenho%20uma%20dúvida%20sobre%20o%20Ateliê%20Erica%20Damas"
+              href="https://wa.me/5537999153738?text=Olá,%20tenho%20uma%20dúvida%20sobre%20o%20aluguel%20de%20ternos"
               target="_blank"
               rel="noopener noreferrer"
               style={styles.whatsappButton}
@@ -512,7 +512,7 @@ const FAQ = () => {
   );
 };
 
-// Estilos do componente (unchanged)
+// Estilos do componente
 const styles = {
   faqContainer: {
     padding: "5rem 2rem",
@@ -653,17 +653,6 @@ const styles = {
   },
   whatsappButton: {
     backgroundColor: "#25D366",
-    color: "#fff",
-    padding: "0.8rem 1.5rem",
-    borderRadius: "4px",
-    textDecoration: "none",
-    fontWeight: "500",
-    fontSize: "1rem",
-    transition: "all 0.3s ease",
-    display: "inline-block",
-  },
-  emailButton: {
-    backgroundColor: "#b6a06a",
     color: "#fff",
     padding: "0.8rem 1.5rem",
     borderRadius: "4px",

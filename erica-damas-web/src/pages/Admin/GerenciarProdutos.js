@@ -16,6 +16,10 @@ const GerenciadorProdutos = () => {
   const [imagensPreview, setImagensPreview] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
 
+  // Estado para o modal de visualização
+  const [produtoModal, setProdutoModal] = useState(null);
+  const [imagemModalAtual, setImagemModalAtual] = useState(0);
+
   // Configurações baseadas no tipo de produto
   const configProduto = {
     vestidos: {
@@ -43,19 +47,19 @@ const GerenciadorProdutos = () => {
     try {
       setCarregando(true);
 
-      "Carregando produtos da API:", `/produtos/${config.colecao}`;
+      console.log("Carregando produtos da API:", `/produtos/${config.colecao}`);
 
       const response = await api.get(`/produtos/${config.colecao}`);
       const result = response.data;
 
       if (result.success) {
         setProdutos(result.produtos);
-        `✅ ${result.produtos.length} produtos carregados`;
+        console.log(`✅ ${result.produtos.length} produtos carregados`);
       } else {
         setErro("Erro ao carregar produtos: " + result.message);
       }
     } catch (error) {
-      "Erro ao carregar produtos:", error;
+      console.error("Erro ao carregar produtos:", error);
       setErro("Erro ao conectar com o servidor");
     } finally {
       setCarregando(false);
@@ -69,9 +73,9 @@ const GerenciadorProdutos = () => {
 
   // Função para criar produto
   const criarProduto = async (dadosProduto, arquivosImagem) => {
-    ("=== CRIANDO PRODUTO ===");
-    "Dados:", dadosProduto;
-    "Imagens:", arquivosImagem.length;
+    console.log("=== CRIANDO PRODUTO ===");
+    console.log("Dados:", dadosProduto);
+    console.log("Imagens:", arquivosImagem.length);
 
     const formData = new FormData();
     formData.append("nome", dadosProduto.nome);
@@ -93,10 +97,10 @@ const GerenciadorProdutos = () => {
 
   // Função para atualizar produto
   const atualizarProduto = async (id, dadosProduto, arquivosImagem = []) => {
-    ("=== ATUALIZANDO PRODUTO ===");
-    "ID:", id;
-    "Dados:", dadosProduto;
-    "Novas imagens:", arquivosImagem.length;
+    console.log("=== ATUALIZANDO PRODUTO ===");
+    console.log("ID:", id);
+    console.log("Dados:", dadosProduto);
+    console.log("Novas imagens:", arquivosImagem.length);
 
     const formData = new FormData();
     formData.append("nome", dadosProduto.nome);
@@ -117,8 +121,8 @@ const GerenciadorProdutos = () => {
 
   // Função para excluir produto
   const excluirProduto = async (id) => {
-    ("=== EXCLUINDO PRODUTO ===");
-    "ID:", id;
+    console.log("=== EXCLUINDO PRODUTO ===");
+    console.log("ID:", id);
 
     const response = await api.delete(`/produtos/${id}`);
     return response.data;
@@ -158,7 +162,9 @@ const GerenciadorProdutos = () => {
   };
 
   // Excluir produto
-  const handleExcluir = async (id) => {
+  const handleExcluir = async (id, e) => {
+    if (e) e.stopPropagation();
+
     if (
       window.confirm(
         `Tem certeza que deseja excluir este ${config.tituloSingular.toLowerCase()}?`
@@ -169,13 +175,13 @@ const GerenciadorProdutos = () => {
         const result = await excluirProduto(id);
 
         if (result.success) {
-          ("✅ Produto excluído com sucesso");
+          console.log("✅ Produto excluído com sucesso");
           await carregarProdutos(); // Recarregar lista
         } else {
           setErro("Erro ao excluir produto: " + result.message);
         }
       } catch (error) {
-        "Erro ao excluir produto:", error;
+        console.error("Erro ao excluir produto:", error);
         setErro("Erro ao excluir produto: " + error.message);
       } finally {
         setCarregando(false);
@@ -209,19 +215,48 @@ const GerenciadorProdutos = () => {
       }
 
       if (result.success) {
-        "✅ Produto salvo com sucesso:", result.produto;
+        console.log("✅ Produto salvo com sucesso:", result.produto);
         resetarFormulario();
         await carregarProdutos(); // Recarregar lista
       } else {
         throw new Error(result.message || "Erro ao salvar produto");
       }
     } catch (err) {
-      "Erro ao salvar produto:", err;
+      console.error("Erro ao salvar produto:", err);
       setErro(
         `Erro ao salvar ${config.tituloSingular.toLowerCase()}: ${err.message}`
       );
     } finally {
       setCarregando(false);
+    }
+  };
+
+  // Funções para o modal de visualização
+  const abrirModal = (produto, e) => {
+    if (e) e.stopPropagation();
+    setProdutoModal(produto);
+    setImagemModalAtual(0);
+    document.body.style.overflow = "hidden";
+  };
+
+  const fecharModal = () => {
+    setProdutoModal(null);
+    document.body.style.overflow = "auto";
+  };
+
+  const proximaImagem = () => {
+    if (produtoModal && produtoModal.imagens) {
+      setImagemModalAtual((prev) =>
+        prev === produtoModal.imagens.length - 1 ? 0 : prev + 1
+      );
+    }
+  };
+
+  const imagemAnterior = () => {
+    if (produtoModal && produtoModal.imagens) {
+      setImagemModalAtual((prev) =>
+        prev === 0 ? produtoModal.imagens.length - 1 : prev - 1
+      );
     }
   };
 
@@ -333,6 +368,9 @@ const GerenciadorProdutos = () => {
                       alt={`Preview ${index + 1}`}
                       style={styles.previewImage}
                     />
+                    <div style={styles.previewImageCount}>
+                      {index + 1}/{imagensPreview.length}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -412,6 +450,7 @@ const GerenciadorProdutos = () => {
               <div
                 key={produto._id}
                 style={styles.productCard}
+                onClick={(e) => abrirModal(produto, e)}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.boxShadow =
                     "0 4px 12px rgba(0,0,0,0.15)";
@@ -421,6 +460,7 @@ const GerenciadorProdutos = () => {
                   e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
                   e.currentTarget.style.transform = "translateY(0)";
                 }}
+                className="product-card"
               >
                 {produto.imagens && produto.imagens[0] && (
                   <div style={styles.productImageContainer}>
@@ -432,6 +472,14 @@ const GerenciadorProdutos = () => {
                         e.target.style.display = "none";
                       }}
                     />
+                    {produto.imagens && produto.imagens.length > 1 && (
+                      <div style={styles.imageCount}>
+                        +{produto.imagens.length - 1}
+                      </div>
+                    )}
+                    <div style={styles.hoverOverlay}>
+                      <span style={styles.viewDetailsText}>Ver Detalhes</span>
+                    </div>
                   </div>
                 )}
 
@@ -442,11 +490,6 @@ const GerenciadorProdutos = () => {
                       ? produto.descricao.substring(0, 100) + "..."
                       : produto.descricao}
                   </p>
-                  {produto.imagens && produto.imagens.length > 1 && (
-                    <small style={styles.imageCount}>
-                      {produto.imagens.length} imagens
-                    </small>
-                  )}
                   <small style={styles.productDate}>
                     Criado em:{" "}
                     {new Date(produto.createdAt).toLocaleDateString("pt-BR")}
@@ -455,7 +498,10 @@ const GerenciadorProdutos = () => {
 
                 <div style={styles.productActions}>
                   <button
-                    onClick={() => handleEditar(produto)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditar(produto);
+                    }}
                     style={styles.editButton}
                     disabled={carregando}
                     onMouseEnter={(e) => {
@@ -468,7 +514,7 @@ const GerenciadorProdutos = () => {
                     Editar
                   </button>
                   <button
-                    onClick={() => handleExcluir(produto._id)}
+                    onClick={(e) => handleExcluir(produto._id, e)}
                     style={styles.deleteButton}
                     disabled={carregando}
                     onMouseEnter={(e) => {
@@ -487,6 +533,121 @@ const GerenciadorProdutos = () => {
         )}
       </div>
 
+      {/* Modal de visualização do produto */}
+      {produtoModal && (
+        <div style={styles.modalOverlay} onClick={fecharModal}>
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <button style={styles.closeButton} onClick={fecharModal}>
+              ×
+            </button>
+
+            <div style={styles.modalGrid}>
+              <div style={styles.modalImageSection}>
+                {produtoModal.imagens && produtoModal.imagens.length > 0 && (
+                  <div style={styles.imageCarousel}>
+                    <img
+                      src={produtoModal.imagens[imagemModalAtual]}
+                      alt={produtoModal.nome}
+                      style={styles.modalImage}
+                    />
+
+                    {produtoModal.imagens.length > 1 && (
+                      <div>
+                        <button
+                          style={{
+                            ...styles.navButton,
+                            ...styles.navButtonPrev,
+                          }}
+                          onClick={imagemAnterior}
+                        >
+                          ‹
+                        </button>
+                        <button
+                          style={{
+                            ...styles.navButton,
+                            ...styles.navButtonNext,
+                          }}
+                          onClick={proximaImagem}
+                        >
+                          ›
+                        </button>
+                        <div style={styles.imageIndicators}>
+                          {produtoModal.imagens.map((_, index) => (
+                            <div
+                              key={index}
+                              style={{
+                                ...styles.indicator,
+                                ...(index === imagemModalAtual
+                                  ? styles.indicatorActive
+                                  : {}),
+                              }}
+                              onClick={() => setImagemModalAtual(index)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {produtoModal.imagens && produtoModal.imagens.length > 1 && (
+                  <div style={styles.thumbnailContainer}>
+                    {produtoModal.imagens.slice(0, 5).map((img, index) => (
+                      <img
+                        key={index}
+                        src={img}
+                        alt={`${produtoModal.nome} - imagem ${index + 1}`}
+                        style={{
+                          ...styles.thumbnail,
+                          ...(index === imagemModalAtual
+                            ? styles.thumbnailActive
+                            : {}),
+                        }}
+                        onClick={() => setImagemModalAtual(index)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={styles.modalInfoSection}>
+                <h2 style={styles.modalTitle}>{produtoModal.nome}</h2>
+                <div style={styles.modalDescription}>
+                  {produtoModal.descricao}
+                </div>
+
+                <div style={styles.modalActions}>
+                  <button
+                    onClick={() => {
+                      fecharModal();
+                      handleEditar(produtoModal);
+                    }}
+                    style={styles.modalEditButton}
+                  >
+                    Editar {config.tituloSingular}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Tem certeza que deseja excluir este ${config.tituloSingular.toLowerCase()}?`
+                        )
+                      ) {
+                        fecharModal();
+                        handleExcluir(produtoModal._id);
+                      }
+                    }}
+                    style={styles.modalDeleteButton}
+                  >
+                    Excluir {config.tituloSingular}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
         @keyframes spin {
           0% {
@@ -495,6 +656,14 @@ const GerenciadorProdutos = () => {
           100% {
             transform: rotate(360deg);
           }
+        }
+
+        .product-card:hover .productImage {
+          transform: scale(1.05);
+        }
+
+        .product-card:hover .hoverOverlay {
+          opacity: 1;
         }
 
         @media (max-width: 768px) {
@@ -516,6 +685,10 @@ const GerenciadorProdutos = () => {
 
           .previewGrid {
             grid-template-columns: repeat(3, 1fr) !important;
+          }
+
+          .modalGrid {
+            grid-template-columns: 1fr !important;
           }
         }
 
@@ -690,22 +863,32 @@ const styles = {
   },
   previewGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
     gap: "1rem",
-    maxWidth: "500px",
   },
   previewItem: {
-    width: "100px",
-    height: "100px",
+    width: "100%",
+    height: "120px",
     overflow: "hidden",
     borderRadius: "6px",
     border: "2px solid #ddd",
     boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    position: "relative",
   },
   previewImage: {
     width: "100%",
     height: "100%",
     objectFit: "cover",
+  },
+  previewImageCount: {
+    position: "absolute",
+    bottom: "5px",
+    right: "5px",
+    backgroundColor: "rgba(0,0,0,0.7)",
+    color: "white",
+    padding: "2px 6px",
+    borderRadius: "4px",
+    fontSize: "0.7rem",
   },
   buttonGroup: {
     display: "flex",
@@ -755,6 +938,7 @@ const styles = {
     transition: "all 0.3s ease",
     backgroundColor: "#fff",
     boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    cursor: "pointer",
   },
   productImageContainer: {
     height: "200px",
@@ -763,12 +947,51 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
   },
   productImage: {
     width: "100%",
     height: "100%",
     objectFit: "cover",
     transition: "transform 0.3s ease",
+  },
+  imageCount: {
+    position: "absolute",
+    top: "10px",
+    right: "10px",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    color: "#333",
+    padding: "0.3rem 0.6rem",
+    borderRadius: "15px",
+    fontSize: "0.75rem",
+    fontWeight: "600",
+    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+    zIndex: 2,
+  },
+  hoverOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0,
+    transition: "opacity 0.3s ease",
+    zIndex: 1,
+  },
+  viewDetailsText: {
+    color: "white",
+    fontSize: "0.9rem",
+    fontWeight: "600",
+    letterSpacing: "1px",
+    textTransform: "uppercase",
+    padding: "0.6rem 1.2rem",
+    border: "2px solid white",
+    borderRadius: "2px",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
   },
   productInfo: {
     padding: "1.5rem",
@@ -785,13 +1008,6 @@ const styles = {
     color: "#666",
     marginBottom: "0.75rem",
     lineHeight: "1.5",
-  },
-  imageCount: {
-    color: "#999",
-    fontSize: "0.8rem",
-    display: "block",
-    marginBottom: "0.5rem",
-    fontWeight: "500",
   },
   productDate: {
     color: "#999",
@@ -812,6 +1028,7 @@ const styles = {
     fontSize: "0.95rem",
     fontWeight: "500",
     color: "#2e7d32",
+    zIndex: 3,
   },
   deleteButton: {
     flex: "1",
@@ -824,6 +1041,208 @@ const styles = {
     transition: "all 0.3s ease",
     fontSize: "0.95rem",
     fontWeight: "500",
+    zIndex: 3,
+  },
+
+  // Estilos do modal
+  modalOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+    padding: "1rem",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: "8px",
+    maxWidth: "1000px",
+    width: "100%",
+    maxHeight: "90vh",
+    overflow: "auto",
+    position: "relative",
+    boxShadow: "0 25px 50px rgba(0,0,0,0.3)",
+  },
+  closeButton: {
+    position: "absolute",
+    top: "15px",
+    right: "15px",
+    fontSize: "1.8rem",
+    background: "rgba(0,0,0,0.7)",
+    color: "white",
+    border: "none",
+    borderRadius: "50%",
+    width: "40px",
+    height: "40px",
+    cursor: "pointer",
+    zIndex: 10,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "all 0.3s",
+  },
+  modalGrid: {
+    display: "grid",
+    gridTemplateColumns: "1.3fr 1fr",
+    minHeight: "500px",
+  },
+  modalImageSection: {
+    padding: "2rem",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fafafa",
+    position: "relative",
+  },
+  imageCarousel: {
+    position: "relative",
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalImage: {
+    width: "100%",
+    height: "auto",
+    maxHeight: "500px",
+    objectFit: "contain",
+    borderRadius: "8px",
+    boxShadow: "0 8px 25px rgba(0,0,0,0.15)",
+  },
+  navButton: {
+    position: "absolute",
+    top: "50%",
+    transform: "translateY(-50%)",
+    backgroundColor: "rgba(0,0,0,0.7)",
+    color: "white",
+    border: "none",
+    borderRadius: "50%",
+    width: "40px",
+    height: "40px",
+    fontSize: "1.6rem",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "all 0.3s",
+    zIndex: 5,
+  },
+  navButtonPrev: {
+    left: "10px",
+  },
+  navButtonNext: {
+    right: "10px",
+  },
+  imageIndicators: {
+    position: "absolute",
+    bottom: "15px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    display: "flex",
+    gap: "8px",
+    zIndex: 5,
+  },
+  indicator: {
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
+    backgroundColor: "rgba(255,255,255,0.5)",
+    cursor: "pointer",
+    transition: "all 0.3s",
+  },
+  indicatorActive: {
+    backgroundColor: "white",
+    transform: "scale(1.3)",
+  },
+  thumbnailContainer: {
+    display: "flex",
+    gap: "10px",
+    marginTop: "15px",
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
+  thumbnail: {
+    width: "60px",
+    height: "60px",
+    objectFit: "cover",
+    borderRadius: "4px",
+    cursor: "pointer",
+    border: "2px solid transparent",
+    transition: "all 0.3s",
+    opacity: 0.7,
+  },
+  thumbnailActive: {
+    border: "2px solid #b6a06a",
+    opacity: 1,
+    transform: "scale(1.05)",
+  },
+  modalInfoSection: {
+    padding: "2.5rem 2rem",
+    display: "flex",
+    flexDirection: "column",
+    backgroundColor: "#fff",
+  },
+  modalTitle: {
+    fontSize: "1.8rem",
+    fontWeight: "400",
+    color: "#2c2c2c",
+    marginBottom: "1.5rem",
+    lineHeight: "1.3",
+    fontFamily: '"Cormorant Garamond", serif',
+  },
+  modalDescription: {
+    fontSize: "1rem",
+    lineHeight: "1.7",
+    color: "#555",
+    marginBottom: "2rem",
+    flex: 1,
+  },
+  modalActions: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1rem",
+  },
+  modalEditButton: {
+    backgroundColor: "#b6a06a",
+    color: "white",
+    padding: "1rem",
+    borderRadius: "8px",
+    textAlign: "center",
+    textDecoration: "none",
+    fontSize: "1rem",
+    fontWeight: "600",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.8rem",
+    transition: "all 0.3s ease",
+    boxShadow: "0 4px 10px rgba(182, 160, 106, 0.3)",
+    border: "none",
+    cursor: "pointer",
+  },
+  modalDeleteButton: {
+    backgroundColor: "#f44336",
+    color: "white",
+    padding: "1rem",
+    borderRadius: "8px",
+    textAlign: "center",
+    textDecoration: "none",
+    fontSize: "1rem",
+    fontWeight: "600",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.8rem",
+    transition: "all 0.3s ease",
+    boxShadow: "0 4px 10px rgba(244, 67, 54, 0.3)",
+    border: "none",
+    cursor: "pointer",
   },
 };
 

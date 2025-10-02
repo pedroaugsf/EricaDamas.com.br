@@ -27,10 +27,10 @@ const AboutPage = () => {
   return (
     <>
       <Helmet>
-        <title>Erica Damas - Ateliê de Noivas | Quem Somos</title>
+        <title>Erica Damas| Quem Somos</title>
         <meta
           name="description"
-          content="Ateliê especializado em vestidos de noiva e ternos finos. Tradição desde 2010 em criar peças únicas para momentos especiais."
+          content="Loja especializada em vestidos de noiva e ternos finos. Referência em criar peças únicas para momentos especiais."
         />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <style>
@@ -293,7 +293,7 @@ const AboutPage = () => {
               className={isMobile ? "mobile-paragraph" : ""}
               style={styles.paragraph}
             >
-              Desde <strong style={styles.highlight}>2010</strong>, o Ateliê
+              Desde <strong style={styles.highlight}>2010</strong>, nossa loja
               Erica Damas se destaca no mercado de moda nupcial com seu conceito
               único de <strong>sofisticação contemporânea</strong>.
             </p>
@@ -406,7 +406,7 @@ const AboutPage = () => {
               className={isMobile ? "mobile-cta-text" : ""}
               style={styles.ctaText}
             >
-              Venha conhecer nosso ateliê e descubra a peça perfeita para seu
+              Venha conhecer nossa loja e descubra a peça perfeita para seu
               momento especial.
             </p>
             <a
