@@ -6,6 +6,7 @@ const multer = require("multer");
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
 
+// Carregar variáveis de ambiente
 dotenv.config();
 
 const app = express();
@@ -41,8 +42,9 @@ try {
   }
 
   bucket = admin.storage().bucket();
+  console.log("✅ Firebase inicializado com sucesso");
 } catch (error) {
-  console.error("Erro ao inicializar Firebase:", error.message);
+  console.error("❌ Erro ao inicializar Firebase:", error.message);
 }
 
 // ============ MODELOS ============
@@ -92,37 +94,35 @@ const contratoSchema = new mongoose.Schema({
 
 const Contrato = mongoose.model("Contrato", contratoSchema);
 
-// ============ CONEXÃO MONGODB OTIMIZADA ============
-let cachedConnection = null;
-
+// ============ CONEXÃO MONGODB ============
 const connectDB = async () => {
-  if (cachedConnection && mongoose.connection.readyState === 1) {
-    return cachedConnection;
-  }
-
   try {
-    const connection = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+    await mongoose.connect(process.env.MONGODB_URI, {
       maxPoolSize: 10,
       minPoolSize: 2,
-      serverSelectionTimeoutMS: 30000, // ✅ Aumentado de 5s para 30s
-      socketTimeoutMS: 60000, // ✅ Aumentado para 60s
-      family: 4, // ✅ Forçar IPv4
-      bufferCommands: false,
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 60000,
+      family: 4,
     });
 
-    cachedConnection = connection;
-    console.log("✅ MongoDB conectado");
-    return connection;
+    console.log("✅ MongoDB conectado com sucesso");
   } catch (error) {
     console.error("❌ Erro ao conectar MongoDB:", error.message);
-    throw error;
+    process.exit(1);
   }
 };
 
-// ✅ Conectar uma vez no início
-connectDB().catch(console.error);
+// Conectar ao banco
+connectDB();
+
+// Monitorar conexão
+mongoose.connection.on("disconnected", () => {
+  console.log("⚠️ MongoDB desconectado");
+});
+
+mongoose.connection.on("reconnected", () => {
+  console.log("✅ MongoDB reconectado");
+});
 
 // ============ MULTER ============
 const storage = multer.memoryStorage();
@@ -131,7 +131,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-// ============ CORS SIMPLIFICADO ============
+// ============ CORS ============
 const allowedOrigins = [
   "https://erica-damas-com-br-e5w2.vercel.app",
   "https://erica-damas-com-br-e5w2-git-main-pedros-projects-f4fedec9.vercel.app",
@@ -149,7 +149,8 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(null, false); // ✅ Não bloquear com erro, apenas negar
+        console.log(`⚠️ Origem bloqueada: ${origin}`);
+        callback(null, false);
       }
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -170,7 +171,10 @@ const verificarToken = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ message: "Token não fornecido" });
+    return res.status(401).json({
+      success: false,
+      message: "Token não fornecido",
+    });
   }
 
   try {
@@ -178,11 +182,14 @@ const verificarToken = (req, res, next) => {
     req.user = verificado;
     next();
   } catch (error) {
-    res.status(401).json({ message: "Token inválido ou expirado" });
+    res.status(401).json({
+      success: false,
+      message: "Token inválido ou expirado",
+    });
   }
 };
 
-// ============ FUNÇÃO DE UPLOAD ============
+// ============ FUNÇÃO DE UPLOAD FIREBASE ============
 const uploadImageToFirebase = async (file) => {
   if (!file || !bucket) return null;
 
@@ -211,27 +218,42 @@ const uploadImageToFirebase = async (file) => {
 
 // ============ ROTAS ============
 
-// Rota raiz
+// Rota raiz - Health check
 app.get("/", (req, res) => {
   res.json({
+    success: true,
     message: "✅ API Erica Damas Online",
     timestamp: new Date().toISOString(),
     mongodb:
       mongoose.connection.readyState === 1 ? "Conectado" : "Desconectado",
+    environment: process.env.NODE_ENV || "development",
   });
 });
 
 app.get("/api", (req, res) => {
   res.json({
+    success: true,
     message: "API funcionando",
     mongodb: mongoose.connection.readyState === 1 ? "OK" : "ERRO",
   });
 });
 
-// Login
+// Health check para Render
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK" });
+});
+
+// ============ LOGIN ============
 app.post("/api/login", async (req, res) => {
   try {
     const { email, senha } = req.body;
+
+    if (!email || !senha) {
+      return res.status(400).json({
+        success: false,
+        message: "Email e senha são obrigatórios",
+      });
+    }
 
     if (email === ADMIN_EMAIL && senha === ADMIN_PASSWORD) {
       const token = jwt.sign({ id: "admin", email: ADMIN_EMAIL }, JWT_SECRET, {
@@ -241,7 +263,7 @@ app.post("/api/login", async (req, res) => {
       return res.json({
         success: true,
         token,
-        user: { name: "Administrador" },
+        user: { name: "Administrador", email: ADMIN_EMAIL },
       });
     }
 
@@ -250,8 +272,11 @@ app.post("/api/login", async (req, res) => {
       message: "Email ou senha incorretos",
     });
   } catch (error) {
-    console.error("Erro no login:", error);
-    res.status(500).json({ success: false, message: "Erro no servidor" });
+    console.error("❌ Erro no login:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro no servidor",
+    });
   }
 });
 
@@ -276,7 +301,7 @@ app.get("/api/produtos/:tipo", async (req, res) => {
     if (!["vestidos", "ternos", "debutantes"].includes(tipo)) {
       return res.status(400).json({
         success: false,
-        message: "Tipo inválido",
+        message: "Tipo inválido. Use: vestidos, ternos ou debutantes",
       });
     }
 
@@ -286,7 +311,7 @@ app.get("/api/produtos/:tipo", async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limite)
-        .lean(), // ✅ Mais rápido
+        .lean(),
     ]);
 
     res.json({
@@ -298,8 +323,12 @@ app.get("/api/produtos/:tipo", async (req, res) => {
       paginas: Math.ceil(total / limite),
     });
   } catch (error) {
-    console.error("Erro ao buscar produtos:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("❌ Erro ao buscar produtos:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao buscar produtos",
+      error: error.message,
+    });
   }
 });
 
@@ -314,8 +343,12 @@ app.get("/api/admin/produtos", verificarToken, async (req, res) => {
       total: produtos.length,
     });
   } catch (error) {
-    console.error("Erro ao buscar produtos:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("❌ Erro ao buscar produtos:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao buscar produtos",
+      error: error.message,
+    });
   }
 });
 
@@ -329,15 +362,17 @@ app.post(
       const { nome, descricao, tipo } = req.body;
 
       if (!nome || !descricao || !tipo) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Campos obrigatórios faltando" });
+        return res.status(400).json({
+          success: false,
+          message: "Nome, descrição e tipo são obrigatórios",
+        });
       }
 
       if (!["vestidos", "ternos", "debutantes"].includes(tipo)) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Tipo inválido" });
+        return res.status(400).json({
+          success: false,
+          message: "Tipo inválido",
+        });
       }
 
       if (!req.files || req.files.length === 0) {
@@ -347,7 +382,8 @@ app.post(
         });
       }
 
-      // Upload paralelo das imagens
+      console.log(`📤 Fazendo upload de ${req.files.length} imagem(ns)...`);
+
       const imageUrls = await Promise.all(
         req.files.map((file) => uploadImageToFirebase(file))
       );
@@ -370,14 +406,20 @@ app.post(
 
       await novoProduto.save();
 
+      console.log(`✅ Produto criado: ${novoProduto.nome}`);
+
       res.status(201).json({
         success: true,
         produto: novoProduto,
         message: "Produto criado com sucesso",
       });
     } catch (error) {
-      console.error("Erro ao criar produto:", error);
-      res.status(500).json({ success: false, message: error.message });
+      console.error("❌ Erro ao criar produto:", error);
+      res.status(500).json({
+        success: false,
+        message: "Erro ao criar produto",
+        error: error.message,
+      });
     }
   }
 );
@@ -395,15 +437,18 @@ app.put(
       const produto = await Produto.findById(id);
 
       if (!produto) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Produto não encontrado" });
+        return res.status(404).json({
+          success: false,
+          message: "Produto não encontrado",
+        });
       }
 
       if (nome?.trim()) produto.nome = nome.trim();
       if (descricao?.trim()) produto.descricao = descricao.trim();
 
       if (req.files && req.files.length > 0) {
+        console.log(`📤 Atualizando ${req.files.length} imagem(ns)...`);
+
         const imageUrls = await Promise.all(
           req.files.map((file) => uploadImageToFirebase(file))
         );
@@ -416,14 +461,20 @@ app.put(
 
       await produto.save();
 
+      console.log(`✅ Produto atualizado: ${produto.nome}`);
+
       res.json({
         success: true,
         produto,
         message: "Produto atualizado com sucesso",
       });
     } catch (error) {
-      console.error("Erro ao atualizar produto:", error);
-      res.status(500).json({ success: false, message: error.message });
+      console.error("❌ Erro ao atualizar produto:", error);
+      res.status(500).json({
+        success: false,
+        message: "Erro ao atualizar produto",
+        error: error.message,
+      });
     }
   }
 );
@@ -436,18 +487,25 @@ app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
     const produto = await Produto.findByIdAndDelete(id);
 
     if (!produto) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Produto não encontrado" });
+      return res.status(404).json({
+        success: false,
+        message: "Produto não encontrado",
+      });
     }
+
+    console.log(`🗑️ Produto excluído: ${produto.nome}`);
 
     res.json({
       success: true,
       message: "Produto excluído com sucesso",
     });
   } catch (error) {
-    console.error("Erro ao excluir produto:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("❌ Erro ao excluir produto:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao excluir produto",
+      error: error.message,
+    });
   }
 });
 
@@ -464,8 +522,12 @@ app.get("/api/contratos", verificarToken, async (req, res) => {
       total: contratos.length,
     });
   } catch (error) {
-    console.error("Erro ao buscar contratos:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("❌ Erro ao buscar contratos:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao buscar contratos",
+      error: error.message,
+    });
   }
 });
 
@@ -475,14 +537,20 @@ app.post("/api/contratos", verificarToken, async (req, res) => {
     const novoContrato = new Contrato(req.body);
     await novoContrato.save();
 
+    console.log(`✅ Contrato criado: ${novoContrato._id}`);
+
     res.status(201).json({
       success: true,
       contrato: novoContrato,
       message: "Contrato criado com sucesso",
     });
   } catch (error) {
-    console.error("Erro ao criar contrato:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("❌ Erro ao criar contrato:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao criar contrato",
+      error: error.message,
+    });
   }
 });
 
@@ -493,13 +561,17 @@ app.put("/api/contratos/:id", verificarToken, async (req, res) => {
 
     const contrato = await Contrato.findByIdAndUpdate(id, req.body, {
       new: true,
+      runValidators: true,
     });
 
     if (!contrato) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Contrato não encontrado" });
+      return res.status(404).json({
+        success: false,
+        message: "Contrato não encontrado",
+      });
     }
+
+    console.log(`✅ Contrato atualizado: ${contrato._id}`);
 
     res.json({
       success: true,
@@ -507,8 +579,12 @@ app.put("/api/contratos/:id", verificarToken, async (req, res) => {
       message: "Contrato atualizado com sucesso",
     });
   } catch (error) {
-    console.error("Erro ao atualizar contrato:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("❌ Erro ao atualizar contrato:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao atualizar contrato",
+      error: error.message,
+    });
   }
 });
 
@@ -520,30 +596,83 @@ app.delete("/api/contratos/:id", verificarToken, async (req, res) => {
     const contrato = await Contrato.findByIdAndDelete(id);
 
     if (!contrato) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Contrato não encontrado" });
+      return res.status(404).json({
+        success: false,
+        message: "Contrato não encontrado",
+      });
     }
+
+    console.log(`🗑️ Contrato excluído: ${contrato._id}`);
 
     res.json({
       success: true,
       message: "Contrato excluído com sucesso",
     });
   } catch (error) {
-    console.error("Erro ao excluir contrato:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("❌ Erro ao excluir contrato:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao excluir contrato",
+      error: error.message,
+    });
   }
 });
 
 // ============ TRATAMENTO DE ERROS ============
 app.use((error, req, res, next) => {
-  console.error("Erro não tratado:", error);
+  console.error("❌ Erro não tratado:", error);
   res.status(500).json({
     success: false,
     message:
-      process.env.NODE_ENV === "production" ? "Erro interno" : error.message,
+      process.env.NODE_ENV === "production"
+        ? "Erro interno do servidor"
+        : error.message,
   });
 });
 
-// ============ EXPORT ============
+// Rota 404
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Rota não encontrada",
+    path: req.path,
+  });
+});
+
+// ============ INICIAR SERVIDOR ============
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("\n" + "=".repeat(50));
+  console.log("🚀 SERVIDOR INICIADO COM SUCESSO!");
+  console.log("=".repeat(50));
+  console.log(`📡 Porta: ${PORT}`);
+  console.log(`🌍 Ambiente: ${process.env.NODE_ENV || "development"}`);
+  console.log(
+    `📦 MongoDB: ${
+      mongoose.connection.readyState === 1 ? "✅ Conectado" : "⏳ Conectando..."
+    }`
+  );
+  console.log(`🔥 Firebase: ${bucket ? "✅ Ativo" : "❌ Inativo"}`);
+  console.log("=".repeat(50) + "\n");
+});
+
+// Tratamento de sinais de encerramento
+process.on("SIGTERM", () => {
+  console.log("⚠️ SIGTERM recebido. Encerrando...");
+  mongoose.connection.close(() => {
+    console.log("✅ MongoDB desconectado");
+    process.exit(0);
+  });
+});
+
+process.on("SIGINT", () => {
+  console.log("⚠️ SIGINT recebido. Encerrando...");
+  mongoose.connection.close(() => {
+    console.log("✅ MongoDB desconectado");
+    process.exit(0);
+  });
+});
+
+// ============ EXPORT (para testes) ============
 module.exports = app;
