@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
+const sharp = require("sharp"); // ✅ SHARP PARA COMPRESSÃO
 
 // Carregar variáveis de ambiente
 dotenv.config();
@@ -128,7 +129,7 @@ mongoose.connection.on("reconnected", () => {
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB (antes da compressão)
 });
 
 // ============ CORS ============
@@ -189,31 +190,73 @@ const verificarToken = (req, res, next) => {
   }
 };
 
-// ============ FUNÇÃO DE UPLOAD FIREBASE ============
+// ============ FUNÇÃO DE UPLOAD FIREBASE OTIMIZADA ============
 const uploadImageToFirebase = async (file) => {
   if (!file || !bucket) return null;
 
-  const fileName = `${uuidv4()}-${file.originalname.replace(/\s+/g, "-")}`;
-  const fileUpload = bucket.file(`produtos/${fileName}`);
+  try {
+    const originalSize = (file.size / 1024 / 1024).toFixed(2);
+    console.log(`📤 Processando: ${file.originalname} (${originalSize}MB)`);
 
-  const blobStream = fileUpload.createWriteStream({
-    metadata: { contentType: file.mimetype },
-  });
+    // ✅ Comprimir e otimizar imagem com Sharp
+    const compressedBuffer = await sharp(file.buffer)
+      .resize(1200, 1200, {
+        fit: "inside", // Mantém proporção
+        withoutEnlargement: true, // Não aumenta imagens pequenas
+      })
+      .jpeg({
+        quality: 85, // Qualidade ótima
+        progressive: true, // Carregamento progressivo
+      })
+      .toBuffer();
 
-  return new Promise((resolve, reject) => {
-    blobStream.on("error", reject);
-    blobStream.on("finish", async () => {
-      try {
-        await fileUpload.makePublic();
-        resolve(
-          `https://storage.googleapis.com/${bucket.name}/produtos/${fileName}`
-        );
-      } catch (error) {
-        reject(error);
-      }
+    // Nome do arquivo único
+    const fileName = `${uuidv4()}-${file.originalname
+      .replace(/\s+/g, "-")
+      .replace(/\.[^/.]+$/, "")}.jpg`;
+
+    const fileUpload = bucket.file(`produtos/${fileName}`);
+
+    const blobStream = fileUpload.createWriteStream({
+      metadata: {
+        contentType: "image/jpeg",
+        cacheControl: "public, max-age=31536000", // Cache de 1 ano
+      },
     });
-    blobStream.end(file.buffer);
-  });
+
+    return new Promise((resolve, reject) => {
+      blobStream.on("error", (error) => {
+        console.error("❌ Erro no upload:", error);
+        reject(error);
+      });
+
+      blobStream.on("finish", async () => {
+        try {
+          await fileUpload.makePublic();
+          const publicUrl = `https://storage.googleapis.com/${bucket.name}/produtos/${fileName}`;
+
+          const compressedSize = (
+            compressedBuffer.length /
+            1024 /
+            1024
+          ).toFixed(2);
+          console.log(
+            `✅ Comprimido: ${originalSize}MB → ${compressedSize}MB | ${publicUrl}`
+          );
+
+          resolve(publicUrl);
+        } catch (error) {
+          console.error("❌ Erro ao tornar público:", error);
+          reject(error);
+        }
+      });
+
+      blobStream.end(compressedBuffer);
+    });
+  } catch (error) {
+    console.error("❌ Erro ao processar imagem:", error);
+    return null;
+  }
 };
 
 // ============ ROTAS ============
@@ -227,6 +270,7 @@ app.get("/", (req, res) => {
     mongodb:
       mongoose.connection.readyState === 1 ? "Conectado" : "Desconectado",
     environment: process.env.NODE_ENV || "development",
+    version: "2.0.0",
   });
 });
 
@@ -240,7 +284,11 @@ app.get("/api", (req, res) => {
 
 // Health check para Render
 app.get("/health", (req, res) => {
-  res.status(200).json({ status: "OK" });
+  res.status(200).json({
+    status: "OK",
+    mongodb: mongoose.connection.readyState === 1,
+    firebase: !!bucket,
+  });
 });
 
 // ============ LOGIN ============
@@ -382,8 +430,9 @@ app.post(
         });
       }
 
-      console.log(`📤 Fazendo upload de ${req.files.length} imagem(ns)...`);
+      console.log(`📦 Criando produto: ${nome} (${req.files.length} imagens)`);
 
+      // Upload paralelo das imagens com compressão
       const imageUrls = await Promise.all(
         req.files.map((file) => uploadImageToFirebase(file))
       );
@@ -406,7 +455,9 @@ app.post(
 
       await novoProduto.save();
 
-      console.log(`✅ Produto criado: ${novoProduto.nome}`);
+      console.log(
+        `✅ Produto criado: ${novoProduto.nome} (ID: ${novoProduto._id})`
+      );
 
       res.status(201).json({
         success: true,
@@ -447,7 +498,9 @@ app.put(
       if (descricao?.trim()) produto.descricao = descricao.trim();
 
       if (req.files && req.files.length > 0) {
-        console.log(`📤 Atualizando ${req.files.length} imagem(ns)...`);
+        console.log(
+          `📦 Atualizando produto: ${produto.nome} (${req.files.length} novas imagens)`
+        );
 
         const imageUrls = await Promise.all(
           req.files.map((file) => uploadImageToFirebase(file))
@@ -461,7 +514,9 @@ app.put(
 
       await produto.save();
 
-      console.log(`✅ Produto atualizado: ${produto.nome}`);
+      console.log(
+        `✅ Produto atualizado: ${produto.nome} (ID: ${produto._id})`
+      );
 
       res.json({
         success: true,
@@ -493,7 +548,7 @@ app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
       });
     }
 
-    console.log(`🗑️ Produto excluído: ${produto.nome}`);
+    console.log(`🗑️ Produto excluído: ${produto.nome} (ID: ${produto._id})`);
 
     res.json({
       success: true,
@@ -654,12 +709,13 @@ app.listen(PORT, "0.0.0.0", () => {
     }`
   );
   console.log(`🔥 Firebase: ${bucket ? "✅ Ativo" : "❌ Inativo"}`);
+  console.log(`🖼️ Sharp: ✅ Compressão ativa`);
   console.log("=".repeat(50) + "\n");
 });
 
 // Tratamento de sinais de encerramento
 process.on("SIGTERM", () => {
-  console.log("⚠️ SIGTERM recebido. Encerrando...");
+  console.log("⚠️ SIGTERM recebido. Encerrando gracefully...");
   mongoose.connection.close(() => {
     console.log("✅ MongoDB desconectado");
     process.exit(0);
@@ -667,7 +723,7 @@ process.on("SIGTERM", () => {
 });
 
 process.on("SIGINT", () => {
-  console.log("⚠️ SIGINT recebido. Encerrando...");
+  console.log("⚠️ SIGINT recebido. Encerrando gracefully...");
   mongoose.connection.close(() => {
     console.log("✅ MongoDB desconectado");
     process.exit(0);
