@@ -129,8 +129,7 @@ const initializeDependencies = async () => {
             retryWrites: true,
             retryReads: true,
             maxIdleTimeMS: 600000,
-            keepAlive: true,
-            keepAliveInitialDelay: 300000,
+            // keepAlive e keepAliveInitialDelay removidos (não suportados no Mongoose 6+)
           });
 
           Produto = require("./models/Produto");
