@@ -5,134 +5,16 @@ const dotenv = require("dotenv");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
-const sharp = require("sharp"); // ✅ SHARP PARA COMPRESSÃO
+const sharp = require("sharp");
 
 // Carregar variáveis de ambiente
 dotenv.config();
 
 const app = express();
 
-// ============ CONFIGURAÇÃO DO FIREBASE ============
-let bucket;
-try {
-  const admin = require("firebase-admin");
-  let serviceAccount;
+// ============ CONFIGURAÇÕES INICIAIS RÁPIDAS ============
 
-  if (process.env.NODE_ENV === "production") {
-    serviceAccount = {
-      type: "service_account",
-      project_id: process.env.FIREBASE_PROJECT_ID,
-      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-      private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      client_email: process.env.FIREBASE_CLIENT_EMAIL,
-      client_id: process.env.FIREBASE_CLIENT_ID,
-      auth_uri: "https://accounts.google.com/o/oauth2/auth",
-      token_uri: "https://oauth2.googleapis.com/token",
-      auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-      client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
-    };
-  } else {
-    serviceAccount = require("./firebase-key.json");
-  }
-
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-    });
-  }
-
-  bucket = admin.storage().bucket();
-  console.log("✅ Firebase inicializado com sucesso");
-} catch (error) {
-  console.error("❌ Erro ao inicializar Firebase:", error.message);
-}
-
-// ============ MODELOS ============
-const Produto = require("./models/Produto");
-
-const contratoSchema = new mongoose.Schema({
-  cliente: {
-    nome: String,
-    rg: String,
-    cpf: String,
-    nacionalidade: String,
-    dataNascimento: String,
-    profissao: String,
-    endereco: String,
-    numero: String,
-    bairro: String,
-    cidade: String,
-    telefone: String,
-    celular: String,
-  },
-  contrato: {
-    dataVenda: String,
-    dataAjuste: String,
-    dataRetirada: String,
-    dataEntrega: String,
-    formaPagamento: String,
-    itens: [
-      {
-        codigo: String,
-        especificacao: String,
-        valor: String,
-      },
-    ],
-    parcelas: [
-      {
-        numero: Number,
-        valor: String,
-        vencimento: String,
-      },
-    ],
-    observacoesPagamento: String,
-    observacoesGerais: String,
-  },
-  total: Number,
-  dataCriacao: { type: Date, default: Date.now },
-});
-
-const Contrato = mongoose.model("Contrato", contratoSchema);
-
-// ============ CONEXÃO MONGODB ============
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI, {
-      maxPoolSize: 10,
-      minPoolSize: 2,
-      serverSelectionTimeoutMS: 30000,
-      socketTimeoutMS: 60000,
-      family: 4,
-    });
-
-    console.log("✅ MongoDB conectado com sucesso");
-  } catch (error) {
-    console.error("❌ Erro ao conectar MongoDB:", error.message);
-    process.exit(1);
-  }
-};
-
-// Conectar ao banco
-connectDB();
-
-// Monitorar conexão
-mongoose.connection.on("disconnected", () => {
-  console.log("⚠️ MongoDB desconectado");
-});
-
-mongoose.connection.on("reconnected", () => {
-  console.log("✅ MongoDB reconectado");
-});
-
-// ============ MULTER ============
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB (antes da compressão)
-});
-
-// ============ CORS ============
+// CORS primeiro (mais rápido)
 const allowedOrigins = [
   "https://erica-damas-com-br-e5w2.vercel.app",
   "https://erica-damas-com-br-e5w2-git-main-pedros-projects-f4fedec9.vercel.app",
@@ -150,7 +32,6 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.log(`⚠️ Origem bloqueada: ${origin}`);
         callback(null, false);
       }
     },
@@ -162,12 +43,177 @@ app.use(
 
 app.use(express.json());
 
-// ============ CREDENCIAIS ============
+// Multer config
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+// ============ VARIÁVEIS GLOBAIS PARA LAZY LOADING ============
+
+let dbInitialized = false;
+let firebaseInitialized = false;
+let bucket = null;
+let Produto = null;
+let Contrato = null;
+
+// ============ HEALTH CHECK SUPER RÁPIDO ============
+
+// Health check que responde INSTANTANEAMENTE (sem dependências)
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    server: "Erica Damas API",
+    coldStart: !dbInitialized,
+  });
+});
+
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "✅ API Erica Damas Online",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development",
+    version: "2.0.0",
+    initialized: dbInitialized && firebaseInitialized,
+  });
+});
+
+// ============ INICIALIZAÇÃO LAZY DAS DEPENDÊNCIAS ============
+
+const initializeDependencies = async () => {
+  if (dbInitialized && firebaseInitialized) return;
+
+  console.log("⚡ Inicializando dependências pesadas...");
+
+  try {
+    // 1. Inicializar MongoDB
+    if (!dbInitialized) {
+      await mongoose.connect(process.env.MONGODB_URI, {
+        maxPoolSize: 5,
+        minPoolSize: 1,
+        serverSelectionTimeoutMS: 15000,
+        socketTimeoutMS: 30000,
+        family: 4,
+      });
+
+      // Carregar modelos só depois da conexão
+      Produto = require("./models/Produto");
+
+      const contratoSchema = new mongoose.Schema({
+        cliente: {
+          nome: String,
+          rg: String,
+          cpf: String,
+          nacionalidade: String,
+          dataNascimento: String,
+          profissao: String,
+          endereco: String,
+          numero: String,
+          bairro: String,
+          cidade: String,
+          telefone: String,
+          celular: String,
+        },
+        contrato: {
+          dataVenda: String,
+          dataAjuste: String,
+          dataRetirada: String,
+          dataEntrega: String,
+          formaPagamento: String,
+          itens: [
+            {
+              codigo: String,
+              especificacao: String,
+              valor: String,
+            },
+          ],
+          parcelas: [
+            {
+              numero: Number,
+              valor: String,
+              vencimento: String,
+            },
+          ],
+          observacoesPagamento: String,
+          observacoesGerais: String,
+        },
+        total: Number,
+        dataCriacao: { type: Date, default: Date.now },
+      });
+
+      Contrato = mongoose.model("Contrato", contratoSchema);
+
+      dbInitialized = true;
+      console.log("✅ MongoDB conectado (lazy)");
+    }
+
+    // 2. Inicializar Firebase
+    if (!firebaseInitialized) {
+      const admin = require("firebase-admin");
+      let serviceAccount;
+
+      if (process.env.NODE_ENV === "production") {
+        serviceAccount = {
+          type: "service_account",
+          project_id: process.env.FIREBASE_PROJECT_ID,
+          private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+          private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+          client_email: process.env.FIREBASE_CLIENT_EMAIL,
+          client_id: process.env.FIREBASE_CLIENT_ID,
+          auth_uri: "https://accounts.google.com/o/oauth2/auth",
+          token_uri: "https://oauth2.googleapis.com/token",
+          auth_provider_x509_cert_url:
+            "https://www.googleapis.com/oauth2/v1/certs",
+          client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
+        };
+      } else {
+        serviceAccount = require("./firebase-key.json");
+      }
+
+      if (!admin.apps.length) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+          storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+        });
+      }
+
+      bucket = admin.storage().bucket();
+      firebaseInitialized = true;
+      console.log("✅ Firebase inicializado (lazy)");
+    }
+  } catch (error) {
+    console.error("❌ Erro na inicialização lazy:", error.message);
+    // Não throw error - permite que o servidor continue funcionando
+  }
+};
+
+// ============ MIDDLEWARE DE INICIALIZAÇÃO LAZY ============
+
+app.use(async (req, res, next) => {
+  // Skip para health checks e OPTIONS
+  if (req.path === "/health" || req.path === "/" || req.method === "OPTIONS") {
+    return next();
+  }
+
+  // Para todas as outras rotas, inicializa dependências se necessário
+  if (!dbInitialized || !firebaseInitialized) {
+    await initializeDependencies();
+  }
+
+  next();
+});
+
+// ============ CONFIGURAÇÕES APÓS INICIALIZAÇÃO ============
+
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ericadamas.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Eri@D4m4s!2024#Adm";
 const JWT_SECRET = process.env.JWT_SECRET || "chave_secreta_padrao";
 
 // ============ MIDDLEWARE DE AUTENTICAÇÃO ============
+
 const verificarToken = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
 
@@ -191,6 +237,7 @@ const verificarToken = (req, res, next) => {
 };
 
 // ============ FUNÇÃO DE UPLOAD FIREBASE OTIMIZADA ============
+
 const uploadImageToFirebase = async (file) => {
   if (!file || !bucket) return null;
 
@@ -198,19 +245,17 @@ const uploadImageToFirebase = async (file) => {
     const originalSize = (file.size / 1024 / 1024).toFixed(2);
     console.log(`📤 Processando: ${file.originalname} (${originalSize}MB)`);
 
-    // ✅ Comprimir e otimizar imagem com Sharp
     const compressedBuffer = await sharp(file.buffer)
       .resize(1200, 1200, {
-        fit: "inside", // Mantém proporção
-        withoutEnlargement: true, // Não aumenta imagens pequenas
+        fit: "inside",
+        withoutEnlargement: true,
       })
       .jpeg({
-        quality: 85, // Qualidade ótima
-        progressive: true, // Carregamento progressivo
+        quality: 85,
+        progressive: true,
       })
       .toBuffer();
 
-    // Nome do arquivo único
     const fileName = `${uuidv4()}-${file.originalname
       .replace(/\s+/g, "-")
       .replace(/\.[^/.]+$/, "")}.jpg`;
@@ -220,7 +265,7 @@ const uploadImageToFirebase = async (file) => {
     const blobStream = fileUpload.createWriteStream({
       metadata: {
         contentType: "image/jpeg",
-        cacheControl: "public, max-age=31536000", // Cache de 1 ano
+        cacheControl: "public, max-age=31536000",
       },
     });
 
@@ -259,39 +304,25 @@ const uploadImageToFirebase = async (file) => {
   }
 };
 
-// ============ ROTAS ============
+// ============ ROTAS DE STATUS ============
 
-// Rota raiz - Health check
-app.get("/", (req, res) => {
+app.get("/api/status", async (req, res) => {
+  const mongodbStatus = dbInitialized && mongoose.connection.readyState === 1;
+  const firebaseStatus = firebaseInitialized && !!bucket;
+
   res.json({
     success: true,
-    message: "✅ API Erica Damas Online",
+    dependencies: {
+      mongodb: mongodbStatus,
+      firebase: firebaseStatus,
+      fullyInitialized: dbInitialized && firebaseInitialized,
+    },
     timestamp: new Date().toISOString(),
-    mongodb:
-      mongoose.connection.readyState === 1 ? "Conectado" : "Desconectado",
-    environment: process.env.NODE_ENV || "development",
-    version: "2.0.0",
-  });
-});
-
-app.get("/api", (req, res) => {
-  res.json({
-    success: true,
-    message: "API funcionando",
-    mongodb: mongoose.connection.readyState === 1 ? "OK" : "ERRO",
-  });
-});
-
-// Health check para Render
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "OK",
-    mongodb: mongoose.connection.readyState === 1,
-    firebase: !!bucket,
   });
 });
 
 // ============ LOGIN ============
+
 app.post("/api/login", async (req, res) => {
   try {
     const { email, senha } = req.body;
@@ -341,6 +372,13 @@ app.get("/api/admin/verificar", verificarToken, (req, res) => {
 // Buscar produtos por tipo (PÚBLICA)
 app.get("/api/produtos/:tipo", async (req, res) => {
   try {
+    if (!dbInitialized) {
+      return res.status(503).json({
+        success: false,
+        message: "Serviço temporariamente indisponível",
+      });
+    }
+
     const { tipo } = req.params;
     const pagina = parseInt(req.query.pagina) || 1;
     const limite = parseInt(req.query.limite) || 12;
@@ -383,6 +421,13 @@ app.get("/api/produtos/:tipo", async (req, res) => {
 // Buscar todos os produtos (ADMIN)
 app.get("/api/admin/produtos", verificarToken, async (req, res) => {
   try {
+    if (!dbInitialized) {
+      return res.status(503).json({
+        success: false,
+        message: "Serviço temporariamente indisponível",
+      });
+    }
+
     const produtos = await Produto.find().sort({ createdAt: -1 }).lean();
 
     res.json({
@@ -407,6 +452,13 @@ app.post(
   upload.array("imagens", 5),
   async (req, res) => {
     try {
+      if (!dbInitialized || !firebaseInitialized) {
+        return res.status(503).json({
+          success: false,
+          message: "Serviço temporariamente indisponível",
+        });
+      }
+
       const { nome, descricao, tipo } = req.body;
 
       if (!nome || !descricao || !tipo) {
@@ -432,7 +484,6 @@ app.post(
 
       console.log(`📦 Criando produto: ${nome} (${req.files.length} imagens)`);
 
-      // Upload paralelo das imagens com compressão
       const imageUrls = await Promise.all(
         req.files.map((file) => uploadImageToFirebase(file))
       );
@@ -482,6 +533,13 @@ app.put(
   upload.array("imagens", 5),
   async (req, res) => {
     try {
+      if (!dbInitialized || !firebaseInitialized) {
+        return res.status(503).json({
+          success: false,
+          message: "Serviço temporariamente indisponível",
+        });
+      }
+
       const { id } = req.params;
       const { nome, descricao } = req.body;
 
@@ -537,6 +595,13 @@ app.put(
 // Excluir produto
 app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
   try {
+    if (!dbInitialized) {
+      return res.status(503).json({
+        success: false,
+        message: "Serviço temporariamente indisponível",
+      });
+    }
+
     const { id } = req.params;
 
     const produto = await Produto.findByIdAndDelete(id);
@@ -569,6 +634,13 @@ app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
 // Buscar contratos
 app.get("/api/contratos", verificarToken, async (req, res) => {
   try {
+    if (!dbInitialized) {
+      return res.status(503).json({
+        success: false,
+        message: "Serviço temporariamente indisponível",
+      });
+    }
+
     const contratos = await Contrato.find().sort({ dataCriacao: -1 }).lean();
 
     res.json({
@@ -589,6 +661,13 @@ app.get("/api/contratos", verificarToken, async (req, res) => {
 // Criar contrato
 app.post("/api/contratos", verificarToken, async (req, res) => {
   try {
+    if (!dbInitialized) {
+      return res.status(503).json({
+        success: false,
+        message: "Serviço temporariamente indisponível",
+      });
+    }
+
     const novoContrato = new Contrato(req.body);
     await novoContrato.save();
 
@@ -612,6 +691,13 @@ app.post("/api/contratos", verificarToken, async (req, res) => {
 // Atualizar contrato
 app.put("/api/contratos/:id", verificarToken, async (req, res) => {
   try {
+    if (!dbInitialized) {
+      return res.status(503).json({
+        success: false,
+        message: "Serviço temporariamente indisponível",
+      });
+    }
+
     const { id } = req.params;
 
     const contrato = await Contrato.findByIdAndUpdate(id, req.body, {
@@ -646,6 +732,13 @@ app.put("/api/contratos/:id", verificarToken, async (req, res) => {
 // Excluir contrato
 app.delete("/api/contratos/:id", verificarToken, async (req, res) => {
   try {
+    if (!dbInitialized) {
+      return res.status(503).json({
+        success: false,
+        message: "Serviço temporariamente indisponível",
+      });
+    }
+
     const { id } = req.params;
 
     const contrato = await Contrato.findByIdAndDelete(id);
@@ -674,6 +767,7 @@ app.delete("/api/contratos/:id", verificarToken, async (req, res) => {
 });
 
 // ============ TRATAMENTO DE ERROS ============
+
 app.use((error, req, res, next) => {
   console.error("❌ Erro não tratado:", error);
   res.status(500).json({
@@ -695,6 +789,7 @@ app.use((req, res) => {
 });
 
 // ============ INICIAR SERVIDOR ============
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, "0.0.0.0", () => {
@@ -703,32 +798,35 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log("=".repeat(50));
   console.log(`📡 Porta: ${PORT}`);
   console.log(`🌍 Ambiente: ${process.env.NODE_ENV || "development"}`);
-  console.log(
-    `📦 MongoDB: ${
-      mongoose.connection.readyState === 1 ? "✅ Conectado" : "⏳ Conectando..."
-    }`
-  );
-  console.log(`🔥 Firebase: ${bucket ? "✅ Ativo" : "❌ Inativo"}`);
-  console.log(`🖼️ Sharp: ✅ Compressão ativa`);
+  console.log(`⚡ Modo: Lazy Loading Ativo`);
+  console.log(`✅ Health Check: http://localhost:${PORT}/health`);
+  console.log(`📊 Status: http://localhost:${PORT}/api/status`);
   console.log("=".repeat(50) + "\n");
 });
 
-// Tratamento de sinais de encerramento
+// Graceful shutdown
 process.on("SIGTERM", () => {
   console.log("⚠️ SIGTERM recebido. Encerrando gracefully...");
-  mongoose.connection.close(() => {
-    console.log("✅ MongoDB desconectado");
+  if (mongoose.connection.readyState === 1) {
+    mongoose.connection.close(() => {
+      console.log("✅ MongoDB desconectado");
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 });
 
 process.on("SIGINT", () => {
   console.log("⚠️ SIGINT recebido. Encerrando gracefully...");
-  mongoose.connection.close(() => {
-    console.log("✅ MongoDB desconectado");
+  if (mongoose.connection.readyState === 1) {
+    mongoose.connection.close(() => {
+      console.log("✅ MongoDB desconectado");
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 });
 
-// ============ EXPORT (para testes) ============
 module.exports = app;

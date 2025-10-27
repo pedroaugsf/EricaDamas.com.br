@@ -13,7 +13,7 @@ const GerenciadorContratos = () => {
   // Estados para paginação e filtros
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(10);
-  const [filtroData, setFiltroData] = useState("semana"); // todos, semana, mes
+  const [filtroData, setFiltroData] = useState("semana");
   const [pesquisa, setPesquisa] = useState("");
   const [mostrarContratos, setMostrarContratos] = useState(false);
 
@@ -45,6 +45,155 @@ const GerenciadorContratos = () => {
     observacoesGerais: "",
   });
 
+  // Estados para cláusulas editáveis
+  const [clausulas, setClausulas] = useState({
+    clausula1: {
+      titulo: "CLÁUSULA 1 – OBJETO",
+      conteudo:
+        "1.1 O presente contrato tem por objeto a locação de trajes e acessórios, conforme especificações acordadas entre as partes no ato da contratação.",
+    },
+    clausula2: {
+      titulo: "CLÁUSULA 2 – OBRIGAÇÕES DO LOCATÁRIO",
+      itens: [
+        {
+          subtitulo: "2.1 Informações e Ajustes:",
+          texto:
+            "O LOCATÁRIO deverá fornecer todas as informações necessárias para a locação e comparecer na data agendada para prova e ajuste das peças, utilizando os sapatos que usará no evento. A ausência ou descumprimento dessas obrigações isenta a LOCADORA de possíveis falhas ao realizar os ajustes, ou até mesmo de realizar os ajustes.",
+        },
+        {
+          subtitulo: "2.2 Limitações dos Ajustes:",
+          texto:
+            "Os ajustes realizados são simples, manuais e sem corte de tecido, consistindo apenas em dobras costuradas à mão. Tais ajustes podem apresentar marcas aparentes, folgas ou papos, sendo considerados provisórios. Costuras manuais não têm a mesma resistência das feitas à máquina e podem se soltar durante o uso.",
+        },
+        {
+          subtitulo: "2.3 Estado das Peças:",
+          texto:
+            "As peças locadas são adaptadas ao cliente para uso único, sem garantia de ajuste perfeito. Não são realizados rebordados ou alterações estruturais, apenas ajustes simples.",
+        },
+        {
+          subtitulo: "2.4 Primeiro Aluguel:",
+          texto:
+            "A LOCADORA não realiza nem garante primeiro aluguel em peças prontas para locação.",
+        },
+        {
+          subtitulo: "2.5 Responsabilidade por Acessórios:",
+          texto:
+            "Os acessórios entregues (bolsas, sapatos, cintos, cabides, capas etc.) serão fornecidos em perfeitas condições. O LOCATÁRIO responderá pelo valor de reposição em caso de danos ou extravio.",
+        },
+        {
+          subtitulo: "2.6 Proibição de Alterações Não Autorizadas:",
+          texto:
+            "É vedado ao LOCATÁRIO realizar qualquer alteração nos ajustes feitos pela LOCADORA sem autorização expressa e por escrito. O descumprimento implicará multa de até 5 (cinco) vezes o valor da locação.",
+        },
+        {
+          subtitulo: "2.7 Conferência e Aceite das Peças:",
+          texto:
+            "Todas as peças devem ser conferidas ao todo, higienização das peças, fechos, zíper, ajustes efetuados, barras, costuras no geral e outros mais, e apenas após provadas, efetuar a assinatura do termo de retirada,(assinatura do cliente recebedor). O LOCATÁRIO assume integral responsabilidade pela guarda, conservação e devolução das peças, não sendo aceitas reclamações posteriores.",
+        },
+        {
+          subtitulo: "2.8 Pagamento:",
+          texto:
+            "A liberação dos itens locados está condicionada à quitação total do valor contratual até a data da retirada. São aceitas as seguintes formas de pagamento: Pix, dinheiro e cartão de crédito (bandeiras Visa e Mastercard). Na falta da quitação total da retirada, valores pagos anteriores serão retidos a título de reserva e não serão devolvidos.",
+        },
+      ],
+    },
+    clausula3: {
+      titulo: "CLÁUSULA 3 – OBRIGAÇÕES DA LOCADORA",
+      itens: [
+        {
+          subtitulo: "3.1 Disponibilidade:",
+          texto:
+            "A LOCADORA disponibilizará a loja para retirada e devolução de peças de segunda a sexta-feira, das 9h às 18h, e aos sábados das 9h às 12h, exceto feriados.",
+        },
+        {
+          subtitulo: "3.2 Retirada de Itens:",
+          texto:
+            "O LOCATÁRIO compromete-se a retirar os itens na data estipulada. A LOCADORA não se responsabiliza por peças não retiradas, sendo devido o valor integral da locação, ainda que a peça não tenha sido utilizada.",
+        },
+        {
+          subtitulo: "3.3 Substituição de Peças:",
+          texto:
+            "A LOCADORA poderá substituir peças por similares, de acordo com a disponibilidade ou necessidade estética, sem necessidade de autorização prévia.",
+        },
+      ],
+    },
+    clausula4: {
+      titulo: "CLÁUSULA 4 – CANCELAMENTO, MULTAS, TROCAS E CRÉDITO",
+      itens: [
+        {
+          subtitulo: "4.1 Rescisão:",
+          texto:
+            "O contrato poderá ser rescindido por qualquer das partes mediante aviso prévio por escrito. Aplicam-se as seguintes penalidades: 20% (vinte por cento) do valor total do contrato, no caso de peças sem ajustes; 100% (cem por cento) do valor total, no caso de peças ajustadas ou não retiradas na data combinada.",
+        },
+        {
+          subtitulo: "4.2 Sinal (Arras):",
+          texto:
+            "Após o pagamento do sinal, não haverá devolução do valor em caso de cancelamento por parte do LOCATÁRIO. O valor poderá ser convertido em crédito, válido por 365 dias, descontadas eventuais penalidades. Após esse prazo, o crédito perderá a validade.",
+        },
+        {
+          subtitulo: "4.3 Cancelamento pela LOCADORA:",
+          texto:
+            "No caso de cancelamento por parte da LOCADORA, serão devolvidos ao LOCATÁRIO os valores referentes aos serviços não prestados.",
+        },
+        {
+          subtitulo: "4.4 Troca de Reserva:",
+          texto:
+            "A troca de reserva estará sujeita a cobrança de taxa correspondente a 10% (dez por cento) do valor da peça retirada do contrato.",
+        },
+      ],
+    },
+    clausula5: {
+      titulo: "CLÁUSULA 5 – CONDIÇÕES GERAIS, CUIDADOS E MULTAS",
+      itens: [
+        {
+          subtitulo: "5.1 Sujeira e Manchas:",
+          texto:
+            "Será aplicada multa de R$ 50,00 (cinquenta reais) por peça devolvida com sujeira excessiva, manchas ou arrasto de barra.",
+        },
+        {
+          subtitulo: "5.2 Danos e Extravio:",
+          texto:
+            "Em caso de danos irreparáveis ou extravio, o LOCATÁRIO pagará indenização correspondente a 5 (cinco) vezes o valor da locação do item.",
+        },
+        {
+          subtitulo: "5.3 Atraso na Devolução:",
+          texto:
+            "A devolução fora do prazo gerará multa diária de 10% (dez por cento) sobre o valor da locação.",
+        },
+        {
+          subtitulo: "5.4 Extravio:",
+          texto:
+            "A não devolução após 10 (dez) dias será considerada extravio, sujeitando o LOCATÁRIO à indenização de 5 (cinco) vezes o valor da peça, com prazo de pagamento de até 30 dias.",
+        },
+        {
+          subtitulo: "5.5 Avaliação das Peças:",
+          texto:
+            "A LOCADORA terá o prazo de até 10 (dez) dias úteis, a contar da data da devolução, para realizar a avaliação das peças. Em caso de constatação de danos, o LOCATÁRIO será notificado.",
+        },
+        {
+          subtitulo: "5.6 Alterações Proibidas:",
+          texto:
+            "É terminantemente proibida qualquer modificação física nas peças locadas, tais como corte, bainha, costura ou outras intervenções.",
+        },
+      ],
+    },
+    clausula6: {
+      titulo: "CLÁUSULA 6 – USO DE IMAGEM",
+      conteudo:
+        "6.1 O LOCATÁRIO autoriza, de forma gratuita e irrevogável, o uso de sua imagem, decorrente do uso das peças locadas, para fins de divulgação da LOCADORA, em quaisquer meios de comunicação, físicos ou digitais.",
+    },
+    clausula7: {
+      titulo: "CLÁUSULA 7 – TÍTULO EXECUTIVO",
+      conteudo:
+        "7.1 Este contrato constitui título executivo extrajudicial, nos termos do artigo 784, inciso III, do Código de Processo Civil, para fins de cobrança de valores não pagos, bem como de indenizações por danos ou extravios dos itens locados.",
+    },
+    clausula8: {
+      titulo: "CLÁUSULA 8 – FORO",
+      conteudo:
+        "8.1 Para dirimir quaisquer controvérsias oriundas deste contrato, as partes elegem o foro da Comarca de Pará de Minas/MG, renunciando a qualquer outro, por mais privilegiado que seja.",
+    },
+  });
+
   const FORMAS_PAGAMENTO = [
     { value: "dinheiro", label: "Dinheiro" },
     { value: "cartao_credito", label: "Cartão de Crédito" },
@@ -62,24 +211,24 @@ const GerenciadorContratos = () => {
       setCarregando(true);
       setErro("");
 
-      // Chamada à API para buscar contratos
       const response = await api.get("/contratos");
 
       if (response.data.success) {
         setContratos(response.data.contratos);
-        `✅ ${response.data.contratos.length} contratos carregados`;
+        console.log(
+          `✅ ${response.data.contratos.length} contratos carregados`
+        );
       } else {
         throw new Error(response.data.message || "Erro ao carregar contratos");
       }
     } catch (error) {
-      "Erro ao carregar contratos:", error;
+      console.error("Erro ao carregar contratos:", error);
       setErro("Falha ao carregar contratos. " + (error.message || ""));
 
-      // Fallback para localStorage se a API falhar
       const contratosSalvos = localStorage.getItem("contratos");
       if (contratosSalvos) {
         setContratos(JSON.parse(contratosSalvos));
-        ("⚠️ Usando contratos do localStorage como fallback");
+        console.log("⚠️ Usando contratos do localStorage como fallback");
       }
     } finally {
       setCarregando(false);
@@ -102,29 +251,30 @@ const GerenciadorContratos = () => {
       let response;
 
       if (isUpdate) {
-        // Atualizar contrato existente
         response = await api.put(`/contratos/${novoContrato.id}`, novoContrato);
       } else {
-        // Criar novo contrato
         response = await api.post("/contratos", novoContrato);
       }
 
       if (response.data.success) {
-        // Recarregar a lista de contratos
         await carregarContratos();
-        `✅ Contrato ${isUpdate ? "atualizado" : "criado"} com sucesso`;
+        console.log(
+          `✅ Contrato ${isUpdate ? "atualizado" : "criado"} com sucesso`
+        );
       } else {
         throw new Error(response.data.message || "Erro ao salvar contrato");
       }
     } catch (error) {
-      `Erro ao ${isUpdate ? "atualizar" : "criar"} contrato:`, error;
+      console.error(
+        `Erro ao ${isUpdate ? "atualizar" : "criar"} contrato:`,
+        error
+      );
       setErro(
         `Falha ao ${isUpdate ? "atualizar" : "criar"} contrato. ${
           error.message || ""
         }`
       );
 
-      // Fallback para localStorage se a API falhar
       const contratosSalvos = localStorage.getItem("contratos")
         ? JSON.parse(localStorage.getItem("contratos"))
         : [];
@@ -141,7 +291,7 @@ const GerenciadorContratos = () => {
 
       localStorage.setItem("contratos", JSON.stringify(novosContratos));
       setContratos(novosContratos);
-      ("⚠️ Salvando no localStorage como fallback");
+      console.log("⚠️ Salvando no localStorage como fallback");
     } finally {
       setCarregando(false);
     }
@@ -157,15 +307,14 @@ const GerenciadorContratos = () => {
 
         if (response.data.success) {
           await carregarContratos();
-          ("✅ Contrato excluído com sucesso");
+          console.log("✅ Contrato excluído com sucesso");
         } else {
           throw new Error(response.data.message || "Erro ao excluir contrato");
         }
       } catch (error) {
-        "Erro ao excluir contrato:", error;
+        console.error("Erro ao excluir contrato:", error);
         setErro("Falha ao excluir contrato. " + (error.message || ""));
 
-        // Fallback para localStorage se a API falhar
         const contratosSalvos = localStorage.getItem("contratos")
           ? JSON.parse(localStorage.getItem("contratos"))
           : [];
@@ -173,7 +322,7 @@ const GerenciadorContratos = () => {
         const novosContratos = contratosSalvos.filter((c) => c.id !== id);
         localStorage.setItem("contratos", JSON.stringify(novosContratos));
         setContratos(novosContratos);
-        ("⚠️ Excluindo do localStorage como fallback");
+        console.log("⚠️ Excluindo do localStorage como fallback");
       } finally {
         setCarregando(false);
       }
@@ -306,7 +455,6 @@ const GerenciadorContratos = () => {
 
   // Salvar contrato
   const salvarContrato = () => {
-    // Validações básicas
     if (!dadosCliente.nome || !dadosCliente.cpf) {
       alert("Por favor, preencha pelo menos o nome e CPF do cliente");
       return;
@@ -330,11 +478,11 @@ const GerenciadorContratos = () => {
       id: editandoId || Date.now().toString(),
       cliente: dadosCliente,
       contrato: dadosContrato,
+      clausulas: clausulas,
       total: calcularTotal(),
       dataCriacao: new Date().toISOString(),
     };
 
-    // Salvar no banco de dados (e localStorage como fallback)
     salvarContratos(novoContrato, !!editandoId);
     resetarFormulario();
   };
@@ -343,6 +491,9 @@ const GerenciadorContratos = () => {
   const editarContrato = (contrato) => {
     setDadosCliente(contrato.cliente);
     setDadosContrato(contrato.contrato);
+    if (contrato.clausulas) {
+      setClausulas(contrato.clausulas);
+    }
     setEditandoId(contrato.id);
     setMostrarFormulario(true);
     window.scrollTo(0, 0);
@@ -388,7 +539,7 @@ const GerenciadorContratos = () => {
 
     const hoje = new Date();
     const inicioSemana = new Date(hoje);
-    inicioSemana.setDate(hoje.getDate() - hoje.getDay()); // Domingo da semana atual
+    inicioSemana.setDate(hoje.getDate() - hoje.getDay());
 
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
 
@@ -428,12 +579,10 @@ const GerenciadorContratos = () => {
       contratosFiltradosPorData
     );
 
-    // Ordenar por data de criação (mais recentes primeiro)
     const contratosOrdenados = [...contratosFiltrados].sort(
       (a, b) => new Date(b.dataCriacao) - new Date(a.dataCriacao)
     );
 
-    // Calcular índices para paginação
     const indexInicial = (paginaAtual - 1) * itensPorPagina;
     const indexFinal = indexInicial + itensPorPagina;
 
@@ -447,10 +596,10 @@ const GerenciadorContratos = () => {
     getContratosFiltrados();
   const totalPaginas = Math.ceil(totalContratos / itensPorPagina);
 
-  // Imprimir contrato - ESTRUTURA EXATA SOLICITADA EM 2 FOLHAS
-  // Imprimir contrato - ESTRUTURA EXATA SOLICITADA EM 2 FOLHAS
+  // Imprimir contrato
   const imprimirContrato = (contrato) => {
     const { cliente, contrato: dadosContrato, total } = contrato;
+    const clausulasParaImprimir = contrato.clausulas || clausulas;
 
     const janela = window.open("", "_blank");
     janela.document.write(`
@@ -679,11 +828,10 @@ const GerenciadorContratos = () => {
         </div>
       </div>
 
-      <div class="section tight-section">
-        <div class="clause-title">2. DO OBJETO DO CONTRATO</div>
-        <div class="clause-content ultra-compact">
-          <strong>Cláusula 1ª.</strong> É objeto do presente contrato a locação dos seguintes trajes e acessórios.
-        </div>
+      <div class="clause-title">${clausulasParaImprimir.clausula1.titulo}</div>
+<div class="clause-content ultra-compact">
+${clausulasParaImprimir.clausula1.conteudo}
+</div>
 
         <table class="items-table">
           <thead>
@@ -749,16 +897,14 @@ const GerenciadorContratos = () => {
 
         <div class="signature-section tight-section">
           <div class="clause-content ultra-compact no-spacing">
-            Pará de Minas – MG, 
-            <span class="underline-small">${new Date().getDate()}</span>
-            de 
-            <span class="underline-small">${new Date().toLocaleDateString(
-              "pt-BR",
-              { month: "long" }
-            )}</span>
-            de 
-            <span class="underline-small">${new Date().getFullYear()}</span>
-          </div>
+Pará de Minas – MG, 
+<span class="underline-small">____</span>
+de 
+<span class="underline-small">__________</span>
+de 
+<span class="underline-small">______</span>
+</div>
+
           
           <div class="clause-content ultra-compact no-spacing">
             Assinatura do cliente recebedor: <span class="underline-large"></span>
@@ -771,128 +917,110 @@ const GerenciadorContratos = () => {
       </div>
 
       <!-- CLÁUSULAS 1-4 NA PRIMEIRA FOLHA -->
-      <div class="section tight-section">
-        <div class="clause-title">CLÁUSULA 1 – OBJETO</div>
-        <div class="clause-content ultra-compact">
-          1.1 O presente contrato tem por objeto a locação de trajes e acessórios, conforme especificações acordadas entre as partes no ato da contratação.
-        </div>
-      </div>
+<div class="section tight-section">
+<div class="clause-title">${clausulasParaImprimir.clausula1.titulo}</div>
+<div class="clause-content ultra-compact">
+  ${clausulasParaImprimir.clausula1.conteudo}
+</div>
+</div>
 
-      <div class="section tight-section">
-        <div class="clause-title">CLÁUSULA 2 – OBRIGAÇÕES DO LOCATÁRIO</div>
-        <div class="clause-content ultra-compact">
-          2.1 Informações e Ajustes: O LOCATÁRIO deverá fornecer todas as informações necessárias para a locação e comparecer na data agendada para prova e ajuste das peças, utilizando os sapatos que usará no evento. A ausência ou descumprimento dessas obrigações isenta a LOCADORA de possíveis falhas ao realizar os ajustes, ou até mesmo de realizar os ajustes.
-        </div>
-        <div class="clause-content ultra-compact">
-          2.2 Limitações dos Ajustes: Os ajustes realizados são simples, manuais e sem corte de tecido, consistindo apenas em dobras costuradas à mão. Tais ajustes podem apresentar marcas aparentes, folgas ou papos, sendo considerados provisórios. Costuras manuais não têm a mesma resistência das feitas à máquina e podem se soltar durante o uso.
-        </div>
-        <div class="clause-content ultra-compact">
-          2.3 Estado das Peças: As peças locadas são adaptadas ao cliente para uso único, sem garantia de ajuste perfeito. Não são realizados rebordados ou alterações estruturais, apenas ajustes simples.
-        </div>
-        <div class="clause-content ultra-compact">
-          2.4 Primeiro Aluguel: A LOCADORA não realiza nem garante primeiro aluguel em peças prontas para locação.
-        </div>
-        <div class="clause-content ultra-compact">
-          2.5 Responsabilidade por Acessórios: Os acessórios entregues (bolsas, sapatos, cintos, cabides, capas etc.) serão fornecidos em perfeitas condições. O LOCATÁRIO responderá pelo valor de reposição em caso de danos ou extravio.
-        </div>
-      </div>
+<div class="section tight-section">
+<div class="clause-title">${clausulasParaImprimir.clausula2.titulo}</div>
+${clausulasParaImprimir.clausula2.itens
+  .slice(0, 5)
+  .map(
+    (item) => `
+  <div class="clause-content ultra-compact">
+    <strong>${item.subtitulo}</strong> ${item.texto}
+  </div>
+`
+  )
+  .join("")}
+</div>
 
-      <!-- SEGUNDA FOLHA -->
-      <div class="page-break"></div>
+<!-- SEGUNDA FOLHA -->
+<div class="page-break"></div>
 
-      <!-- CONTINUAÇÃO CLÁUSULA 2 -->
-      <div class="section tight-section">
-        <div class="clause-content ultra-compact">
-          2.6 Proibição de Alterações Não Autorizadas: É vedado ao LOCATÁRIO realizar qualquer alteração nos ajustes feitos pela LOCADORA sem autorização expressa e por escrito. O descumprimento implicará multa de até 5 (cinco) vezes o valor da locação.
-        </div>
-        <div class="clause-content ultra-compact">
-          2.7 Conferência e Aceite das Peças: Todas as peças devem ser conferidas ao todo, higienização das peças, fechos, zíper, ajustes efetuados, barras, costuras no geral e outros mais, e apenas após provadas, efetuar a assinatura do termo de retirada,(assinatura do cliente recebedor).
-        </div>
-        <div class="clause-content ultra-compact">
-          O LOCATÁRIO assume integral responsabilidade pela guarda, conservação e devolução das peças, não sendo aceitas reclamações posteriores.
-        </div>
-        <div class="clause-content ultra-compact">
-          2.8 Pagamento: A liberação dos itens locados está condicionada à quitação total do valor contratual até a data da retirada. São aceitas as seguintes formas de pagamento: Pix, dinheiro e cartão de crédito (bandeiras Visa e Mastercard).Na falta da quitação total da retirada, valores pagos anteriores serão retidos a título de reserva e não serão devolvidos.
-        </div>
-      </div>
+<!-- DATA DA VENDA NA SEGUNDA PÁGINA -->
+<div class="section tight-section">
+<div class="clause-content ultra-compact" style="text-align: center; margin-bottom: 1rem; font-weight: bold;">
+  DATA DA VENDA: ${formatarDataBrasileira(dadosContrato.dataVenda)}
+</div>
+</div>
 
-      <div class="section tight-section">
-        <div class="clause-title">CLÁUSULA 3 – OBRIGAÇÕES DA LOCADORA</div>
-        <div class="clause-content ultra-compact">
-          3.1 Disponibilidade: A LOCADORA disponibilizará a loja para retirada e devolução de peças de segunda a sexta-feira, das 9h às 18h, e aos sábados das 9h às 12h, exceto feriados.
-        </div>
-        <div class="clause-content ultra-compact">
-          3.2 Retirada de Itens: O LOCATÁRIO compromete-se a retirar os itens na data estipulada. A LOCADORA não se responsabiliza por peças não retiradas, sendo devido o valor integral da locação, ainda que a peça não tenha sido utilizada.
-        </div>
-        <div class="clause-content ultra-compact">
-          3.3 Substituição de Peças: A LOCADORA poderá substituir peças por similares, de acordo com a disponibilidade ou necessidade estética, sem necessidade de autorização prévia.
-        </div>
-      </div>
+<!-- CONTINUAÇÃO CLÁUSULA 2 -->
+<div class="section tight-section">
+${clausulasParaImprimir.clausula2.itens
+  .slice(5)
+  .map(
+    (item) => `
+  <div class="clause-content ultra-compact">
+    <strong>${item.subtitulo}</strong> ${item.texto}
+  </div>
+`
+  )
+  .join("")}
+</div>
 
-      <div class="section tight-section">
-        <div class="clause-title">CLÁUSULA 4 – CANCELAMENTO, MULTAS, TROCAS E CRÉDITO</div>
-        <div class="clause-content ultra-compact">
-          4.1 Rescisão: O contrato poderá ser rescindido por qualquer das partes mediante aviso prévio por escrito. Aplicam-se as seguintes penalidades:
-        </div>
-        <div class="clause-content ultra-compact">
-          20% (vinte por cento) do valor total do contrato, no caso de peças sem ajustes;
-        </div>
-        <div class="clause-content ultra-compact">
-          100% (cem por cento) do valor total, no caso de peças ajustadas ou não retiradas na data combinada.
-        </div>
-        <div class="clause-content ultra-compact">
-          4.2 Sinal (Arras): Após o pagamento do sinal, não haverá devolução do valor em caso de cancelamento por parte do LOCATÁRIO. O valor poderá ser convertido em crédito, válido por 365 dias, descontadas eventuais penalidades. Após esse prazo, o crédito perderá a validade.
-        </div>
-        <div class="clause-content ultra-compact">
-          4.3 Cancelamento pela LOCADORA: No caso de cancelamento por parte da LOCADORA, serão devolvidos ao LOCATÁRIO os valores referentes aos serviços não prestados.
-        </div>
-        <div class="clause-content ultra-compact">
-          4.4 Troca de Reserva: A troca de reserva estará sujeita a cobrança de taxa correspondente a 10% (dez por cento) do valor da peça retirada do contrato.
-        </div>
-      </div>
+<div class="section tight-section">
+<div class="clause-title">${clausulasParaImprimir.clausula3.titulo}</div>
+${clausulasParaImprimir.clausula3.itens
+  .map(
+    (item) => `
+  <div class="clause-content ultra-compact">
+    <strong>${item.subtitulo}</strong> ${item.texto}
+  </div>
+`
+  )
+  .join("")}
+</div>
 
-      <div class="section tight-section">
-        <div class="clause-title">CLÁUSULA 5 – CONDIÇÕES GERAIS, CUIDADOS E MULTAS</div>
-        <div class="clause-content ultra-compact">
-          5.1 Sujeira e Manchas: Será aplicada multa de R$ 50,00 (cinquenta reais) por peça devolvida com sujeira excessiva, manchas ou arrasto de barra.
-        </div>
-        <div class="clause-content ultra-compact">
-          5.2 Danos e Extravio: Em caso de danos irreparáveis ou extravio, o LOCATÁRIO pagará indenização correspondente a 5 (cinco) vezes o valor da locação do item.
-        </div>
-        <div class="clause-content ultra-compact">
-          5.3 Atraso na Devolução: A devolução fora do prazo gerará multa diária de 10% (dez por cento) sobre o valor da locação.
-        </div>
-        <div class="clause-content ultra-compact">
-          5.4 Extravio: A não devolução após 10 (dez) dias será considerada extravio, sujeitando o LOCATÁRIO à indenização de 5 (cinco) vezes o valor da peça, com prazo de pagamento de até 30 dias.
-        </div>
-        <div class="clause-content ultra-compact">
-          5.5 Avaliação das Peças: A LOCADORA terá o prazo de até 10 (dez) dias úteis, a contar da data da devolução, para realizar a avaliação das peças. Em caso de constatação de danos, o LOCATÁRIO será notificado.
-        </div>
-        <div class="clause-content ultra-compact">
-          5.6 Alterações Proibidas: É terminantemente proibida qualquer modificação física nas peças locadas, tais como corte, bainha, costura ou outras intervenções.
-        </div>
-      </div>
+<div class="section tight-section">
+<div class="clause-title">${clausulasParaImprimir.clausula4.titulo}</div>
+${clausulasParaImprimir.clausula4.itens
+  .map(
+    (item) => `
+  <div class="clause-content ultra-compact">
+    <strong>${item.subtitulo}</strong> ${item.texto}
+  </div>
+`
+  )
+  .join("")}
+</div>
 
-      <div class="section tight-section">
-        <div class="clause-title">CLÁUSULA 6 – USO DE IMAGEM</div>
-        <div class="clause-content ultra-compact">
-          6.1 O LOCATÁRIO autoriza, de forma gratuita e irrevogável, o uso de sua imagem, decorrente do uso das peças locadas, para fins de divulgação da LOCADORA, em quaisquer meios de comunicação, físicos ou digitais.
-        </div>
-      </div>
+<div class="section tight-section">
+<div class="clause-title">${clausulasParaImprimir.clausula5.titulo}</div>
+${clausulasParaImprimir.clausula5.itens
+  .map(
+    (item) => `
+  <div class="clause-content ultra-compact">
+    <strong>${item.subtitulo}</strong> ${item.texto}
+  </div>
+`
+  )
+  .join("")}
+</div>
 
-      <div class="section tight-section">
-        <div class="clause-title">CLÁUSULA 7 – TÍTULO EXECUTIVO</div>
-        <div class="clause-content ultra-compact">
-          7.1 Este contrato constitui título executivo extrajudicial, nos termos do artigo 784, inciso III, do Código de Processo Civil, para fins de cobrança de valores não pagos, bem como de indenizações por danos ou extravios dos itens locados.
-        </div>
-      </div>
+<div class="section tight-section">
+<div class="clause-title">${clausulasParaImprimir.clausula6.titulo}</div>
+<div class="clause-content ultra-compact">
+  ${clausulasParaImprimir.clausula6.conteudo}
+</div>
+</div>
 
-      <div class="section tight-section">
-        <div class="clause-title">CLÁUSULA 8 – FORO</div>
-        <div class="clause-content ultra-compact">
-          8.1 Para dirimir quaisquer controvérsias oriundas deste contrato, as partes elegem o foro da Comarca de Pará de Minas/MG, renunciando a qualquer outro, por mais privilegiado que seja.
-        </div>
-      </div>
+<div class="section tight-section">
+<div class="clause-title">${clausulasParaImprimir.clausula7.titulo}</div>
+<div class="clause-content ultra-compact">
+  ${clausulasParaImprimir.clausula7.conteudo}
+</div>
+</div>
+
+<div class="section tight-section">
+<div class="clause-title">${clausulasParaImprimir.clausula8.titulo}</div>
+<div class="clause-content ultra-compact">
+  ${clausulasParaImprimir.clausula8.conteudo}
+</div>
+</div>
 
       <div class="section tight-section">
         <div class="clause-content ultra-compact">
@@ -1516,7 +1644,94 @@ const GerenciadorContratos = () => {
               </div>
             )}
           </fieldset>
+          {/* CLÁUSULAS EDITÁVEIS */}
+          <fieldset style={styles.fieldset}>
+            <legend>📝 Cláusulas do Contrato (Editáveis)</legend>
+            <p
+              style={{
+                color: "#666",
+                fontSize: "0.9rem",
+                marginBottom: "1rem",
+              }}
+            >
+              Edite as cláusulas conforme necessário. As alterações serão
+              aplicadas apenas a este contrato.
+            </p>
 
+            {Object.entries(clausulas).map(([key, clausula]) => (
+              <div key={key} style={styles.clausulaEditavel}>
+                <input
+                  type="text"
+                  value={clausula.titulo}
+                  onChange={(e) =>
+                    setClausulas({
+                      ...clausulas,
+                      [key]: { ...clausula, titulo: e.target.value },
+                    })
+                  }
+                  style={styles.clausulaTitulo}
+                />
+
+                {clausula.conteudo ? (
+                  <textarea
+                    value={clausula.conteudo}
+                    onChange={(e) =>
+                      setClausulas({
+                        ...clausulas,
+                        [key]: { ...clausula, conteudo: e.target.value },
+                      })
+                    }
+                    style={styles.clausulaTextarea}
+                    rows={3}
+                  />
+                ) : (
+                  clausula.itens &&
+                  clausula.itens.map((item, idx) => (
+                    <div key={idx} style={styles.clausulaItem}>
+                      <input
+                        type="text"
+                        value={item.subtitulo}
+                        onChange={(e) => {
+                          const novosItens = [...clausula.itens];
+                          novosItens[idx].subtitulo = e.target.value;
+                          setClausulas({
+                            ...clausulas,
+                            [key]: { ...clausula, itens: novosItens },
+                          });
+                        }}
+                        style={styles.clausulaSubtitulo}
+                      />
+                      <textarea
+                        value={item.texto}
+                        onChange={(e) => {
+                          const novosItens = [...clausula.itens];
+                          novosItens[idx].texto = e.target.value;
+                          setClausulas({
+                            ...clausulas,
+                            [key]: { ...clausula, itens: novosItens },
+                          });
+                        }}
+                        style={styles.clausulaTextarea}
+                        rows={3}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("Deseja restaurar as cláusulas padrão?")) {
+                  window.location.reload();
+                }
+              }}
+              style={styles.restaurarButton}
+            >
+              🔄 Restaurar Cláusulas Padrão
+            </button>
+          </fieldset>
           <div style={styles.buttonGroup}>
             <button
               onClick={salvarContrato}
@@ -2203,6 +2418,67 @@ const styles = {
   contractsSection: {
     marginTop: "2rem",
     animation: "fadeIn 0.3s ease-in",
+  },
+  clausulaEditavel: {
+    marginBottom: "1.5rem",
+    padding: "1rem",
+    backgroundColor: "#f9f9f9",
+    borderRadius: "4px",
+    border: "1px solid #ddd",
+  },
+  clausulaTitulo: {
+    width: "100%",
+    padding: "0.5rem",
+    fontSize: "1rem",
+    fontWeight: "bold",
+    border: "1px solid #ccc",
+    borderRadius: "4px",
+    marginBottom: "0.75rem",
+    backgroundColor: "#fff",
+  },
+  clausulaSubtitulo: {
+    width: "100%",
+    padding: "0.5rem",
+    fontSize: "0.95rem",
+    fontWeight: "600",
+    border: "1px solid #ddd",
+    borderRadius: "4px",
+    marginBottom: "0.5rem",
+    backgroundColor: "#fff",
+  },
+  clausulaTextarea: {
+    width: "100%",
+    padding: "0.75rem",
+    fontSize: "0.9rem",
+    border: "1px solid #ddd",
+    borderRadius: "4px",
+    marginBottom: "0.75rem",
+    backgroundColor: "#fff",
+    fontFamily: "inherit",
+    lineHeight: "1.5",
+    resize: "vertical",
+  },
+  clausulaItem: {
+    marginBottom: "1rem",
+  },
+  restaurarButton: {
+    backgroundColor: "#6c757d",
+    color: "white",
+    border: "none",
+    padding: "0.75rem 1.5rem",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "0.95rem",
+    marginTop: "1rem",
+  },
+  paymentInfo: {
+    marginTop: "1rem",
+  },
+  resumoPagamento: {
+    marginBottom: "1rem",
+  },
+  parcelasTable: {
+    marginTop: "1rem",
   },
 };
 
