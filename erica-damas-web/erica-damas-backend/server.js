@@ -450,14 +450,19 @@ app.post("/api/login", async (req, res) => {
   try {
     const { email, senha } = req.body;
 
-    if (!email || !senha) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedSenha = String(senha || "").trim();
+    const adminEmail = String(ADMIN_EMAIL || "").trim().toLowerCase();
+    const adminPassword = String(ADMIN_PASSWORD || "").trim();
+
+    if (!normalizedEmail || !normalizedSenha) {
       return res.status(400).json({
         success: false,
         message: "Email e senha são obrigatórios",
       });
     }
 
-    if (email === ADMIN_EMAIL && senha === ADMIN_PASSWORD) {
+    if (normalizedEmail === adminEmail && normalizedSenha === adminPassword) {
       const token = jwt.sign({ id: "admin", email: ADMIN_EMAIL }, JWT_SECRET, {
         expiresIn: "24h",
       });

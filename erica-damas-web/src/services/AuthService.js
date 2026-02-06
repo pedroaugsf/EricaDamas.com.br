@@ -25,15 +25,6 @@ if (isCodespaces) {
     "https://ericadamas-com-br.onrender.com/api";
 }
 
-"Ambiente detectado:",
-  isCodespaces
-    ? "GitHub Codespaces"
-    : isVercel
-    ? "Vercel (Frontend) + Render (Backend)"
-    : isLocalhost
-    ? "Local"
-    : "Produção";
-"API_URL configurada para:", API_URL;
 
 // Configuração do axios
 const api = axios.create({
@@ -51,7 +42,6 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    "Enviando requisição para:", config.baseURL + config.url;
     return config;
   },
   (error) => {
@@ -63,7 +53,6 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    "Erro na requisição:", error.response || error;
 
     // Tratar erro específico do Render (cold start)
     if (error.code === "ECONNABORTED" && error.message.includes("timeout")) {
@@ -103,15 +92,12 @@ const authService = {
   // Login
   login: async (email, senha) => {
     try {
-      `Tentando login em ${API_URL}/login com email: ${email}`;
 
       // Mostrar loading para cold start do Render
       if (API_URL.includes("onrender.com")) {
-        ("🔄 Conectando ao servidor (pode levar alguns segundos na primeira vez)...");
       }
 
       const response = await api.post("/login", { email, senha });
-      "Resposta do login:", response.data;
 
       if (response.data.success) {
         localStorage.setItem("token", response.data.token);
@@ -120,9 +106,6 @@ const authService = {
       }
       return response.data;
     } catch (error) {
-      "Erro completo:", error;
-      "Detalhes da resposta:", error.response?.data;
-      "Status do erro:", error.response?.status;
 
       // Mensagem específica para timeout do Render
       if (error.message.includes("iniciando")) {
@@ -150,14 +133,12 @@ const authService = {
     localStorage.removeItem("token");
     localStorage.removeItem("adminName");
     localStorage.removeItem("loginTime");
-    ("Logout realizado com sucesso");
   },
 
   // Verificar se está autenticado
   isAuthenticated: async () => {
     const token = localStorage.getItem("token");
     if (!token) {
-      ("Token não encontrado");
       return false;
     }
 
@@ -169,20 +150,15 @@ const authService = {
       const hoursPassed = (now - loginDate) / (1000 * 60 * 60);
 
       if (hoursPassed > 24) {
-        ("Token expirado localmente (>24h)");
         authService.logout();
         return false;
       }
     }
 
     try {
-      ("Verificando autenticação no servidor...");
       const response = await api.get("/admin/verificar");
-      "Resposta da verificação:", response.data;
       return response.data.success;
     } catch (error) {
-      "Erro na verificação de autenticação:",
-        error.response?.data || error.message;
 
       // Se for erro 401, fazer logout
       if (error.response?.status === 401) {
@@ -196,19 +172,15 @@ const authService = {
   // Renovar sessão (atualizar timestamp)
   renovarSessao: () => {
     localStorage.setItem("loginTime", Date.now().toString());
-    ("Sessão renovada");
   },
 
   // Função para "acordar" o servidor Render (útil para cold starts)
   wakeUpServer: async () => {
     if (API_URL.includes("onrender.com")) {
       try {
-        ("🔄 Acordando servidor Render...");
         await api.get("/", { timeout: 30000 });
-        ("✅ Servidor acordado!");
         return true;
       } catch (error) {
-        ("⚠️ Servidor ainda inicializando...");
         return false;
       }
     }
@@ -218,12 +190,9 @@ const authService = {
   // Função para testar conectividade
   testConnection: async () => {
     try {
-      ("🧪 Testando conexão com a API...");
       const response = await api.get("/", { timeout: 10000 });
-      "✅ Conexão OK:", response.data;
       return true;
     } catch (error) {
-      "❌ Erro na conexão:", error.message;
       return false;
     }
   },
@@ -251,7 +220,6 @@ const apiWithRetry = async (requestFn, maxRetries = 2) => {
     try {
       return await requestFn();
     } catch (error) {
-      `Tentativa ${i + 1}/${maxRetries + 1} falhou:`, error.message;
 
       if (i === maxRetries) {
         throw error;
@@ -262,7 +230,6 @@ const apiWithRetry = async (requestFn, maxRetries = 2) => {
         error.message.includes("iniciando") ||
         error.code === "ECONNABORTED"
       ) {
-        `Aguardando ${(i + 1) * 3} segundos antes de tentar novamente...`;
         await new Promise((resolve) => setTimeout(resolve, (i + 1) * 3000));
       }
     }

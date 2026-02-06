@@ -12,10 +12,10 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import About from "./components/About";
 import Depoimentos from "./components/Depoimentos";
-import CarrosselVitrine from "./components/CarrosselVitrine";
 import Localizacao from "./components/Localizacao";
 import FAQ from "./components/Faq";
 import CategoriasCarrossel from "./components/CategoriasCarrossel";
+import HeroFeature from "./components/HeroFeature";
 import NossosServicos from "./components/NovosServicos";
 import GerenciadorContratos from "./pages/Admin/GerenciadorContrato";
 
@@ -149,12 +149,11 @@ const Home = () => {
 
   return (
     <div>
-      <CarrosselVitrine />
+      <HeroFeature />
       <CategoriasCarrossel />
       <div id="nossos-servicos">
         <NossosServicos />
       </div>
-      <About />
       <div id="localizacao">
         <Localizacao />
       </div>

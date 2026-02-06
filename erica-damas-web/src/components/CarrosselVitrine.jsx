@@ -99,6 +99,8 @@ const CarrosselVitrine = () => {
     slidesToScroll: 1,
     autoplay: true,
     autoplaySpeed: 5000,
+    pauseOnHover: true,
+    swipeToSlide: true,
     fade: true,
     cssEase: "linear",
     nextArrow: <NextArrow isMobile={isMobile} />,
@@ -107,7 +109,7 @@ const CarrosselVitrine = () => {
       <div
         style={{
           position: "absolute",
-          bottom: isMobile ? "15px" : "25px",
+          bottom: isMobile ? "18px" : "26px",
           width: "100%",
           padding: "0",
           margin: "0",
@@ -121,10 +123,10 @@ const CarrosselVitrine = () => {
     customPaging: (i) => (
       <div
         style={{
-          width: isMobile ? "8px" : "12px",
-          height: isMobile ? "8px" : "12px",
-          margin: "0 5px",
-          backgroundColor: "rgba(255, 255, 255, 0.5)",
+          width: isMobile ? "8px" : "10px",
+          height: isMobile ? "8px" : "10px",
+          margin: "0 6px",
+          backgroundColor: "rgba(255, 255, 255, 0.7)",
           borderRadius: "50%",
           display: "inline-block",
           transition: "all 0.3s ease",
@@ -139,7 +141,7 @@ const CarrosselVitrine = () => {
       titulo: "Coleção de Ternos",
       subtitulo: "Para noivos e convidados",
       imagem:
-        "https://images.unsplash.com/photo-1600091166971-7f9faad6c1e2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80",
+        "/SITEEGT3.jpg",
       link: "/ternos",
       cta: "Ver Ternos Disponíveis",
     },
@@ -148,7 +150,7 @@ const CarrosselVitrine = () => {
       titulo: "Vestidos de Noiva",
       subtitulo: "Alta costura para seu grande dia",
       imagem:
-        "https://images.unsplash.com/photo-1546804784-896d0dca3805?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80",
+        "/SITEEGVN.jpg",
       link: "/vestidos",
       cta: "Explorar Vestidos",
     },
@@ -157,7 +159,7 @@ const CarrosselVitrine = () => {
       titulo: "Vestidos de Debutante",
       subtitulo: "Para momentos especiais",
       imagem:
-        "https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80",
+        "/SITEEGVN3.jpg",
       link: "/debutantes",
       cta: "Conhecer Modelos",
     },
@@ -168,102 +170,120 @@ const CarrosselVitrine = () => {
       className="vitrine-container"
       style={{
         width: "100%",
-        height: "calc(100vh - 90px)",
+        height: "auto",
         position: "relative",
         marginTop: "0",
+        backgroundColor: "#f1ece5",
       }}
     >
-      {/* Indicador de navegação - escondido em mobile */}
-      {!isMobile && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: "80px",
-            right: "30px",
-            zIndex: 5,
-            backgroundColor: "rgba(255, 255, 255, 0.2)",
-            padding: "8px 15px",
-            borderRadius: "20px",
-            color: "white",
-            fontSize: "14px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <FaChevronLeft size={12} />
-          <span>Deslize para navegar</span>
-          <FaChevronRight size={12} />
-        </div>
-      )}
-
       <Slider {...settings}>
         {colecoes.map((colecao) => (
           <div key={colecao.id}>
             <div
-              className="slide-background"
               style={{
-                width: "100%",
-                height: "calc(100vh - 90px)",
-                backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${colecao.imagem})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                position: "relative",
+                minHeight: isMobile ? "620px" : "540px",
+                padding: isMobile ? "24px 18px 50px" : "40px 80px 70px",
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.5) 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               <div
                 style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: isMobile ? "5%" : "10%",
-                  transform: "translateY(-50%)",
-                  color: "white",
-                  textAlign: "left",
-                  maxWidth: isMobile ? "90%" : "600px",
-                  zIndex: 2,
+                  width: "100%",
+                  maxWidth: "1200px",
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "1fr" : "1.1fr 0.9fr",
+                  gap: isMobile ? "24px" : "48px",
+                  alignItems: "center",
                 }}
               >
-                <h2
+                <div style={{ color: "#fff" }}>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.35em",
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.7)",
+                    }}
+                  >
+                    Erica Damas
+                  </div>
+                  <h2
+                    style={{
+                      fontSize: isMobile ? "2.1rem" : "3.1rem",
+                      fontWeight: 500,
+                      fontFamily: '"Cormorant Garamond", serif',
+                      margin: "16px 0 10px",
+                    }}
+                  >
+                    {colecao.titulo}
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: isMobile ? "1.05rem" : "1.2rem",
+                      color: "rgba(255,255,255,0.85)",
+                      marginBottom: "24px",
+                    }}
+                  >
+                    {colecao.subtitulo}
+                  </p>
+                  <Link
+                    to={colecao.link}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      color: "#fff",
+                      borderBottom: "1px solid rgba(255,255,255,0.6)",
+                      paddingBottom: "6px",
+                      fontSize: "0.95rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.2em",
+                    }}
+                  >
+                    Descubra a coleção
+                    <FaChevronRight size={12} />
+                  </Link>
+                </div>
+                <div
                   style={{
-                    fontSize: isMobile ? "2.2rem" : "3.5rem",
-                    fontWeight: 500,
-                    fontFamily: '"Cormorant Garamond", serif',
-                    marginBottom: isMobile ? "0.5rem" : "1rem",
-                    textShadow: "1px 1px 3px rgba(0,0,0,0.5)",
-                  }}
-                >
-                  {colecao.titulo}
-                </h2>
-                <p
-                  style={{
-                    fontSize: isMobile ? "1.1rem" : "1.5rem",
-                    fontWeight: 300,
-                    marginBottom: isMobile ? "1.5rem" : "2rem",
-                    textShadow: "1px 1px 2px rgba(0,0,0,0.5)",
-                  }}
-                >
-                  {colecao.subtitulo}
-                </p>
-                <Link
-                  to={colecao.link}
-                  style={{
-                    display: "inline-flex",
+                    display: "flex",
                     alignItems: "center",
-                    backgroundColor: "#b6a06a",
-                    color: "white",
-                    padding: isMobile ? "10px 20px" : "12px 30px",
-                    textDecoration: "none",
-                    fontSize: isMobile ? "1rem" : "1.1rem",
-                    fontWeight: 500,
-                    borderRadius: "4px",
-                    transition: "all 0.3s ease",
+                    justifyContent: "center",
                   }}
                 >
-                  {isMobile && colecao.cta.length > 15
-                    ? colecao.cta.split(" ")[0] + "..."
-                    : colecao.cta}
-                  <FaChevronRight style={{ marginLeft: "8px" }} />
-                </Link>
+                  <div
+                    style={{
+                      width: isMobile ? "70%" : "100%",
+                      maxWidth: "360px",
+                      height: isMobile ? "420px" : "520px",
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      borderRadius: "18px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "16px",
+                      backdropFilter: "blur(6px)",
+                    }}
+                  >
+                    <img
+                      src={colecao.imagem}
+                      alt={colecao.titulo}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                        objectPosition: "center",
+                        filter: "drop-shadow(0 30px 60px rgba(0,0,0,0.35))",
+                      }}
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

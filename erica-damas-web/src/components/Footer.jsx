@@ -193,7 +193,7 @@ return (
         <div style={styles.brandContainer}>
           <img
             src="/Erica_Damas_logo-removebg-preview.png"
-            alt="Erica Damas - Noivas e Ternos"
+            alt="Erica Damas"
             style={styles.logoImage}
           />
         </div>

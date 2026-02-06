@@ -16,9 +16,7 @@ const Login = () => {
         if (autenticado) {
           navigate("/admin/dashboard");
         }
-      } catch (error) {
-        "Erro ao verificar autenticação:", error;
-      }
+      } catch (error) {}
     };
 
     verificarAutenticacao();
