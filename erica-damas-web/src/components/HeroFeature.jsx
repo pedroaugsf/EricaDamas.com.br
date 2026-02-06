@@ -61,7 +61,7 @@ const HeroFeature = () => {
               marginBottom: "12px",
             }}
           >
-            A maior seleção de ternos sob medida do Brasil
+            A maior seleção de vestidos de noiva e ternos sob medida do Brasil
           </h1>
           <p
             style={{
@@ -71,8 +71,8 @@ const HeroFeature = () => {
               maxWidth: "520px",
             }}
           >
-            Atendimento exclusivo, modelagens impecáveis e elegância atemporal
-            para noivos, convidados e ocasiões especiais.
+            Atendimento exclusivo, modelagens impecáveis e elegância atemporal. 
+            Vestidos de noiva dos sonhos e ternos refinados para noivos, convidados e ocasiões especiais.
           </p>
           <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
             <Link
@@ -91,6 +91,21 @@ const HeroFeature = () => {
               Agendar visita
             </Link>
             <Link
+              to="/vestidos"
+              style={{
+                border: "1px solid rgba(0,0,0,0.2)",
+                color: "#3a2f28",
+                textDecoration: "none",
+                padding: "12px 24px",
+                borderRadius: "999px",
+                fontSize: "0.95rem",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+              }}
+            >
+              Vestidos de Noiva
+            </Link>
+            <Link
               to="/ternos"
               style={{
                 border: "1px solid rgba(0,0,0,0.2)",
@@ -103,7 +118,7 @@ const HeroFeature = () => {
                 textTransform: "uppercase",
               }}
             >
-              Ver coleção
+              Ternos
             </Link>
           </div>
           <div
