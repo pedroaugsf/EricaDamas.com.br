@@ -18,6 +18,8 @@ const GerenciadorContratos = () => {
   const [filtroData, setFiltroData] = useState("semana");
   const [pesquisa, setPesquisa] = useState("");
   const [mostrarContratos, setMostrarContratos] = useState(false);
+  const [mostrarClausulasEditaveis, setMostrarClausulasEditaveis] =
+    useState(true);
 
   // Estados do formulário
   const [dadosCliente, setDadosCliente] = useState({
@@ -44,27 +46,9 @@ const GerenciadorContratos = () => {
     pecaEncomenda: "nao",
     planoLivreTroca: "nao",
     formaPagamento: "",
-    formaPagamentoOutro: "",
     itens: [{ codigo: "", especificacao: "", valor: "" }],
     parcelas: [],
     observacoesPagamento: "",
-    observacoesGerais: "",
-    avalistas: [
-      { cpfCnpj: "", endereco: "" },
-      { cpfCnpj: "", endereco: "" },
-    ],
-    promissoria: {
-      vencimento: "",
-      valor: "",
-      ao: "",
-      pagar: "",
-      cpfCnpj: "",
-      endereco: "",
-      emitente: "",
-      dataEmissao: "",
-      emitenteCpfCnpj: "",
-      emitenteEndereco: "",
-    },
   });
 
   // Estados para cláusulas editáveis
@@ -228,9 +212,7 @@ const GerenciadorContratos = () => {
 
   const FORMAS_PAGAMENTO = [
     { value: "avista", label: "À vista" },
-    { value: "cartao_credito", label: "Cartão de crédito" },
-    { value: "cheque_pre", label: "Cheque Pré" },
-    { value: "outros", label: "Outros - especificar" },
+    { value: "aprazo", label: "A prazo" },
   ];
 
   // Carregar contratos do banco de dados
@@ -480,15 +462,17 @@ const GerenciadorContratos = () => {
       celular: "",
     });
     setDadosContrato({
+      numeroContrato: "",
       dataVenda: "",
       dataAjuste: "",
       dataRetirada: "",
       dataEntrega: "",
+      pecaEncomenda: "nao",
+      planoLivreTroca: "nao",
       formaPagamento: "",
       itens: [{ codigo: "", especificacao: "", valor: "" }],
       parcelas: [],
       observacoesPagamento: "",
-      observacoesGerais: "",
     });
     setMostrarFormulario(false);
     setEditandoId(null);
@@ -499,7 +483,7 @@ const GerenciadorContratos = () => {
     setDadosContrato({
       ...dadosContrato,
       formaPagamento: valor,
-      parcelas: valor === "cartao_credito" ? (dadosContrato.parcelas || []) : [],
+      parcelas: valor === "aprazo" ? (dadosContrato.parcelas || []) : [],
     });
   };
 
@@ -516,11 +500,11 @@ const GerenciadorContratos = () => {
     }
 
     if (
-      dadosContrato.formaPagamento === "cartao_credito" &&
+      dadosContrato.formaPagamento === "aprazo" &&
       ((dadosContrato.parcelas || []).length === 0 ||
         Math.abs(calcularTotal() - calcularTotalParcelas()) > 0.01)
     ) {
-      alert("Configure corretamente as parcelas para cartão de crédito");
+      alert("Configure corretamente as parcelas para pagamento a prazo");
       return;
     }
 
@@ -556,6 +540,8 @@ const GerenciadorContratos = () => {
   // Função para formatar data brasileira
   const formatarDataBrasileira = (data) => {
     if (!data) return "____/____/______";
+    if (String(data).includes("/")) return String(data);
+    if (!String(data).includes("-")) return String(data);
     const [ano, mes, dia] = data.split("-");
     return `${dia}/${mes}/${ano}`;
   };
@@ -618,10 +604,12 @@ const GerenciadorContratos = () => {
 
     return contratosFiltrados.filter(
       (contrato) =>
-        contrato.cliente.nome.toLowerCase().includes(termoPesquisa) ||
-        contrato.cliente.cpf.includes(termoPesquisa) ||
-        contrato.contrato.itens.some((item) =>
-          item.especificacao.toLowerCase().includes(termoPesquisa)
+        (contrato.cliente?.nome || "")
+          .toLowerCase()
+          .includes(termoPesquisa) ||
+        (contrato.cliente?.cpf || "").includes(termoPesquisa) ||
+        (contrato.contrato?.itens || []).some((item) =>
+          (item.especificacao || "").toLowerCase().includes(termoPesquisa)
         )
     );
   };
@@ -866,10 +854,6 @@ const GerenciadorContratos = () => {
           line-height: 1.2;
         }
         
-        .page-break {
-          page-break-before: always;
-        }
-        
         .signature-area {
           margin-top: 8px;
           font-size: 11pt;
@@ -881,63 +865,6 @@ const GerenciadorContratos = () => {
           min-width: 300px;
           height: 18px;
           margin: 0 10px;
-        }
-
-        .avalistas-container {
-          display: flex;
-          border: 1.5px solid #000;
-          margin: 4px 0;
-          min-height: 55px;
-        }
-
-        .avalistas-left {
-          flex: 3;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .avalista-box {
-          flex: 1;
-          border-right: 1px solid #000;
-          padding: 4px;
-          font-size: 10pt;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          gap: 4px;
-        }
-
-        .avalista-box:first-child {
-          border-bottom: 1px solid #000;
-        }
-
-        .avalistas-label {
-          flex: 1;
-          border-right: 1px solid #000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          font-size: 11pt;
-          writing-mode: vertical-rl;
-          text-orientation: mixed;
-          transform: rotate(180deg);
-          background-color: #f0f0f0;
-        }
-
-        .promissoria-box {
-          border: 1.5px solid #000;
-          padding: 4px;
-          margin: 4px 0;
-          font-size: 10pt;
-          background-color: #fafafa;
-        }
-
-        .promissoria-title {
-          text-align: center;
-          font-weight: bold;
-          font-size: 12pt;
-          margin-bottom: 8px;
         }
 
         .checkbox-line {
@@ -957,9 +884,6 @@ const GerenciadorContratos = () => {
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
           }
-          .page-break {
-            page-break-before: always;
-          }
         }
       </style>
     </head>
@@ -974,13 +898,8 @@ const GerenciadorContratos = () => {
           <div class="header-info">Pará de Minas</div>
           <div class="header-info">(37) 3231-3738</div>
         </div>
-        <div class="header-right">
-          <div class="header-info">Emergência</div>
-          <div class="header-info">(37) 99915-3738 / 99999-1089</div>
-        </div>
-        <div class="header-right" style="flex: 0.5; text-align: center;">
-          <div class="header-info"><strong>Nº</strong></div>
-          <div class="header-info">${dadosContrato.numeroContrato || "_______"}</div>
+        <div class="header-right" style="flex: 0.65; text-align: center; white-space: nowrap;">
+          <div class="header-info"><strong>Nº:</strong> ${dadosContrato.numeroContrato || "_______"}</div>
         </div>
       </div>
 
@@ -992,7 +911,7 @@ const GerenciadorContratos = () => {
       <div class="section">
         <div class="section-title">IDENTIFICAÇÃO DAS PARTES</div>
         <div class="party">
-          <strong>LOCADORA: ÉRICA DAMAS LINO EIRELI,</strong> Rua Goiás, 275 - São José - Pará de Minas - MG - CNPj: 11.791.386/0001-13.
+          <strong>LOCADORA: ÉRICA DAMAS LINO EIRELI,</strong> Rua Goiás, 275 - São José - Pará de Minas - MG - CNPJ: 11.791.386/0001-13.
         </div>
         <div class="party" style="margin-top: 8px;">
           <strong>LOCATÁRIO:</strong> <span class="underline-xlarge">${cliente.nome || ""}</span>
@@ -1001,6 +920,10 @@ const GerenciadorContratos = () => {
           <strong>RG:</strong> <span class="underline-medium">${formatarRG(cliente.rg) || ""}</span>
           <strong>CPF:</strong> <span class="underline-medium">${formatarCPF(cliente.cpf) || ""}</span>
           <strong>DATA NASC.:</strong> <span class="underline">${formatarDataBrasileira(cliente.dataNascimento) || ""}</span>
+        </div>
+        <div class="party">
+          <strong>Nacionalidade:</strong> <span class="underline-medium">${cliente.nacionalidade || ""}</span>
+          <strong>Profissão:</strong> <span class="underline-medium">${cliente.profissao || ""}</span>
         </div>
         <div class="party">
           <strong>Endereço:</strong> <span class="underline-xlarge">${cliente.endereco || ""}</span>
@@ -1034,11 +957,7 @@ const GerenciadorContratos = () => {
             <td style="width: 23%; vertical-align: top; padding: 6px; border-right: 1.5px solid #000;">
               <div style="text-align: center;">
                 <strong style="font-size: 10pt; color: #000; text-transform: uppercase; letter-spacing: 0.5px;">DATA AJUSTE</strong>
-                <div style="margin-top: 3px; font-size: 8.5pt; line-height: 1.3; color: #333;">
-                  <span>Segunda a Quinta 9:00-17:00h</span><br/>
-                  <span>Trazer o Sapato para ajuste</span>
-                </div>
-                <div style="margin-top: 4px; padding: 2px 0;">
+                <div style="margin-top: 8px; padding: 2px 0;">
                   <span class="underline" style="display: inline-block; min-width: 90%;">${formatarDataBrasileira(dadosContrato.dataAjuste) || ""}</span>
                 </div>
               </div>
@@ -1046,11 +965,7 @@ const GerenciadorContratos = () => {
             <td style="width: 23%; vertical-align: top; padding: 6px; border-right: 1.5px solid #000; background-color: #fafafa;">
               <div style="text-align: center;">
                 <strong style="font-size: 10pt; color: #000; text-transform: uppercase; letter-spacing: 0.5px;">RETIRADA</strong>
-                <div style="margin-top: 3px; font-size: 8.5pt; line-height: 1.3; color: #333;">
-                  <span>Segunda a Sexta 9:00-17:00h</span><br/>
-                  <span>Sábado 9:00-12:00h</span>
-                </div>
-                <div style="margin-top: 4px; padding: 2px 0;">
+                <div style="margin-top: 8px; padding: 2px 0;">
                   <span class="underline" style="display: inline-block; min-width: 90%;">${formatarDataBrasileira(dadosContrato.dataRetirada) || ""}</span>
                 </div>
               </div>
@@ -1058,9 +973,6 @@ const GerenciadorContratos = () => {
             <td style="width: 18%; vertical-align: top; padding: 6px; border-right: 1.5px solid #000;">
               <div style="text-align: center;">
                 <strong style="font-size: 10pt; color: #000; text-transform: uppercase; letter-spacing: 0.5px;">DEVOLUÇÃO</strong>
-                <div style="margin-top: 3px; font-size: 8.5pt; color: #333;">
-                  <span>09:00 às 17:00h</span>
-                </div>
                 <div style="margin-top: 8px; padding: 2px 0;">
                   <span class="underline" style="display: inline-block; min-width: 90%;">${formatarDataBrasileira(dadosContrato.dataEntrega) || ""}</span>
                 </div>
@@ -1129,9 +1041,10 @@ const GerenciadorContratos = () => {
         <div class="section-title">FORMA DE PAGAMENTO CONTRATADA</div>
         <div class="checkbox-line" style="font-size: 10pt; margin-top: 3px;">
           ( ${dadosContrato.formaPagamento === "avista" ? "X" : " "} ) À vista &nbsp;&nbsp;&nbsp;&nbsp; 
-          ( ${dadosContrato.formaPagamento === "cartao_credito" ? "X" : " "} ) Cartão de crédito &nbsp;&nbsp;&nbsp;&nbsp; 
-          ( ${dadosContrato.formaPagamento === "cheque" ? "X" : " "} ) Cheque Pré &nbsp;&nbsp;&nbsp;&nbsp; 
-          ( ${dadosContrato.formaPagamento === "outros" ? "X" : " "} ) Outros - especificar <span class="underline-large"></span>
+          ( ${dadosContrato.formaPagamento === "aprazo" ? "X" : " "} ) A prazo
+        </div>
+        <div class="party" style="margin-top: 4px; font-size: 10pt;">
+          <strong>Observações adicionais sobre o pagamento:</strong> ${dadosContrato.observacoesPagamento || ""}
         </div>
         <div style="margin-top: 4px; font-size: 10pt; font-weight: bold;">Se parcelado, forma de pagamento:</div>
         <div class="parcelas-grid">
@@ -1165,80 +1078,31 @@ const GerenciadorContratos = () => {
         </div>
       </div>
 
-      <!-- AVALISTAS -->
-      <div class="avalistas-container">
-        <div class="avalistas-left">
-          <div class="avalista-box">
-            <div style="font-size: 10pt; margin-bottom: 3px;">CPF/CNPJ <span class="underline-large">${dadosContrato.avalistas?.[0]?.cpfCnpj || ""}</span></div>
-            <div style="font-size: 10pt;">ENDEREÇO <span class="underline-large">${dadosContrato.avalistas?.[0]?.endereco || ""}</span></div>
-          </div>
-          <div class="avalista-box">
-            <div style="font-size: 10pt; margin-bottom: 3px;">CPF/CNPJ <span class="underline-large">${dadosContrato.avalistas?.[1]?.cpfCnpj || ""}</span></div>
-            <div style="font-size: 10pt;">ENDEREÇO <span class="underline-large">${dadosContrato.avalistas?.[1]?.endereco || ""}</span></div>
-          </div>
-        </div>
-        <div class="avalistas-label">AVALISTAS</div>
-      </div>
-
-      <!-- NOTA PROMISSÓRIA -->
-      <div class="promissoria-box">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <div style="flex: 1; font-size: 11pt;">
-            Vencimento <span class="underline-small">${dadosContrato.promissoria?.vencimentoDia || ""}</span> de <span class="underline-medium">${dadosContrato.promissoria?.vencimentoMes || ""}</span> de <span class="underline-small">${dadosContrato.promissoria?.vencimentoAno || ""}</span>
-          </div>
-          <div style="text-align: center; font-weight: bold; font-size: 12pt; margin-left: 15px;">
-            R$ <span class="underline">${formatarValor(dadosContrato.promissoria?.valor || total)}</span>
-          </div>
-        </div>
-        <div class="party" style="font-size: 11pt;">
-          Ao (s) <span class="underline-medium">${dadosContrato.promissoria?.ao || ""}</span> pagar <span class="underline-medium">${dadosContrato.promissoria?.pagar || ""}</span> por esta única via de <strong>NOTA PROMISSÓRIA</strong>
-        </div>
-        <div class="party" style="font-size: 11pt;">
-          a <span class="underline-large">ÉRICA DAMAS LINO EIRELI</span> CPF/CNPJ <span class="underline-large">11.791.386/0001-13</span>
-        </div>
-        <div class="party" style="font-size: 11pt;">
-          ou à sua ordem, a quantia de <span class="underline-xlarge">${dadosContrato.promissoria?.quantiaExtenso || ""}</span>
-        </div>
-        <div class="party" style="font-size: 11pt;">
-          em moeda corrente deste país, pagável em <span class="underline-xlarge">${dadosContrato.promissoria?.pagavelEm || ""}</span>
-        </div>
-        <div style="margin-top: 5px; display: flex; justify-content: space-between; font-size: 11pt;">
-          <div>Emitente <span class="underline-medium">${cliente.nome || ""}</span> Data da Emissão <span class="underline">${formatarDataBrasileira(dadosContrato.dataVenda) || ""}</span></div>
-        </div>
-        <div style="font-size: 11pt; margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
-          <div>CPF <span class="underline">${formatarCPF(cliente.cpf) || ""}</span> / <span class="underline"></span> CNPJ <span class="underline-large"></span></div>
-          <div style="flex: 1; margin-left: 15px;">Endereço <span class="underline-xlarge" style="width: 280px;">${cliente.endereco || ""}, ${cliente.numero || ""} - ${cliente.bairro || ""} - ${cliente.cidade || ""}</span></div>
-        </div>
-        <div style="margin-top: 6px; font-size: 11pt;">
-          <span class="underline-xlarge"></span> Ass. do emitente
-        </div>
-      </div>
-
-      <!-- CLÁUSULAS - PÁGINA 2 -->
-      <div class="page-break"></div>
+      <!-- CLÁUSULAS -->
+      <div style="page-break-before: always;"></div>
       
-      <div class="clause-title">CLÁUSULA 1 - OBJETO:</div>
+      <div class="clause-title">${clausulasParaImprimir.clausula1.titulo}:</div>
       <div class="clause-content">${clausulasParaImprimir.clausula1.conteudo}</div>
 
-      <div class="clause-title">CLÁUSULA 2 - OBRIGAÇÕES DO LOCATÁRIO:</div>
+      <div class="clause-title">${clausulasParaImprimir.clausula2.titulo}:</div>
       ${clausulasParaImprimir.clausula2.itens.map((item) => `<div class="clause-content"><strong>${item.subtitulo}</strong> ${item.texto}</div>`).join("")}
 
-      <div class="clause-title">CLÁUSULA 3 - OBRIGAÇÕES DA LOCADORA:</div>
+      <div class="clause-title">${clausulasParaImprimir.clausula3.titulo}:</div>
       ${clausulasParaImprimir.clausula3.itens.map((item) => `<div class="clause-content"><strong>${item.subtitulo}</strong> ${item.texto}</div>`).join("")}
 
-      <div class="clause-title">CLÁUSULA 4 - INADIPLÊNCIA, CANCELAMENTO, MULTAS, TROCAS E CRÉDITO:</div>
+      <div class="clause-title">${clausulasParaImprimir.clausula4.titulo}:</div>
       ${clausulasParaImprimir.clausula4.itens.map((item) => `<div class="clause-content"><strong>${item.subtitulo}</strong> ${item.texto}</div>`).join("")}
 
-      <div class="clause-title">CLÁUSULA 5 - CONDIÇÕES GERAIS:</div>
+      <div class="clause-title">${clausulasParaImprimir.clausula5.titulo}:</div>
       ${clausulasParaImprimir.clausula5.itens.map((item) => `<div class="clause-content"><strong>${item.subtitulo}</strong> ${item.texto}</div>`).join("")}
 
-      <div class="clause-title">CLÁUSULA 6 - USO DE IMAGEM:</div>
+      <div class="clause-title">${clausulasParaImprimir.clausula6.titulo}:</div>
       <div class="clause-content">${clausulasParaImprimir.clausula6.conteudo}</div>
 
-      <div class="clause-title">CLÁUSULA 7 - TÍTULO EXECUTIVO:</div>
+      <div class="clause-title">${clausulasParaImprimir.clausula7.titulo}:</div>
       <div class="clause-content">${clausulasParaImprimir.clausula7.conteudo}</div>
 
-      <div class="clause-title">CLÁUSULA 8 - FORO:</div>
+      <div class="clause-title">${clausulasParaImprimir.clausula8.titulo}:</div>
       <div class="clause-content">${clausulasParaImprimir.clausula8.conteudo}</div>
 
       <!-- ASSINATURAS FINAIS -->
@@ -1248,12 +1112,12 @@ const GerenciadorContratos = () => {
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 10pt;">
           <div style="text-align: center;">
-            <div class="underline-large"></div>
-            <div style="margin-top: 2px;">1º Testemunha</div>
+            <div class="underline-large" style="min-width: 420px;"></div>
+            <div style="margin-top: 5px;">1º Testemunha</div>
           </div>
           <div style="text-align: center;">
-            <div class="underline-large"></div>
-            <div style="margin-top: 2px;">2º Testemunha</div>
+            <div class="underline-large" style="min-width: 420px;"></div>
+            <div style="margin-top: 5px;">2º Testemunha</div>
           </div>
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 10pt;">
@@ -1659,28 +1523,11 @@ const GerenciadorContratos = () => {
               </div>
             </div>
 
-            {dadosContrato.formaPagamento === "outros" && (
-              <div style={styles.formGrid}>
-                <input
-                  type="text"
-                  placeholder="Especificar forma de pagamento"
-                  value={dadosContrato.formaPagamentoOutro}
-                  onChange={(e) =>
-                    setDadosContrato({
-                      ...dadosContrato,
-                      formaPagamentoOutro: e.target.value,
-                    })
-                  }
-                  style={styles.inputWide}
-                />
-              </div>
-            )}
-
-            {/* Mostrar opções de parcelamento para cartão de crédito */}
-            {dadosContrato.formaPagamento === "cartao_credito" && (
+            {/* Mostrar opções de parcelamento para pagamento a prazo */}
+            {dadosContrato.formaPagamento === "aprazo" && (
               <div style={styles.creditCardSection}>
                 <h4 style={{ color: "#5d4037", marginBottom: "1rem" }}>
-                  💳 Parcelamento no Cartão de Crédito
+                  Parcelamento do pagamento a prazo
                 </h4>
 
                 <div style={styles.parcelasContainer}>
@@ -1811,87 +1658,6 @@ const GerenciadorContratos = () => {
               </div>
             )}
 
-            {/* Informações para outras formas de pagamento */}
-            {dadosContrato.formaPagamento &&
-              dadosContrato.formaPagamento !== "cartao_credito" && (
-                <div style={styles.paymentInfo}>
-                  {dadosContrato.formaPagamento === "dinheiro" && (
-                    <div style={styles.infoBox}>
-                      💰 <strong>Pagamento em Dinheiro:</strong> Pagamento à
-                      vista no momento da retirada.
-                      <br />
-                      Valor total: R$ {formatarValor(calcularTotal())}
-                    </div>
-                  )}
-
-                  {dadosContrato.formaPagamento === "pix" && (
-                    <div style={styles.infoBox}>
-                      📱 <strong>Pagamento via PIX:</strong> Chave PIX será
-                      fornecida para pagamento.
-                      <br />
-                      Valor total: R$ {formatarValor(calcularTotal())}
-                    </div>
-                  )}
-
-                  {dadosContrato.formaPagamento === "cartao_debito" && (
-                    <div style={styles.infoBox}>
-                      💳 <strong>Cartão de Débito:</strong> Pagamento à vista no
-                      débito.
-                      <br />
-                      Valor total: R$ {formatarValor(calcularTotal())}
-                    </div>
-                  )}
-
-                  {dadosContrato.formaPagamento === "transferencia" && (
-                    <div style={styles.infoBox}>
-                      🏦 <strong>Transferência Bancária:</strong> Dados
-                      bancários serão fornecidos.
-                      <br />
-                      Valor total: R$ {formatarValor(calcularTotal())}
-                    </div>
-                  )}
-
-                  {dadosContrato.formaPagamento === "cheque" && (
-                    <div style={styles.infoBox}>
-                      📝 <strong>Pagamento em Cheque:</strong> Cheque pré-datado
-                      conforme acordado.
-                      <br />
-                      Valor total: R$ {formatarValor(calcularTotal())}
-                    </div>
-                  )}
-
-                  {dadosContrato.formaPagamento === "boleto" && (
-                    <div style={styles.infoBox}>
-                      🧾 <strong>Boleto Bancário:</strong> Boleto será enviado
-                      por email.
-                      <br />
-                      Valor total: R$ {formatarValor(calcularTotal())}
-                    </div>
-                  )}
-
-                  {dadosContrato.formaPagamento === "misto" && (
-                    <div style={styles.infoBox}>
-                      🔄 <strong>Pagamento Misto:</strong> Especificar as formas
-                      de pagamento:
-                      <textarea
-                        placeholder="Descreva como será dividido o pagamento (ex: R$ 500,00 dinheiro + R$ 300,00 cartão)"
-                        style={styles.textarea}
-                        value={dadosContrato.observacoesPagamento || ""}
-                        onChange={(e) =>
-                          setDadosContrato({
-                            ...dadosContrato,
-                            observacoesPagamento: e.target.value,
-                          })
-                        }
-                      />
-                      <div style={{ marginTop: "0.5rem", fontWeight: "bold" }}>
-                        Valor total: R$ {formatarValor(calcularTotal())}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
             {/* Campo adicional de observações para qualquer forma de pagamento */}
             {dadosContrato.formaPagamento && (
               <div style={styles.observacoesContainer}>
@@ -1899,11 +1665,11 @@ const GerenciadorContratos = () => {
                 <textarea
                   placeholder="Informações extras sobre condições de pagamento, descontos, etc."
                   style={styles.textarea}
-                  value={dadosContrato.observacoesGerais || ""}
+                  value={dadosContrato.observacoesPagamento || ""}
                   onChange={(e) =>
                     setDadosContrato({
                       ...dadosContrato,
-                      observacoesGerais: e.target.value,
+                      observacoesPagamento: e.target.value,
                     })
                   }
                 />
@@ -1911,299 +1677,112 @@ const GerenciadorContratos = () => {
             )}
           </fieldset>
 
-          <fieldset style={styles.fieldset}>
-            <legend>Avalistas</legend>
-            <div style={styles.formGrid}>
-              <input
-                type="text"
-                placeholder="CPF/CNPJ Avalista 1"
-                value={dadosContrato.avalistas?.[0]?.cpfCnpj || ""}
-                onChange={(e) => {
-                  const avalistas = [...(dadosContrato.avalistas || [{ cpfCnpj: "", endereco: "" }, { cpfCnpj: "", endereco: "" }])];
-                  avalistas[0].cpfCnpj = e.target.value;
-                  setDadosContrato({ ...dadosContrato, avalistas });
-                }}
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="Endereço Avalista 1"
-                value={dadosContrato.avalistas?.[0]?.endereco || ""}
-                onChange={(e) => {
-                  const avalistas = [...(dadosContrato.avalistas || [{ cpfCnpj: "", endereco: "" }, { cpfCnpj: "", endereco: "" }])];
-                  avalistas[0].endereco = e.target.value;
-                  setDadosContrato({ ...dadosContrato, avalistas });
-                }}
-                style={styles.inputWide}
-              />
-              <input
-                type="text"
-                placeholder="CPF/CNPJ Avalista 2"
-                value={dadosContrato.avalistas?.[1]?.cpfCnpj || ""}
-                onChange={(e) => {
-                  const avalistas = [...(dadosContrato.avalistas || [{ cpfCnpj: "", endereco: "" }, { cpfCnpj: "", endereco: "" }])];
-                  avalistas[1].cpfCnpj = e.target.value;
-                  setDadosContrato({ ...dadosContrato, avalistas });
-                }}
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="Endereço Avalista 2"
-                value={dadosContrato.avalistas?.[1]?.endereco || ""}
-                onChange={(e) => {
-                  const avalistas = [...(dadosContrato.avalistas || [{ cpfCnpj: "", endereco: "" }, { cpfCnpj: "", endereco: "" }])];
-                  avalistas[1].endereco = e.target.value;
-                  setDadosContrato({ ...dadosContrato, avalistas });
-                }}
-                style={styles.inputWide}
-              />
-            </div>
-          </fieldset>
-
-          <fieldset style={styles.fieldset}>
-            <legend>Nota Promissória</legend>
-            <div style={styles.formGrid}>
-              <input
-                type="text"
-                placeholder="Vencimento"
-                value={dadosContrato.promissoria?.vencimento || ""}
-                onChange={(e) =>
-                  setDadosContrato({
-                    ...dadosContrato,
-                    promissoria: {
-                      ...(dadosContrato.promissoria || {}),
-                      vencimento: e.target.value,
-                    },
-                  })
-                }
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="Valor (R$)"
-                value={dadosContrato.promissoria?.valor || ""}
-                onChange={(e) =>
-                  setDadosContrato({
-                    ...dadosContrato,
-                    promissoria: {
-                      ...(dadosContrato.promissoria || {}),
-                      valor: e.target.value,
-                    },
-                  })
-                }
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="Ao(s)"
-                value={dadosContrato.promissoria?.ao || ""}
-                onChange={(e) =>
-                  setDadosContrato({
-                    ...dadosContrato,
-                    promissoria: {
-                      ...(dadosContrato.promissoria || {}),
-                      ao: e.target.value,
-                    },
-                  })
-                }
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="Pagar"
-                value={dadosContrato.promissoria?.pagar || ""}
-                onChange={(e) =>
-                  setDadosContrato({
-                    ...dadosContrato,
-                    promissoria: {
-                      ...(dadosContrato.promissoria || {}),
-                      pagar: e.target.value,
-                    },
-                  })
-                }
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="CPF/CNPJ"
-                value={dadosContrato.promissoria?.cpfCnpj || ""}
-                onChange={(e) =>
-                  setDadosContrato({
-                    ...dadosContrato,
-                    promissoria: {
-                      ...(dadosContrato.promissoria || {}),
-                      cpfCnpj: e.target.value,
-                    },
-                  })
-                }
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="Endereço"
-                value={dadosContrato.promissoria?.endereco || ""}
-                onChange={(e) =>
-                  setDadosContrato({
-                    ...dadosContrato,
-                    promissoria: {
-                      ...(dadosContrato.promissoria || {}),
-                      endereco: e.target.value,
-                    },
-                  })
-                }
-                style={styles.inputWide}
-              />
-              <input
-                type="text"
-                placeholder="Emitente"
-                value={dadosContrato.promissoria?.emitente || ""}
-                onChange={(e) =>
-                  setDadosContrato({
-                    ...dadosContrato,
-                    promissoria: {
-                      ...(dadosContrato.promissoria || {}),
-                      emitente: e.target.value,
-                    },
-                  })
-                }
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="Data da emissão"
-                value={dadosContrato.promissoria?.dataEmissao || ""}
-                onChange={(e) =>
-                  setDadosContrato({
-                    ...dadosContrato,
-                    promissoria: {
-                      ...(dadosContrato.promissoria || {}),
-                      dataEmissao: e.target.value,
-                    },
-                  })
-                }
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="CPF/CNPJ Emitente"
-                value={dadosContrato.promissoria?.emitenteCpfCnpj || ""}
-                onChange={(e) =>
-                  setDadosContrato({
-                    ...dadosContrato,
-                    promissoria: {
-                      ...(dadosContrato.promissoria || {}),
-                      emitenteCpfCnpj: e.target.value,
-                    },
-                  })
-                }
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="Endereço Emitente"
-                value={dadosContrato.promissoria?.emitenteEndereco || ""}
-                onChange={(e) =>
-                  setDadosContrato({
-                    ...dadosContrato,
-                    promissoria: {
-                      ...(dadosContrato.promissoria || {}),
-                      emitenteEndereco: e.target.value,
-                    },
-                  })
-                }
-                style={styles.inputWide}
-              />
-            </div>
-          </fieldset>
-          {/* CLÁUSULAS EDITÁVEIS */}
-          <fieldset style={styles.fieldset}>
-            <legend>📝 Cláusulas do Contrato (Editáveis)</legend>
-            <p
-              style={{
-                color: "#666",
-                fontSize: "0.9rem",
-                marginBottom: "1rem",
-              }}
+          <div style={styles.clausulasToggleContainer}>
+            <button
+              type="button"
+              onClick={() =>
+                setMostrarClausulasEditaveis(!mostrarClausulasEditaveis)
+              }
+              style={styles.clausulasToggleButton}
             >
-              Edite as cláusulas conforme necessário. As alterações serão
-              aplicadas apenas a este contrato.
-            </p>
+              {mostrarClausulasEditaveis
+                ? "Ocultar cláusulas editáveis"
+                : "Exibir cláusulas editáveis"}
+            </button>
+          </div>
 
-            {Object.entries(clausulas).map(([key, clausula]) => (
-              <div key={key} style={styles.clausulaEditavel}>
-                <input
-                  type="text"
-                  value={clausula.titulo}
-                  onChange={(e) =>
-                    setClausulas({
-                      ...clausulas,
-                      [key]: { ...clausula, titulo: e.target.value },
-                    })
-                  }
-                  style={styles.clausulaTitulo}
-                />
+          {/* CLÁUSULAS EDITÁVEIS */}
+          {mostrarClausulasEditaveis && (
+            <fieldset style={styles.fieldset}>
+              <legend>📝 Cláusulas do Contrato (Editáveis)</legend>
+              <p
+                style={{
+                  color: "#666",
+                  fontSize: "0.9rem",
+                  marginBottom: "1rem",
+                }}
+              >
+                Edite as cláusulas conforme necessário. As alterações serão
+                aplicadas apenas a este contrato.
+              </p>
 
-                {clausula.conteudo ? (
-                  <textarea
-                    value={clausula.conteudo}
+              {Object.entries(clausulas).map(([key, clausula]) => (
+                <div key={key} style={styles.clausulaEditavel}>
+                  <input
+                    type="text"
+                    value={clausula.titulo}
                     onChange={(e) =>
                       setClausulas({
                         ...clausulas,
-                        [key]: { ...clausula, conteudo: e.target.value },
+                        [key]: { ...clausula, titulo: e.target.value },
                       })
                     }
-                    style={styles.clausulaTextarea}
-                    rows={3}
+                    style={styles.clausulaTitulo}
                   />
-                ) : (
-                  clausula.itens &&
-                  clausula.itens.map((item, idx) => (
-                    <div key={idx} style={styles.clausulaItem}>
-                      <input
-                        type="text"
-                        value={item.subtitulo}
-                        onChange={(e) => {
-                          const novosItens = [...clausula.itens];
-                          novosItens[idx].subtitulo = e.target.value;
-                          setClausulas({
-                            ...clausulas,
-                            [key]: { ...clausula, itens: novosItens },
-                          });
-                        }}
-                        style={styles.clausulaSubtitulo}
-                      />
-                      <textarea
-                        value={item.texto}
-                        onChange={(e) => {
-                          const novosItens = [...clausula.itens];
-                          novosItens[idx].texto = e.target.value;
-                          setClausulas({
-                            ...clausulas,
-                            [key]: { ...clausula, itens: novosItens },
-                          });
-                        }}
-                        style={styles.clausulaTextarea}
-                        rows={3}
-                      />
-                    </div>
-                  ))
-                )}
-              </div>
-            ))}
 
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm("Deseja restaurar as cláusulas padrão?")) {
-                  window.location.reload();
-                }
-              }}
-              style={styles.restaurarButton}
-            >
-              🔄 Restaurar Cláusulas Padrão
-            </button>
-          </fieldset>
+                  {clausula.conteudo ? (
+                    <textarea
+                      value={clausula.conteudo}
+                      onChange={(e) =>
+                        setClausulas({
+                          ...clausulas,
+                          [key]: { ...clausula, conteudo: e.target.value },
+                        })
+                      }
+                      style={styles.clausulaTextarea}
+                      rows={3}
+                    />
+                  ) : (
+                    clausula.itens &&
+                    clausula.itens.map((item, idx) => (
+                      <div key={idx} style={styles.clausulaItem}>
+                        <input
+                          type="text"
+                          value={item.subtitulo}
+                          onChange={(e) => {
+                            const novosItens = [...clausula.itens];
+                            novosItens[idx].subtitulo = e.target.value;
+                            setClausulas({
+                              ...clausulas,
+                              [key]: { ...clausula, itens: novosItens },
+                            });
+                          }}
+                          style={styles.clausulaSubtitulo}
+                        />
+                        <textarea
+                          value={item.texto}
+                          onChange={(e) => {
+                            const novosItens = [...clausula.itens];
+                            novosItens[idx].texto = e.target.value;
+                            setClausulas({
+                              ...clausulas,
+                              [key]: { ...clausula, itens: novosItens },
+                            });
+                          }}
+                          style={styles.clausulaTextarea}
+                          rows={3}
+                        />
+                      </div>
+                    ))
+                  )}
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    window.confirm("Deseja restaurar as cláusulas padrão?")
+                  ) {
+                    window.location.reload();
+                  }
+                }}
+                style={styles.restaurarButton}
+              >
+                🔄 Restaurar Cláusulas Padrão
+              </button>
+            </fieldset>
+          )}
           <div style={styles.buttonGroup}>
             <button
               onClick={salvarContrato}
@@ -2890,6 +2469,21 @@ const styles = {
   contractsSection: {
     marginTop: "2rem",
     animation: "fadeIn 0.3s ease-in",
+  },
+  clausulasToggleContainer: {
+    display: "flex",
+    justifyContent: "flex-end",
+    marginBottom: "0.75rem",
+  },
+  clausulasToggleButton: {
+    backgroundColor: "#5d4037",
+    color: "white",
+    border: "none",
+    padding: "0.65rem 1rem",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "0.9rem",
+    fontWeight: 600,
   },
   clausulaEditavel: {
     marginBottom: "1.5rem",
