@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, lazy, Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -7,30 +7,46 @@ import {
   useLocation,
 } from "react-router-dom";
 
-// Componentes da página inicial
+// Componentes críticos (carregados imediatamente — aparecem no First Paint)
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import About from "./components/About";
-import Depoimentos from "./components/Depoimentos";
-import Localizacao from "./components/Localizacao";
-import FAQ from "./components/Faq";
-import CategoriasCarrossel from "./components/CategoriasCarrossel";
 import HeroFeature from "./components/HeroFeature";
-import NossosServicos from "./components/NovosServicos";
-import GerenciadorContratos from "./pages/Admin/GerenciadorContrato";
-
-// Páginas de produtos
-import Vestidos from "./pages/Vestidos";
-import Ternos from "./pages/Ternos";
-import Debutantes from "./pages/Debutantes";
-
-// Páginas administrativas
-import Login from "./pages/Admin/Login";
-import Dashboard from "./pages/Admin/Dashboard";
-import GerenciadorProdutos from "./pages/Admin/GerenciarProdutos";
+import CategoriasCarrossel from "./components/CategoriasCarrossel";
 
 // Importar o componente RotaProtegida
 import RotaProtegida from "./components/RotaPotegida";
+
+// Componentes secundários da home (lazy — abaixo da dobra)
+const About = lazy(() => import("./components/About"));
+const Depoimentos = lazy(() => import("./components/Depoimentos"));
+const Localizacao = lazy(() => import("./components/Localizacao"));
+const FAQ = lazy(() => import("./components/Faq"));
+const NossosServicos = lazy(() => import("./components/NovosServicos"));
+const GerenciadorContratos = lazy(() => import("./pages/Admin/GerenciadorContrato"));
+
+// Páginas de produtos (lazy — só carregam quando o usuário navega)
+const Vestidos = lazy(() => import("./pages/Vestidos"));
+const Ternos = lazy(() => import("./pages/Ternos"));
+const Debutantes = lazy(() => import("./pages/Debutantes"));
+
+// Páginas administrativas (lazy — 99% dos usuários nunca acessam)
+const Login = lazy(() => import("./pages/Admin/Login"));
+const Dashboard = lazy(() => import("./pages/Admin/Dashboard"));
+const GerenciadorProdutos = lazy(() => import("./pages/Admin/GerenciarProdutos"));
+
+// Fallback minimalista de carregamento
+const PageLoader = () => (
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "40vh" }}>
+    <div style={{
+      width: "32px", height: "32px",
+      border: "2px solid #e8e8e8",
+      borderTopColor: "#b6a06a",
+      borderRadius: "50%",
+      animation: "spin 0.8s linear infinite",
+    }} />
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+  </div>
+);
 
 // ========== DETECÇÃO MOBILE INSTANTÂNEA ==========
 
@@ -151,13 +167,15 @@ const Home = () => {
     <div>
       <HeroFeature />
       <CategoriasCarrossel />
-      <div id="nossos-servicos">
-        <NossosServicos />
-      </div>
-      <div id="localizacao">
-        <Localizacao />
-      </div>
-      <FAQ />
+      <Suspense fallback={null}>
+        <div id="nossos-servicos">
+          <NossosServicos />
+        </div>
+        <div id="localizacao">
+          <Localizacao />
+        </div>
+        <FAQ />
+      </Suspense>
     </div>
   );
 };
@@ -183,20 +201,22 @@ const PublicLayout = () => {
     <div>
       <Header />
       <main style={layoutStyles}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/vestidos" element={<Vestidos />} />
-          <Route path="/ternos" element={<Ternos />} />
-          <Route path="/debutantes" element={<Debutantes />} />
-          <Route
-            path="/sobre"
-            element={<RedirectToComponent targetId="nossos-servicos" />}
-          />
-          <Route
-            path="/contato"
-            element={<RedirectToComponent targetId="localizacao" />}
-          />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/vestidos" element={<Vestidos />} />
+            <Route path="/ternos" element={<Ternos />} />
+            <Route path="/debutantes" element={<Debutantes />} />
+            <Route
+              path="/sobre"
+              element={<RedirectToComponent targetId="nossos-servicos" />}
+            />
+            <Route
+              path="/contato"
+              element={<RedirectToComponent targetId="localizacao" />}
+            />
+          </Routes>
+        </Suspense>
       </main>
       <Footer />
     </div>
@@ -206,6 +226,24 @@ const PublicLayout = () => {
 // ========== COMPONENTE PRINCIPAL ==========
 
 function App() {
+  // Acordar o backend Render silenciosamente assim que o site abre
+  useEffect(() => {
+    const warmup = async () => {
+      try {
+        const apiBase = process.env.REACT_APP_API_URL ||
+          "https://ericadamas-com-br.onrender.com/api";
+        await fetch(`${apiBase.replace("/api", "")}/health`, {
+          method: "GET",
+          cache: "no-store",
+          signal: AbortSignal.timeout(15000),
+        });
+      } catch (_) {
+        // silencioso — não afeta o usuário
+      }
+    };
+    warmup();
+  }, []);
+
   // Aplicar configurações imediatas
   useEffect(() => {
     const initialInfo = getInitialDeviceInfo();
@@ -233,13 +271,13 @@ function App() {
         <div style={styles.appContainer}>
           <Routes>
             {/* Rotas administrativas */}
-            <Route path="/admin/login" element={<Login />} />
+            <Route path="/admin/login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
             <Route path="/admin" element={<RotaProtegida />}>
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="contratos" element={<GerenciadorContratos />} />
+              <Route path="dashboard" element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
+              <Route path="contratos" element={<Suspense fallback={<PageLoader />}><GerenciadorContratos /></Suspense>} />
               <Route
                 path="produtos/:tipoProduto"
-                element={<GerenciadorProdutos />}
+                element={<Suspense fallback={<PageLoader />}><GerenciadorProdutos /></Suspense>}
               />
               <Route
                 index

@@ -1,4 +1,5 @@
 const express = require("express");
+const compression = require("compression");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
@@ -10,6 +11,9 @@ const sharp = require("sharp");
 dotenv.config();
 
 const app = express();
+
+// Compressão gzip em todas as respostas (reduz JSON em ~70%)
+app.use(compression({ level: 6 }));
 
 // ============ CONFIGURAÇÕES GLOBAIS ============
 
@@ -277,7 +281,6 @@ const preloadCache = async () => {
       try {
         const produtos = await Produto.find({ tipo, ativo: true })
           .sort({ createdAt: -1 })
-          .limit(12)
           .lean();
 
         produtosCache[tipo] = {
@@ -513,6 +516,7 @@ app.get("/api/produtos/:tipo", async (req, res) => {
 
     if (cached.data && agora - cached.timestamp < CACHE_DURATION) {
       console.log(`⚡ Cache HIT: ${tipo}`);
+      res.set("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
       return res.json({
         success: true,
         ...cached.data,
