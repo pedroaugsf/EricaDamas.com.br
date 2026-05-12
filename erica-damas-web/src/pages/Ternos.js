@@ -363,6 +363,10 @@ const Ternos = () => {
   const abrirModal = useCallback((terno) => {
     setTernoSelecionado(terno);
     setImagemModalAtual(0);
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
 
     if (terno.imagens && terno.imagens.length > 0) {
@@ -383,7 +387,12 @@ const Ternos = () => {
   const fecharModal = useCallback(() => {
     setTernoSelecionado(null);
     setImagemModalAtual(0);
-    document.body.style.overflow = "auto";
+    const scrollY = document.body.style.top;
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.width = "";
+    document.body.style.overflow = "";
+    window.scrollTo(0, parseInt(scrollY || "0") * -1);
   }, []);
 
   const proximaImagem = useCallback(() => {
@@ -639,7 +648,7 @@ const Ternos = () => {
 
       {/* Modal — padrão ASOS / Revolve */}
       {ternoSelecionado && (
-        <div style={styles.modalOverlay} onClick={fecharModal}>
+        <div style={isMobile ? {...styles.modalOverlay, alignItems: "flex-end", padding: 0} : styles.modalOverlay} onClick={fecharModal}>
           <div
             style={isMobile ? styles.modalSheetMobile : styles.modalPanel}
             onClick={(e) => e.stopPropagation()}
@@ -1126,10 +1135,7 @@ const styles = {
   },
 
   modalSheetMobile: {
-    position: "fixed",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    width: "100%",
     backgroundColor: "#fff",
     maxHeight: "92vh",
     display: "flex",
@@ -1137,6 +1143,8 @@ const styles = {
     borderRadius: "16px 16px 0 0",
     animation: "sheetSlideUp 0.32s cubic-bezier(0.32,0.72,0,1)",
     overflow: "hidden",
+    WebkitTransform: "translateZ(0)",
+    transform: "translateZ(0)",
   },
 
   closeButton: {
