@@ -10,7 +10,6 @@ let API_URL;
 
 if (isCodespaces) {
   // GitHub Codespaces
-  const codespacePrefix = window.location.hostname.split("-3000")[0];
   API_URL = "https://ericadamas-com-br.onrender.com/api";
 } else if (isVercel) {
   // Vercel - usar Render backend
