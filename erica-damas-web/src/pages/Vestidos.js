@@ -405,7 +405,7 @@ const Vestidos = () => {
   const gerarMensagemWhatsApp = useMemo(
     () => (vestido) => {
       const mensagem = `Olá! Gostaria de saber mais sobre o vestido "${vestido.nome}". Poderia me dar mais informações sobre disponibilidade e valores?`;
-      return `https://wa.me/5511999999999?text=${encodeURIComponent(mensagem)}`;
+      return `https://wa.me/5537999153738?text=${encodeURIComponent(mensagem)}`;
     },
     []
   );
@@ -591,7 +591,7 @@ const Vestidos = () => {
             nossas opções disponíveis.
           </p>
           <a
-            href="https://wa.me/5511999999999?text=Olá,%20gostaria%20de%20conhecer%20os%20vestidos%20disponíveis"
+            href="https://wa.me/5537999153738?text=Ol%C3%A1%2C%20gostaria%20de%20conhecer%20os%20vestidos%20dispon%C3%ADveis"
             target="_blank"
             rel="noopener noreferrer"
             style={styles.contactButton}
