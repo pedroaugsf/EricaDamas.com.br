@@ -644,12 +644,23 @@ const Debutantes = () => {
             style={isMobile ? styles.modalSheetMobile : styles.modalPanel}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Fechar */}
-            <button style={styles.closeButton} onClick={fecharModal} aria-label="Fechar">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
+            {/* Barra superior mobile (não-scrollável) */}
+            {isMobile ? (
+              <div style={styles.mobileModalTopBar}>
+                <div style={styles.mobileModalHandle} />
+                <button style={styles.mobileCloseButton} onClick={fecharModal} aria-label="Fechar">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <button style={styles.closeButton} onClick={fecharModal} aria-label="Fechar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
 
             {/* Corpo */}
             <div style={isMobile ? styles.modalBodyMobile : styles.modalBody}>
@@ -1144,6 +1155,41 @@ const styles = {
     zIndex: 20,
     color: "#111",
     transition: "background 0.2s",
+  },
+
+  mobileModalTopBar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    padding: "10px 14px 8px",
+    flexShrink: 0,
+    position: "relative",
+    borderBottom: "1px solid #f0f0f0",
+  },
+
+  mobileModalHandle: {
+    position: "absolute",
+    left: "50%",
+    top: "10px",
+    transform: "translateX(-50%)",
+    width: "36px",
+    height: "4px",
+    borderRadius: "2px",
+    backgroundColor: "#ddd",
+  },
+
+  mobileCloseButton: {
+    width: "34px",
+    height: "34px",
+    background: "#f5f5f5",
+    border: "none",
+    borderRadius: "50%",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#111",
+    flexShrink: 0,
   },
 
   modalBody: {

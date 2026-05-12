@@ -215,6 +215,7 @@ const PublicLayout = () => {
               path="/contato"
               element={<RedirectToComponent targetId="localizacao" />}
             />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </main>

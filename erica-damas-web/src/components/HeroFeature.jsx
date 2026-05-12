@@ -196,8 +196,10 @@ const HeroFeature = () => {
             </p>
 
             {/* CTA único destacado + secundários menores */}
-            <Link
-              to="/contato"
+            <a
+              href="https://wa.me/5537999153738?text=Ol%C3%A1%20Erica%20Damas%2C%20gostaria%20de%20agendar%20uma%20visita!"
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
                 display: "block",
                 textAlign: "center",
@@ -213,7 +215,7 @@ const HeroFeature = () => {
               }}
             >
               Agendar visita
-            </Link>
+            </a>
             <div style={{ display: "flex", gap: "10px" }}>
               {[
                 { to: "/vestidos", label: "Vestidos de Noiva" },
@@ -332,8 +334,10 @@ const HeroFeature = () => {
               Vestidos de noiva dos sonhos e ternos refinados para noivos, convidados e ocasiões especiais.
             </p>
             <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-              <Link
-                to="/contato"
+              <a
+                href="https://wa.me/5537999153738?text=Ol%C3%A1%20Erica%20Damas%2C%20gostaria%20de%20agendar%20uma%20visita!"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                   backgroundColor: "#b6a06a",
                   color: "#fff",
@@ -346,7 +350,7 @@ const HeroFeature = () => {
                 }}
               >
                 Agendar visita
-              </Link>
+              </a>
               <Link
                 to="/vestidos"
                 style={{
