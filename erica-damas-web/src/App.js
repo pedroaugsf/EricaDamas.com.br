@@ -223,25 +223,75 @@ const PublicLayout = () => {
   );
 };
 
+// ========== BANNER COLD START ==========
+
+const ColdStartBanner = ({ visible, onHide }) => {
+  if (!visible) return null;
+  return (
+    <div style={{
+      position: "fixed",
+      bottom: "24px",
+      left: "50%",
+      transform: "translateX(-50%)",
+      zIndex: 9999,
+      backgroundColor: "#3a2f28",
+      color: "#f6f1ea",
+      padding: "14px 24px",
+      borderRadius: "999px",
+      display: "flex",
+      alignItems: "center",
+      gap: "12px",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+      fontSize: "0.85rem",
+      letterSpacing: "0.03em",
+      whiteSpace: "nowrap",
+      animation: "slideUp 0.4s ease",
+    }}>
+      <style>{`@keyframes slideUp { from { opacity:0; transform:translateX(-50%) translateY(16px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
+      <span style={{
+        width: "14px", height: "14px",
+        border: "2px solid rgba(246,241,234,0.3)",
+        borderTopColor: "#b6a06a",
+        borderRadius: "50%",
+        animation: "spin 0.8s linear infinite",
+        flexShrink: 0,
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      Servidor iniciando, aguarde um instante...
+    </div>
+  );
+};
+
 // ========== COMPONENTE PRINCIPAL ==========
 
 function App() {
-  // Acordar o backend Render silenciosamente assim que o site abre
+  const [serverWaking, setServerWaking] = useState(false);
+
+  // Acordar o backend Render — mostra banner se demorar mais de 10s
   useEffect(() => {
+    const apiBase = process.env.REACT_APP_API_URL ||
+      "https://ericadamas-com-br.onrender.com/api";
+    const healthUrl = apiBase.replace("/api", "") + "/health";
+
+    const bannerTimer = setTimeout(() => setServerWaking(true), 10000);
+
     const warmup = async () => {
       try {
-        const apiBase = process.env.REACT_APP_API_URL ||
-          "https://ericadamas-com-br.onrender.com/api";
-        await fetch(`${apiBase.replace("/api", "")}/health`, {
+        await fetch(healthUrl, {
           method: "GET",
           cache: "no-store",
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(50000),
         });
       } catch (_) {
-        // silencioso — não afeta o usuário
+        // silencioso
+      } finally {
+        clearTimeout(bannerTimer);
+        setServerWaking(false);
       }
     };
     warmup();
+
+    return () => clearTimeout(bannerTimer);
   }, []);
 
   // Aplicar configurações imediatas
@@ -269,6 +319,7 @@ function App() {
     <DeviceProvider>
       <Router>
         <div style={styles.appContainer}>
+          <ColdStartBanner visible={serverWaking} />
           <Routes>
             {/* Rotas administrativas */}
             <Route path="/admin/login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
