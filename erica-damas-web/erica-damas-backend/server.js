@@ -6,7 +6,7 @@ const dotenv = require("dotenv");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
-const sharp = require("sharp");
+// sharp carregado lazily no primeiro upload — não bloqueia o boot
 
 dotenv.config();
 
@@ -260,6 +260,7 @@ const initializeDependencies = async () => {
 const startKeepalive = () => {
   if (keepaliveInterval) return;
 
+  // Ping MongoDB para manter conexão viva
   keepaliveInterval = setInterval(async () => {
     try {
       if (dbInitialized && mongoose.connection.readyState === 1) {
@@ -271,7 +272,36 @@ const startKeepalive = () => {
     }
   }, 5 * 60 * 1000);
 
-  console.log("✅ Keepalive ativo (5min)");
+  console.log("✅ MongoDB keepalive ativo (5min)");
+};
+
+// Self-ping separado — inicia logo após o servidor subir
+// Roda independente do banco de dados
+const startSelfPing = () => {
+  const SELF_URL = process.env.RENDER_EXTERNAL_URL;
+  if (!SELF_URL) return; // só executa no Render (onde a env existe)
+
+  const https = require("https");
+
+  // Primeiro ping imediato para registrar que o servidor acordou
+  setTimeout(() => {
+    https.get(`${SELF_URL}/health`, (res) => {
+      console.log(`💓 Self-ping inicial: ${res.statusCode}`);
+    }).on("error", (err) => {
+      console.warn("⚠️ Self-ping inicial falhou:", err.message);
+    });
+  }, 5000);
+
+  // Ping a cada 4 minutos — Render dorme após 15 min sem tráfego
+  setInterval(() => {
+    https.get(`${SELF_URL}/health`, (res) => {
+      console.log(`💓 Self-ping: ${res.statusCode}`);
+    }).on("error", (err) => {
+      console.warn("⚠️ Self-ping falhou:", err.message);
+    });
+  }, 4 * 60 * 1000);
+
+  console.log(`✅ Self-ping ativo (4min) → ${SELF_URL}`);
 };
 
 // ============ PRE-LOAD CACHE ============
@@ -399,6 +429,7 @@ const uploadImageToFirebase = async (file) => {
   if (!file || !bucket) return null;
 
   try {
+    const sharp = require("sharp"); // lazy — só carrega quando há upload
     const originalSize = (file.size / 1024 / 1024).toFixed(2);
 
     const compressedBuffer = await sharp(file.buffer)
@@ -1010,6 +1041,10 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`📊 Status: http://localhost:${PORT}/api/status`);
   console.log("=".repeat(60) + "\n");
 
+  // Self-ping inicia IMEDIATAMENTE — não depende do banco
+  startSelfPing();
+
+  // Banco e Firebase iniciam em background 2s depois
   setTimeout(() => {
     console.log("🔄 Background initialization...");
     initializeDependencies().catch((err) =>
