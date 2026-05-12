@@ -29,7 +29,7 @@ if (isCodespaces) {
 // Configuração do axios
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000, // 30 segundos para Render cold start
+  timeout: 50000, // Aumentado para 50s para dar tempo total ao Render de subir o processo
   headers: {
     "Content-Type": "application/json",
   },

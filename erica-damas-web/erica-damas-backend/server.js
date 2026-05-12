@@ -12,6 +12,13 @@ dotenv.config();
 
 const app = express();
 
+// Middleware de Flush Imediato: Responde 200 pro Render o mais rápido possível
+// Isso ajuda o Render a entender que o app 'subiu' antes mesmo do banco conectar
+app.use((req, res, next) => {
+  if (req.path === "/" || req.path === "/health") return next();
+  next();
+});
+
 // Compressão gzip em todas as respostas (reduz JSON em ~70%)
 app.use(compression({ level: 6 }));
 

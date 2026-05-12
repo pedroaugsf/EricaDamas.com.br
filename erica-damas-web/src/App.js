@@ -11,10 +11,10 @@ import {
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import HeroFeature from "./components/HeroFeature";
-import CategoriasCarrossel from "./components/CategoriasCarrossel";
-
-// Importar o componente RotaProtegida
 import RotaProtegida from "./components/RotaPotegida";
+
+// CategoriasCarrossel carrega react-slick (~30KB) + 2 CSS — lazy para não bloquear o First Paint
+const CategoriasCarrossel = lazy(() => import("./components/CategoriasCarrossel"));
 
 // Componentes secundários da home (lazy — abaixo da dobra)
 const About = lazy(() => import("./components/About"));
@@ -166,8 +166,8 @@ const Home = () => {
   return (
     <div>
       <HeroFeature />
-      <CategoriasCarrossel />
       <Suspense fallback={null}>
+        <CategoriasCarrossel />
         <div id="nossos-servicos">
           <NossosServicos />
         </div>

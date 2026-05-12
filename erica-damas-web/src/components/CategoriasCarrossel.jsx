@@ -6,7 +6,9 @@ import "slick-carousel/slick/slick-theme.css";
 
 // Adicionando estilos CSS para os efeitos de hover e responsividade
 const addResponsiveStyles = () => {
+  if (document.querySelector('style[data-categorias-styles]')) return;
   const style = document.createElement("style");
+  style.setAttribute('data-categorias-styles', 'true');
   style.innerHTML = `
   .slick-slide:hover .categoria-imagem {
     transform: scale(1.05);
@@ -135,24 +137,21 @@ const CategoriasCarrossel = () => {
       id: 1,
       titulo: "NOIVAS",
       subtitulo: "elegância e sofisticação",
-      imagem:
-        "https://images.unsplash.com/photo-1583939003579-730e3918a45a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80",
+      imagem: "/siteegVF.jpg",
       link: "/vestidos",
     },
     {
       id: 2,
       titulo: "DEBUTANTES",
       subtitulo: "para momentos especiais",
-      imagem:
-        "https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=783&q=80",
+      imagem: "/SITEEGVN2.jpg",
       link: "/debutantes",
     },
     {
       id: 3,
       titulo: "TERNOS",
       subtitulo: "estilo e distinção",
-      imagem:
-        "https://images.unsplash.com/photo-1593032465175-481ac7f401a0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=880&q=80",
+      imagem: "/SITEEGT3.jpg",
       link: "/ternos",
     },
   ];

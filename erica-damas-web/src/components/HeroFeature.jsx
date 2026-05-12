@@ -62,24 +62,22 @@ const HeroFeature = () => {
               backgroundColor: "#e8e0d5",
             }}
           >
-            {imagens.map((src, i) => (
-              <img
-                key={src}
-                src={src}
-                alt="Erica Damas"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  objectPosition: "top center",
-                  opacity: i === indiceImagem ? 1 : 0,
-                  transition: "opacity 0.6s ease",
-                }}
-                loading={i === 0 ? "eager" : "lazy"}
-              />
-            ))}
+            <img
+              key={indiceImagem}
+              src={imagens[indiceImagem]}
+              alt="Erica Damas"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "top center",
+                animation: "heroFadeIn 0.6s ease",
+              }}
+              loading="eager"
+            />
+            <style>{`@keyframes heroFadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
 
             {/* Gradiente inferior */}
             <div
@@ -462,7 +460,8 @@ const HeroFeature = () => {
                 src={imagens[indiceImagem]}
                 alt="Ternos Erica Damas"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                loading="lazy"
+                loading="eager"
+                fetchpriority="high"
               />
               <button
                 type="button"
