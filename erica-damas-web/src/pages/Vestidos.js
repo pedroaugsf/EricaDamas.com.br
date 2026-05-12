@@ -16,6 +16,7 @@ const Vestidos = () => {
   const [vestidoSelecionado, setVestidoSelecionado] = useState(null);
   const [erro, setErro] = useState("");
   const [imagemModalAtual, setImagemModalAtual] = useState(0);
+  const [modalHeight, setModalHeight] = useState(0);
 
   // Estados para paginação e filtros
   const [paginaAtual, setPaginaAtual] = useState(1);
@@ -363,6 +364,7 @@ const Vestidos = () => {
   const abrirModal = useCallback((vestido) => {
     setVestidoSelecionado(vestido);
     setImagemModalAtual(0);
+    setModalHeight(Math.floor(window.innerHeight * 0.92));
     // iOS Safari ignora overflow:hidden no body — usar position:fixed
     const scrollY = window.scrollY;
     document.body.style.position = "fixed";
@@ -388,6 +390,7 @@ const Vestidos = () => {
   const fecharModal = useCallback(() => {
     setVestidoSelecionado(null);
     setImagemModalAtual(0);
+    setModalHeight(0);
     const scrollY = document.body.style.top;
     document.body.style.position = "";
     document.body.style.top = "";
@@ -650,7 +653,20 @@ const Vestidos = () => {
       {vestidoSelecionado && (
         <div style={isMobile ? {...styles.modalOverlay, alignItems: "flex-end", padding: 0} : styles.modalOverlay} onClick={fecharModal}>
           <div
-            style={isMobile ? styles.modalSheetMobile : styles.modalPanel}
+            style={isMobile ? {
+              position: "fixed",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: modalHeight,
+              backgroundColor: "#fff",
+              borderRadius: "16px 16px 0 0",
+              display: "flex",
+              flexDirection: "column",
+              animation: "sheetSlideUp 0.32s cubic-bezier(0.32,0.72,0,1)",
+              WebkitTransform: "translateZ(0)",
+              transform: "translateZ(0)",
+            } : styles.modalPanel}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Barra superior mobile (não-scrollável) */}
@@ -672,11 +688,16 @@ const Vestidos = () => {
             )}
 
             {/* Corpo */}
-            <div style={isMobile ? styles.modalBodyMobile : styles.modalBody}>
+            <div style={isMobile ? {
+              height: modalHeight - 52,
+              overflowY: "scroll",
+              WebkitOverflowScrolling: "touch",
+              overscrollBehavior: "contain",
+            } : styles.modalBody}>
 
               {/* ── Coluna Imagem ── */}
-              <div style={styles.modalImageCol}>
-                <div style={styles.mainImageWrap}>
+              <div style={isMobile ? {...styles.modalImageCol, flex: "none"} : styles.modalImageCol}>
+                <div style={isMobile ? {...styles.mainImageWrap, height: "280px", flex: "none"} : styles.mainImageWrap}>
                   <img
                     src={vestidoSelecionado.imagens?.[imagemModalAtual]}
                     alt={vestidoSelecionado.nome}
@@ -727,8 +748,8 @@ const Vestidos = () => {
               </div>
 
               {/* ── Coluna Info ── */}
-              <div style={styles.modalInfoCol}>
-                <div style={styles.modalInfoScroll}>
+              <div style={isMobile ? {...styles.modalInfoCol, overflow: "visible", flex: "none", borderLeft: "none"} : styles.modalInfoCol}>
+                <div style={isMobile ? {...styles.modalInfoScroll, flex: "none", overflowY: "visible"} : styles.modalInfoScroll}>
                   {/* Categoria */}
                   {vestidoSelecionado.categoria && (
                     <p style={styles.modalCategory}>
@@ -760,7 +781,7 @@ const Vestidos = () => {
                 </div>
 
                 {/* CTA fixo no rodapé */}
-                <div style={styles.modalCta}>
+                <div style={isMobile ? {...styles.modalCta, position: "sticky", bottom: 0, zIndex: 3} : styles.modalCta}>
                   <a
                     href={gerarMensagemWhatsApp(vestidoSelecionado)}
                     target="_blank"
