@@ -370,6 +370,8 @@ const Debutantes = () => {
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
+    const headerEl = document.querySelector('header');
+    if (headerEl) headerEl.style.visibility = 'hidden';
 
     if (vestido.imagens && vestido.imagens.length > 0) {
       const img = new Image();
@@ -396,6 +398,8 @@ const Debutantes = () => {
     document.body.style.width = "";
     document.body.style.overflow = "";
     window.scrollTo(0, parseInt(scrollY || "0") * -1);
+    const headerEl = document.querySelector('header');
+    if (headerEl) headerEl.style.visibility = '';
   }, []);
 
   const proximaImagem = useCallback(() => {
@@ -702,22 +706,27 @@ const Debutantes = () => {
         </div>
       )}
 
-      {/* Modal mobile — X independente do sheet, impossível de sumir */}
+      {/* Modal mobile */}
       {vestidoSelecionado && isMobile && (
         <>
           <div style={{ position: "fixed", inset: 0, zIndex: 1001, backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} onClick={fecharModal} />
-          <button onClick={fecharModal} aria-label="Fechar" style={{ position: "fixed", top: "16px", right: "16px", zIndex: 10001, width: "44px", height: "44px", background: "rgba(20,20,20,0.82)", border: "none", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", WebkitTransform: "translateZ(0)", transform: "translateZ(0)" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+          {/* Sheet */}
           <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, height: `${modalHeight}px`, backgroundColor: "#fff", borderRadius: "16px 16px 0 0", zIndex: 1002, display: "flex", flexDirection: "column", animation: "sheetSlideUp 0.32s cubic-bezier(0.32,0.72,0,1)", WebkitTransform: "translateZ(0)", transform: "translateZ(0)" }}>
-            <div style={{ height: "20px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, paddingTop: "8px" }}>
+            {/* Top bar: handle + X */}
+            <div style={{ display: "flex", alignItems: "center", padding: "10px 12px 8px", flexShrink: 0, borderBottom: "1px solid #f0f0f0" }}>
+              <div style={{ flex: 1 }} />
               <div style={{ width: "36px", height: "4px", borderRadius: "2px", backgroundColor: "#ddd" }} />
+              <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={fecharModal} aria-label="Fechar" style={{ width: "36px", height: "36px", background: "#1a1a1a", border: "none", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", minHeight: 0 }}>
               <div style={{ position: "relative", width: "100%", backgroundColor: "#f5f5f5" }}>
-                <img src={vestidoSelecionado.imagens?.[imagemModalAtual]} alt={vestidoSelecionado.nome} style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block" }} />
+                <img src={vestidoSelecionado.imagens?.[imagemModalAtual]} alt={vestidoSelecionado.nome} style={{ width: "100%", height: `${Math.floor(modalHeight * 0.52)}px`, objectFit: "cover", display: "block" }} />
                 {vestidoSelecionado.imagens?.length > 1 && (
                   <>
                     <button style={{ ...styles.arrowBtn, left: "12px" }} onClick={imagemAnterior} aria-label="Imagem anterior">
