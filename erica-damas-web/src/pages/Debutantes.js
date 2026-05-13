@@ -649,148 +649,51 @@ const Debutantes = () => {
         </React.Fragment>
       )}
 
-      {/* Modal — padrão ASOS / Revolve */}
-      {vestidoSelecionado && (
-        <div style={isMobile ? {...styles.modalOverlay, alignItems: "flex-end", padding: 0} : styles.modalOverlay} onClick={fecharModal}>
-          <div
-            style={isMobile ? {
-              position: "fixed",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: modalHeight,
-              backgroundColor: "#fff",
-              borderRadius: "16px 16px 0 0",
-              display: "flex",
-              flexDirection: "column",
-              animation: "sheetSlideUp 0.32s cubic-bezier(0.32,0.72,0,1)",
-              WebkitTransform: "translateZ(0)",
-              transform: "translateZ(0)",
-            } : styles.modalPanel}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Barra superior mobile (não-scrollável) */}
-            {isMobile ? (
-              <div style={styles.mobileModalTopBar}>
-                <div style={styles.mobileModalHandle} />
-                <button style={styles.mobileCloseButton} onClick={fecharModal} aria-label="Fechar">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <button style={styles.closeButton} onClick={fecharModal} aria-label="Fechar">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            )}
-
-            {/* Corpo */}
-            <div style={isMobile ? {
-              height: modalHeight - 52,
-              overflowY: "scroll",
-              WebkitOverflowScrolling: "touch",
-              overscrollBehavior: "contain",
-            } : styles.modalBody}>
-
-              {/* ── Coluna Imagem ── */}
-              <div style={isMobile ? {...styles.modalImageCol, flex: "none"} : styles.modalImageCol}>
-                <div style={isMobile ? {...styles.mainImageWrap, height: "280px", flex: "none"} : styles.mainImageWrap}>
-                  <img
-                    src={vestidoSelecionado.imagens?.[imagemModalAtual]}
-                    alt={vestidoSelecionado.nome}
-                    style={styles.modalMainImage}
-                  />
+      {/* Modal desktop */}
+      {vestidoSelecionado && !isMobile && (
+        <div style={styles.modalOverlay} onClick={fecharModal}>
+          <div style={styles.modalPanel} onClick={(e) => e.stopPropagation()}>
+            <button style={styles.closeButton} onClick={fecharModal} aria-label="Fechar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+            <div style={styles.modalBody}>
+              <div style={styles.modalImageCol}>
+                <div style={styles.mainImageWrap}>
+                  <img src={vestidoSelecionado.imagens?.[imagemModalAtual]} alt={vestidoSelecionado.nome} style={styles.modalMainImage} />
                   {vestidoSelecionado.imagens?.length > 1 && (
                     <>
-                      <button
-                        style={{ ...styles.arrowBtn, left: "12px" }}
-                        onClick={imagemAnterior}
-                        aria-label="Imagem anterior"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="15 18 9 12 15 6" />
-                        </svg>
+                      <button style={{ ...styles.arrowBtn, left: "12px" }} onClick={imagemAnterior} aria-label="Imagem anterior">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
                       </button>
-                      <button
-                        style={{ ...styles.arrowBtn, right: "12px" }}
-                        onClick={proximaImagem}
-                        aria-label="Próxima imagem"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
+                      <button style={{ ...styles.arrowBtn, right: "12px" }} onClick={proximaImagem} aria-label="Próxima imagem">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                       </button>
                     </>
                   )}
                 </div>
-
-                {/* Miniaturas */}
                 {vestidoSelecionado.imagens?.length > 1 && (
                   <div style={styles.thumbRow}>
                     {vestidoSelecionado.imagens.slice(0, 6).map((img, i) => (
-                      <button
-                        key={i}
-                        style={{
-                          ...styles.thumbBtn,
-                          ...(i === imagemModalAtual ? styles.thumbBtnActive : {}),
-                        }}
-                        onClick={() => setImagemModalAtual(i)}
-                        aria-label={`Imagem ${i + 1}`}
-                      >
+                      <button key={i} style={{ ...styles.thumbBtn, ...(i === imagemModalAtual ? styles.thumbBtnActive : {}) }} onClick={() => setImagemModalAtual(i)} aria-label={`Imagem ${i + 1}`}>
                         <img src={img} alt="" style={styles.thumbImg} />
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-
-              {/* ── Coluna Info ── */}
-              <div style={isMobile ? {...styles.modalInfoCol, overflow: "visible", flex: "none", borderLeft: "none"} : styles.modalInfoCol}>
-                <div style={isMobile ? {...styles.modalInfoScroll, flex: "none", overflowY: "visible"} : styles.modalInfoScroll}>
-                  {/* Categoria */}
-                  {vestidoSelecionado.categoria && (
-                    <p style={styles.modalCategory}>
-                      {vestidoSelecionado.categoria.toUpperCase()}
-                    </p>
-                  )}
-
-                  {/* Nome */}
+              <div style={styles.modalInfoCol}>
+                <div style={styles.modalInfoScroll}>
+                  {vestidoSelecionado.categoria && <p style={styles.modalCategory}>{vestidoSelecionado.categoria.toUpperCase()}</p>}
                   <h2 style={styles.modalTitle}>{vestidoSelecionado.nome}</h2>
-
-                  {/* Preço */}
-                  <p style={styles.modalPrice}>
-                    {typeof vestidoSelecionado.preco === "number"
-                      ? `R$ ${vestidoSelecionado.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-                      : "Consulte o preço"}
-                  </p>
-
+                  <p style={styles.modalPrice}>{typeof vestidoSelecionado.preco === "number" ? `R$ ${vestidoSelecionado.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "Consulte o preço"}</p>
                   <hr style={styles.modalDivider} />
-
-                  {/* Descrição */}
                   <p style={styles.modalDesc}>{vestidoSelecionado.descricao}</p>
-
-                  {/* Contador de imagens */}
-                  {vestidoSelecionado.imagens?.length > 1 && (
-                    <p style={styles.modalImageCount}>
-                      {imagemModalAtual + 1} / {vestidoSelecionado.imagens.length}
-                    </p>
-                  )}
+                  {vestidoSelecionado.imagens?.length > 1 && <p style={styles.modalImageCount}>{imagemModalAtual + 1} / {vestidoSelecionado.imagens.length}</p>}
                 </div>
-
-                {/* CTA fixo no rodapé */}
-                <div style={isMobile ? {...styles.modalCta, position: "sticky", bottom: 0, zIndex: 3} : styles.modalCta}>
-                  <a
-                    href={gerarMensagemWhatsApp(vestidoSelecionado)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={styles.ctaPrimary}
-                    className="cta-primary-btn"
-                  >
-                    Agendar Consulta
-                  </a>
+                <div style={styles.modalCta}>
+                  <a href={gerarMensagemWhatsApp(vestidoSelecionado)} target="_blank" rel="noopener noreferrer" style={styles.ctaPrimary} className="cta-primary-btn">Agendar Consulta</a>
                   <p style={styles.ctaNote}>Atendimento exclusivo e personalizado</p>
                 </div>
               </div>
@@ -799,47 +702,61 @@ const Debutantes = () => {
         </div>
       )}
 
-      <style jsx>{`
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
+      {/* Modal mobile — X independente do sheet, impossível de sumir */}
+      {vestidoSelecionado && isMobile && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 1001, backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} onClick={fecharModal} />
+          <button onClick={fecharModal} aria-label="Fechar" style={{ position: "fixed", top: "16px", right: "16px", zIndex: 10001, width: "44px", height: "44px", background: "rgba(20,20,20,0.82)", border: "none", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", WebkitTransform: "translateZ(0)", transform: "translateZ(0)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, height: `${modalHeight}px`, backgroundColor: "#fff", borderRadius: "16px 16px 0 0", zIndex: 1002, display: "flex", flexDirection: "column", animation: "sheetSlideUp 0.32s cubic-bezier(0.32,0.72,0,1)", WebkitTransform: "translateZ(0)", transform: "translateZ(0)" }}>
+            <div style={{ height: "20px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, paddingTop: "8px" }}>
+              <div style={{ width: "36px", height: "4px", borderRadius: "2px", backgroundColor: "#ddd" }} />
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", minHeight: 0 }}>
+              <div style={{ position: "relative", width: "100%", backgroundColor: "#f5f5f5" }}>
+                <img src={vestidoSelecionado.imagens?.[imagemModalAtual]} alt={vestidoSelecionado.nome} style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block" }} />
+                {vestidoSelecionado.imagens?.length > 1 && (
+                  <>
+                    <button style={{ ...styles.arrowBtn, left: "12px" }} onClick={imagemAnterior} aria-label="Imagem anterior">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                    </button>
+                    <button style={{ ...styles.arrowBtn, right: "12px" }} onClick={proximaImagem} aria-label="Próxima imagem">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                    </button>
+                  </>
+                )}
+              </div>
+              {vestidoSelecionado.imagens?.length > 1 && (
+                <div style={styles.thumbRow}>
+                  {vestidoSelecionado.imagens.slice(0, 6).map((img, i) => (
+                    <button key={i} style={{ ...styles.thumbBtn, ...(i === imagemModalAtual ? styles.thumbBtnActive : {}) }} onClick={() => setImagemModalAtual(i)} aria-label={`Imagem ${i + 1}`}>
+                      <img src={img} alt="" style={styles.thumbImg} />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{ padding: "1.25rem 1.25rem 0" }}>
+                {vestidoSelecionado.categoria && <p style={styles.modalCategory}>{vestidoSelecionado.categoria.toUpperCase()}</p>}
+                <h2 style={{ ...styles.modalTitle, fontSize: "1.4rem" }}>{vestidoSelecionado.nome}</h2>
+                <p style={styles.modalPrice}>{typeof vestidoSelecionado.preco === "number" ? `R$ ${vestidoSelecionado.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "Consulte o preço"}</p>
+                <hr style={styles.modalDivider} />
+                <p style={styles.modalDesc}>{vestidoSelecionado.descricao}</p>
+                {vestidoSelecionado.imagens?.length > 1 && <p style={{ ...styles.modalImageCount, marginBottom: "0.5rem" }}>{imagemModalAtual + 1} / {vestidoSelecionado.imagens.length}</p>}
+              </div>
+            </div>
+            <div style={{ ...styles.modalCta, flexShrink: 0 }}>
+              <a href={gerarMensagemWhatsApp(vestidoSelecionado)} target="_blank" rel="noopener noreferrer" style={styles.ctaPrimary} className="cta-primary-btn">Agendar Consulta</a>
+              <p style={styles.ctaNote}>Atendimento exclusivo e personalizado</p>
+            </div>
+          </div>
+        </>
+      )}
 
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .vestido-card {
-          transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-          animation: fadeInUp 0.6s ease forwards;
-        }
-
-        .vestido-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        .vestido-card:hover .vestido-image {
-          transform: scale(1.05);
-        }
-
-        .vestido-card:hover .hover-overlay {
-          opacity: 1;
-        }
-
-        .carregar-mais-button:hover:not(:disabled) {
-          background-color: #9a8655;
+      <style>{`
+        .cta-primary-btn:hover {
           transform: translateY(-2px);
           box-shadow: 0 8px 20px rgba(154, 134, 85, 0.3);
         }

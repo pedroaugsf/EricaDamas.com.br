@@ -649,154 +649,110 @@ const Ternos = () => {
         </React.Fragment>
       )}
 
-      {/* Modal — padrão ASOS / Revolve */}
-      {ternoSelecionado && (
-        <div style={isMobile ? {...styles.modalOverlay, alignItems: "flex-end", padding: 0} : styles.modalOverlay} onClick={fecharModal}>
-          <div
-            style={isMobile ? {
-              position: "fixed",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: modalHeight,
-              backgroundColor: "#fff",
-              borderRadius: "16px 16px 0 0",
-              display: "flex",
-              flexDirection: "column",
-              animation: "sheetSlideUp 0.32s cubic-bezier(0.32,0.72,0,1)",
-              WebkitTransform: "translateZ(0)",
-              transform: "translateZ(0)",
-            } : styles.modalPanel}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Barra superior mobile (não-scrollável) */}
-            {isMobile ? (
-              <div style={styles.mobileModalTopBar}>
-                <div style={styles.mobileModalHandle} />
-                <button style={styles.mobileCloseButton} onClick={fecharModal} aria-label="Fechar">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <button style={styles.closeButton} onClick={fecharModal} aria-label="Fechar">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            )}
-
-            {/* Corpo */}
-            <div style={isMobile ? {
-              height: modalHeight - 52,
-              overflowY: "scroll",
-              WebkitOverflowScrolling: "touch",
-              overscrollBehavior: "contain",
-            } : styles.modalBody}>
-
-              {/* ── Coluna Imagem ── */}
-              <div style={isMobile ? {...styles.modalImageCol, flex: "none"} : styles.modalImageCol}>
-                <div style={isMobile ? {...styles.mainImageWrap, height: "280px", flex: "none"} : styles.mainImageWrap}>
-                  <img
-                    src={ternoSelecionado.imagens?.[imagemModalAtual]}
-                    alt={ternoSelecionado.nome}
-                    style={styles.modalMainImage}
-                  />
+      {/* Modal desktop */}
+      {ternoSelecionado && !isMobile && (
+        <div style={styles.modalOverlay} onClick={fecharModal}>
+          <div style={styles.modalPanel} onClick={(e) => e.stopPropagation()}>
+            <button style={styles.closeButton} onClick={fecharModal} aria-label="Fechar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+            <div style={styles.modalBody}>
+              <div style={styles.modalImageCol}>
+                <div style={styles.mainImageWrap}>
+                  <img src={ternoSelecionado.imagens?.[imagemModalAtual]} alt={ternoSelecionado.nome} style={styles.modalMainImage} />
                   {ternoSelecionado.imagens?.length > 1 && (
                     <>
-                      <button
-                        style={{ ...styles.arrowBtn, left: "12px" }}
-                        onClick={imagemAnterior}
-                        aria-label="Imagem anterior"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="15 18 9 12 15 6" />
-                        </svg>
+                      <button style={{ ...styles.arrowBtn, left: "12px" }} onClick={imagemAnterior} aria-label="Imagem anterior">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
                       </button>
-                      <button
-                        style={{ ...styles.arrowBtn, right: "12px" }}
-                        onClick={proximaImagem}
-                        aria-label="Próxima imagem"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
+                      <button style={{ ...styles.arrowBtn, right: "12px" }} onClick={proximaImagem} aria-label="Próxima imagem">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                       </button>
                     </>
                   )}
                 </div>
-
-                {/* Miniaturas */}
                 {ternoSelecionado.imagens?.length > 1 && (
                   <div style={styles.thumbRow}>
                     {ternoSelecionado.imagens.slice(0, 6).map((img, i) => (
-                      <button
-                        key={i}
-                        style={{
-                          ...styles.thumbBtn,
-                          ...(i === imagemModalAtual ? styles.thumbBtnActive : {}),
-                        }}
-                        onClick={() => setImagemModalAtual(i)}
-                        aria-label={`Imagem ${i + 1}`}
-                      >
+                      <button key={i} style={{ ...styles.thumbBtn, ...(i === imagemModalAtual ? styles.thumbBtnActive : {}) }} onClick={() => setImagemModalAtual(i)} aria-label={`Imagem ${i + 1}`}>
                         <img src={img} alt="" style={styles.thumbImg} />
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-
-              {/* ── Coluna Info ── */}
-              <div style={isMobile ? {...styles.modalInfoCol, overflow: "visible", flex: "none", borderLeft: "none"} : styles.modalInfoCol}>
-                <div style={isMobile ? {...styles.modalInfoScroll, flex: "none", overflowY: "visible"} : styles.modalInfoScroll}>
-                  {/* Categoria */}
-                  {ternoSelecionado.categoria && (
-                    <p style={styles.modalCategory}>
-                      {ternoSelecionado.categoria.toUpperCase()}
-                    </p>
-                  )}
-
-                  {/* Nome */}
+              <div style={styles.modalInfoCol}>
+                <div style={styles.modalInfoScroll}>
+                  {ternoSelecionado.categoria && <p style={styles.modalCategory}>{ternoSelecionado.categoria.toUpperCase()}</p>}
                   <h2 style={styles.modalTitle}>{ternoSelecionado.nome}</h2>
-
-                  {/* Preço */}
-                  <p style={styles.modalPrice}>
-                    {typeof ternoSelecionado.preco === "number"
-                      ? `R$ ${ternoSelecionado.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-                      : "Consulte o preço"}
-                  </p>
-
+                  <p style={styles.modalPrice}>{typeof ternoSelecionado.preco === "number" ? `R$ ${ternoSelecionado.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "Consulte o preço"}</p>
                   <hr style={styles.modalDivider} />
-
-                  {/* Descrição */}
                   <p style={styles.modalDesc}>{ternoSelecionado.descricao}</p>
-
-                  {/* Contador de imagens */}
-                  {ternoSelecionado.imagens?.length > 1 && (
-                    <p style={styles.modalImageCount}>
-                      {imagemModalAtual + 1} / {ternoSelecionado.imagens.length}
-                    </p>
-                  )}
+                  {ternoSelecionado.imagens?.length > 1 && <p style={styles.modalImageCount}>{imagemModalAtual + 1} / {ternoSelecionado.imagens.length}</p>}
                 </div>
-
-                {/* CTA fixo no rodapé */}
-                <div style={isMobile ? {...styles.modalCta, position: "sticky", bottom: 0, zIndex: 3} : styles.modalCta}>
-                  <a
-                    href={gerarMensagemWhatsApp(ternoSelecionado)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={styles.ctaPrimary}
-                    className="cta-primary-btn"
-                  >
-                    Agendar Consulta
-                  </a>
+                <div style={styles.modalCta}>
+                  <a href={gerarMensagemWhatsApp(ternoSelecionado)} target="_blank" rel="noopener noreferrer" style={styles.ctaPrimary} className="cta-primary-btn">Agendar Consulta</a>
                   <p style={styles.ctaNote}>Atendimento exclusivo e personalizado</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal mobile — X independente do sheet, impossível de sumir */}
+      {ternoSelecionado && isMobile && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 1001, backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} onClick={fecharModal} />
+          <button onClick={fecharModal} aria-label="Fechar" style={{ position: "fixed", top: "16px", right: "16px", zIndex: 10001, width: "44px", height: "44px", background: "rgba(20,20,20,0.82)", border: "none", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", WebkitTransform: "translateZ(0)", transform: "translateZ(0)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, height: `${modalHeight}px`, backgroundColor: "#fff", borderRadius: "16px 16px 0 0", zIndex: 1002, display: "flex", flexDirection: "column", animation: "sheetSlideUp 0.32s cubic-bezier(0.32,0.72,0,1)", WebkitTransform: "translateZ(0)", transform: "translateZ(0)" }}>
+            <div style={{ height: "20px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, paddingTop: "8px" }}>
+              <div style={{ width: "36px", height: "4px", borderRadius: "2px", backgroundColor: "#ddd" }} />
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", minHeight: 0 }}>
+              <div style={{ position: "relative", width: "100%", backgroundColor: "#f5f5f5" }}>
+                <img src={ternoSelecionado.imagens?.[imagemModalAtual]} alt={ternoSelecionado.nome} style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block" }} />
+                {ternoSelecionado.imagens?.length > 1 && (
+                  <>
+                    <button style={{ ...styles.arrowBtn, left: "12px" }} onClick={imagemAnterior} aria-label="Imagem anterior">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                    </button>
+                    <button style={{ ...styles.arrowBtn, right: "12px" }} onClick={proximaImagem} aria-label="Próxima imagem">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                    </button>
+                  </>
+                )}
+              </div>
+              {ternoSelecionado.imagens?.length > 1 && (
+                <div style={styles.thumbRow}>
+                  {ternoSelecionado.imagens.slice(0, 6).map((img, i) => (
+                    <button key={i} style={{ ...styles.thumbBtn, ...(i === imagemModalAtual ? styles.thumbBtnActive : {}) }} onClick={() => setImagemModalAtual(i)} aria-label={`Imagem ${i + 1}`}>
+                      <img src={img} alt="" style={styles.thumbImg} />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{ padding: "1.25rem 1.25rem 0" }}>
+                {ternoSelecionado.categoria && <p style={styles.modalCategory}>{ternoSelecionado.categoria.toUpperCase()}</p>}
+                <h2 style={{ ...styles.modalTitle, fontSize: "1.4rem" }}>{ternoSelecionado.nome}</h2>
+                <p style={styles.modalPrice}>{typeof ternoSelecionado.preco === "number" ? `R$ ${ternoSelecionado.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "Consulte o preço"}</p>
+                <hr style={styles.modalDivider} />
+                <p style={styles.modalDesc}>{ternoSelecionado.descricao}</p>
+                {ternoSelecionado.imagens?.length > 1 && <p style={{ ...styles.modalImageCount, marginBottom: "0.5rem" }}>{imagemModalAtual + 1} / {ternoSelecionado.imagens.length}</p>}
+              </div>
+            </div>
+            <div style={{ ...styles.modalCta, flexShrink: 0 }}>
+              <a href={gerarMensagemWhatsApp(ternoSelecionado)} target="_blank" rel="noopener noreferrer" style={styles.ctaPrimary} className="cta-primary-btn">Agendar Consulta</a>
+              <p style={styles.ctaNote}>Atendimento exclusivo e personalizado</p>
+            </div>
+          </div>
+        </>
       )}
 
       <style jsx>{`
