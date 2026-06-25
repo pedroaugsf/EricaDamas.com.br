@@ -527,8 +527,8 @@ const GerenciadorContratos = () => {
 
   // Editar contrato
   const editarContrato = (contrato) => {
-    setDadosCliente(contrato.cliente);
-    setDadosContrato(contrato.contrato);
+    setDadosCliente(contrato.cliente || {});
+    setDadosContrato(normalizarContrato(contrato));
     if (contrato.clausulas) {
       setClausulas(contrato.clausulas);
     }
@@ -569,6 +569,23 @@ const GerenciadorContratos = () => {
     return parseFloat(valor || 0)
       .toFixed(2)
       .replace(".", ",");
+  };
+
+  const normalizarContrato = (contrato) => {
+    const dadosContrato = contrato?.contrato || contrato || {};
+    const normalizarSimNao = (valor) => {
+      const v = String(valor || "nao").trim().toLowerCase();
+      return v === "sim" || v === "s" || v === "true" || v === "1"
+        ? "sim"
+        : "nao";
+    };
+
+    return {
+      ...dadosContrato,
+      numeroContrato: dadosContrato.numeroContrato || dadosContrato.numero || "",
+      pecaEncomenda: normalizarSimNao(dadosContrato.pecaEncomenda),
+      planoLivreTroca: normalizarSimNao(dadosContrato.planoLivreTroca),
+    };
   };
 
   // Filtrar contratos por data
@@ -640,7 +657,8 @@ const GerenciadorContratos = () => {
 
   // Imprimir contrato
   const imprimirContrato = (contrato) => {
-    const { cliente, contrato: dadosContrato, total } = contrato;
+    const { cliente, total } = contrato;
+    const dadosContrato = normalizarContrato(contrato);
     const clausulasParaImprimir = contrato.clausulas || clausulas;
 
     const janela = window.open("", "_blank");

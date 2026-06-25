@@ -119,8 +119,16 @@ const initializeDependencies = async () => {
         (async () => {
           if (dbInitialized) return;
 
+          const mongoUri = process.env.MONGODB_URI;
+          if (!mongoUri) {
+            console.warn(
+              "⚠️ MONGODB_URI não definido. Iniciando sem conexão com MongoDB."
+            );
+            return;
+          }
+
           console.log("📊 Conectando MongoDB...");
-          await mongoose.connect(process.env.MONGODB_URI, {
+          await mongoose.connect(mongoUri, {
             maxPoolSize: 10,
             minPoolSize: 2,
             serverSelectionTimeoutMS: 10000,
@@ -150,11 +158,15 @@ const initializeDependencies = async () => {
               celular: String,
             },
             contrato: {
+              numeroContrato: String,
               dataVenda: String,
               dataAjuste: String,
               dataRetirada: String,
               dataEntrega: String,
+              pecaEncomenda: String,
+              planoLivreTroca: String,
               formaPagamento: String,
+              formaPagamentoOutro: String,
               itens: [
                 {
                   codigo: String,
@@ -171,6 +183,13 @@ const initializeDependencies = async () => {
               ],
               observacoesPagamento: String,
               observacoesGerais: String,
+              avalistas: [
+                {
+                  cpfCnpj: String,
+                  endereco: String,
+                },
+              ],
+              promissoria: mongoose.Schema.Types.Mixed,
             },
             clausulas: mongoose.Schema.Types.Mixed,
             total: Number,
@@ -212,10 +231,17 @@ const initializeDependencies = async () => {
             serviceAccount = require("./firebase-key.json");
           }
 
+          // Em desenvolvimento local, permite iniciar sem .env explícito
+          const storageBucket =
+            process.env.FIREBASE_STORAGE_BUCKET ||
+            (serviceAccount.project_id
+              ? `${serviceAccount.project_id}.appspot.com`
+              : undefined);
+
           if (!admin.apps.length) {
             admin.initializeApp({
               credential: admin.credential.cert(serviceAccount),
-              storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+              storageBucket,
             });
           }
 
