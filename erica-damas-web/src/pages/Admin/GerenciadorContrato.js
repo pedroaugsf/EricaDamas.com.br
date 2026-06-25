@@ -657,9 +657,19 @@ const GerenciadorContratos = () => {
 
   // Imprimir contrato
   const imprimirContrato = (contrato) => {
-    const { cliente, total } = contrato;
+    const { cliente = {}, total } = contrato;
     const dadosContrato = normalizarContrato(contrato);
-    const clausulasParaImprimir = contrato.clausulas || clausulas;
+
+    const clausulasParaImprimir = Object.keys(clausulas).reduce(
+      (acc, key) => ({
+        ...acc,
+        [key]: {
+          ...clausulas[key],
+          ...(contrato.clausulas?.[key] || {}),
+        },
+      }),
+      {}
+    );
 
     const janela = window.open("", "_blank");
     janela.document.write(`
@@ -693,47 +703,93 @@ const GerenciadorContratos = () => {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 4px;
-          padding-bottom: 3px;
-          border-bottom: 2px solid #000;
+          margin-bottom: 2px;
+          padding-bottom: 0;
+          border-bottom: 1.5px solid #000;
         }
 
         .header-left {
-          flex: 1;
+          flex: 0 0 25%;
         }
 
-        .logo {
-          font-family: Arial, sans-serif;
-          font-size: 22pt;
-          font-weight: bold;
-          font-style: italic;
-          margin: 0;
-          line-height: 1;
-        }
-
-        .logo-subtitle {
-          font-family: Arial, sans-serif;
-          font-size: 10pt;
-          font-style: italic;
-          margin: 0;
-          color: #333;
+        .logo-image {
+          max-width: 180px;
+          height: auto;
+          display: block;
+          margin-bottom: 0;
         }
 
         .header-center {
           text-align: center;
-          flex: 1;
+          flex: 0 0 35%;
           font-size: 9pt;
+          padding-top: 4px;
         }
 
         .header-right {
           text-align: right;
-          flex: 1;
+          flex: 0 0 30%;
           font-size: 9pt;
+          padding-top: 4px;
         }
 
         .header-info {
-          margin: 1px 0;
-          line-height: 1.3;
+          margin: 0;
+          line-height: 1.15;
+        }
+
+        .contract-title {
+          font-size: 11pt;
+          font-weight: bold;
+          text-align: center;
+          margin: 3px 0 4px 0;
+          text-transform: uppercase;
+          padding: 3px;
+          background-color: #f0f0f0;
+          border: 1px solid #000;
+        }
+
+        .section {
+          margin-bottom: 3px;
+        }
+
+        .party {
+          margin-bottom: 2px;
+          text-align: justify;
+          font-size: 11pt;
+          line-height: 1.2;
+        }
+
+        .items-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 4px 0;
+          font-size: 11pt;
+        }
+
+        .items-table th {
+          padding: 4px;
+          text-align: center;
+          font-weight: bold;
+          border: 1.5px solid #000;
+          background-color: #e8e8e8;
+          font-size: 11pt;
+        }
+
+        .items-table td {
+          padding: 4px;
+          text-align: left;
+          vertical-align: top;
+          border: 1px solid #000;
+          min-height: 20px;
+          font-size: 11pt;
+        }
+
+        .parcelas-grid {
+          border: 1.5px solid #000;
+          padding: 4px;
+          margin: 3px 0;
+          background-color: #fafafa;
         }
         
         .contract-title {
@@ -897,6 +953,59 @@ const GerenciadorContratos = () => {
           margin: 5px 0;
         }
 
+        .page1 .header-container {
+          margin-bottom: 18px;
+          padding-bottom: 6px;
+        }
+
+        .page1 .contract-title {
+          margin: 18px 0;
+          padding: 10px 8px;
+        }
+
+        .page1 .section {
+          margin-bottom: 18px;
+        }
+
+        .page1 .section-title {
+          margin: 10px 0 6px 0;
+        }
+
+        .page1 .party {
+          margin-bottom: 12px;
+          line-height: 1.35;
+        }
+
+        .page1 .items-table {
+          margin: 12px 0;
+        }
+
+        .page1 .items-table th,
+        .page1 .items-table td {
+          padding: 8px;
+        }
+
+        .page1 .parcelas-grid {
+          padding: 10px;
+          margin: 12px 0;
+        }
+
+        .page1 .parcelas-row {
+          margin-bottom: 10px;
+        }
+
+        .page1 .checkbox-line {
+          margin: 12px 0;
+        }
+
+        .page1 .data-box {
+          margin: 12px 0;
+        }
+
+        .page1 .signature-client {
+          margin-top: 48px;
+        }
+
         @media print {
           body { 
             print-color-adjust: exact;
@@ -906,11 +1015,15 @@ const GerenciadorContratos = () => {
       </style>
     </head>
     <body>
-      <!-- CABEÇALHO -->
-      <div class="header-container">
-        <div class="header-left">
-          <div class="logo">Érica Damas</div>
-          <div class="logo-subtitle">NOIVAS</div>
+      <div class="page1">
+        <!-- CABEÇALHO -->
+        <div class="header-container">
+          <div class="header-left">
+          <img
+            src="/Erica_Damas_logo-removebg-preview.png"
+            alt="Érica Damas"
+            class="logo-image"
+          />
         </div>
         <div class="header-center">
           <div class="header-info">Pará de Minas</div>
@@ -1044,7 +1157,7 @@ const GerenciadorContratos = () => {
               <td style="text-align: center;">R$ ${formatarValor(item.valor)}</td>
             </tr>
           `).join("")}
-          ${Array.from({ length: Math.max(0, 8 - (dadosContrato.itens || []).length) }).map(() => `
+          ${Array.from({ length: Math.max(0, 2 - (dadosContrato.itens || []).length) }).map(() => `
             <tr><td style="height: 20px;"></td><td></td><td></td></tr>
           `).join("")}
           <tr>
@@ -1090,10 +1203,11 @@ const GerenciadorContratos = () => {
         <div class="party" style="margin-top: 6px; font-size: 10pt;">
           Fiz a prova final na retirada, Recebi a peça conforme combinado, com ajustes, limpa, sem danos e na data combinada.
         </div>
-        <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 11pt;">
+        <div class="signature-client" style="display: flex; justify-content: space-between; align-items: flex-end; font-size: 11pt;">
           <div><span class="underline"></span><br/><span style="font-size: 10pt;">Data</span></div>
           <div style="text-align: center; flex: 1; margin-left: 30px;"><span class="underline-xlarge"></span><br/><span style="font-size: 10pt;">Assinatura do cliente recebedor</span></div>
         </div>
+      </div>
       </div>
 
       <!-- CLÁUSULAS -->
