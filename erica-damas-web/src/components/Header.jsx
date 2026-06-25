@@ -367,20 +367,30 @@ const Header = memo(() => {
                         onClick={() => handleMobileMenuItemClick(link)}
                         className="mobile-menu-link"
                       >
-                        <Link
-                          to={link.path}
-                          style={{
-                            color: isActive(link.path) ? "#e8d192" : "#b6a06a",
-                            fontWeight: isActive(link.path) ? "600" : "500",
-                            textDecoration: "none",
-                            flex: 1,
-                          }}
-                          onClick={() =>
-                            !link.dropdown && setMobileMenuOpen(false)
-                          }
-                        >
-                          {link.name}
-                        </Link>
+                        {link.dropdown ? (
+                          <span
+                            style={{
+                              color: isActive(link.path) ? "#e8d192" : "#b6a06a",
+                              fontWeight: isActive(link.path) ? "600" : "500",
+                              flex: 1,
+                            }}
+                          >
+                            {link.name}
+                          </span>
+                        ) : (
+                          <Link
+                            to={link.path}
+                            style={{
+                              color: isActive(link.path) ? "#e8d192" : "#b6a06a",
+                              fontWeight: isActive(link.path) ? "600" : "500",
+                              textDecoration: "none",
+                              flex: 1,
+                            }}
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            {link.name}
+                          </Link>
+                        )}
 
                         {link.dropdown && (
                           <span

@@ -1,15 +1,26 @@
 const express = require("express");
+const compression = require("compression");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
-const sharp = require("sharp");
+// sharp carregado lazily no primeiro upload — não bloqueia o boot
 
 dotenv.config();
 
 const app = express();
+
+// Middleware de Flush Imediato: Responde 200 pro Render o mais rápido possível
+// Isso ajuda o Render a entender que o app 'subiu' antes mesmo do banco conectar
+app.use((req, res, next) => {
+  if (req.path === "/" || req.path === "/health") return next();
+  next();
+});
+
+// Compressão gzip em todas as respostas (reduz JSON em ~70%)
+app.use(compression({ level: 6 }));
 
 // ============ CONFIGURAÇÕES GLOBAIS ============
 
@@ -275,6 +286,7 @@ const initializeDependencies = async () => {
 const startKeepalive = () => {
   if (keepaliveInterval) return;
 
+  // Ping MongoDB para manter conexão viva
   keepaliveInterval = setInterval(async () => {
     try {
       if (dbInitialized && mongoose.connection.readyState === 1) {
@@ -286,7 +298,36 @@ const startKeepalive = () => {
     }
   }, 5 * 60 * 1000);
 
-  console.log("✅ Keepalive ativo (5min)");
+  console.log("✅ MongoDB keepalive ativo (5min)");
+};
+
+// Self-ping separado — inicia logo após o servidor subir
+// Roda independente do banco de dados
+const startSelfPing = () => {
+  const SELF_URL = process.env.RENDER_EXTERNAL_URL;
+  if (!SELF_URL) return; // só executa no Render (onde a env existe)
+
+  const https = require("https");
+
+  // Primeiro ping imediato para registrar que o servidor acordou
+  setTimeout(() => {
+    https.get(`${SELF_URL}/health`, (res) => {
+      console.log(`💓 Self-ping inicial: ${res.statusCode}`);
+    }).on("error", (err) => {
+      console.warn("⚠️ Self-ping inicial falhou:", err.message);
+    });
+  }, 5000);
+
+  // Ping a cada 4 minutos — Render dorme após 15 min sem tráfego
+  setInterval(() => {
+    https.get(`${SELF_URL}/health`, (res) => {
+      console.log(`💓 Self-ping: ${res.statusCode}`);
+    }).on("error", (err) => {
+      console.warn("⚠️ Self-ping falhou:", err.message);
+    });
+  }, 4 * 60 * 1000);
+
+  console.log(`✅ Self-ping ativo (4min) → ${SELF_URL}`);
 };
 
 // ============ PRE-LOAD CACHE ============
@@ -303,7 +344,6 @@ const preloadCache = async () => {
       try {
         const produtos = await Produto.find({ tipo, ativo: true })
           .sort({ createdAt: -1 })
-          .limit(12)
           .lean();
 
         produtosCache[tipo] = {
@@ -415,6 +455,7 @@ const uploadImageToFirebase = async (file) => {
   if (!file || !bucket) return null;
 
   try {
+    const sharp = require("sharp"); // lazy — só carrega quando há upload
     const originalSize = (file.size / 1024 / 1024).toFixed(2);
 
     const compressedBuffer = await sharp(file.buffer)
@@ -539,6 +580,7 @@ app.get("/api/produtos/:tipo", async (req, res) => {
 
     if (cached.data && agora - cached.timestamp < CACHE_DURATION) {
       console.log(`⚡ Cache HIT: ${tipo}`);
+      res.set("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
       return res.json({
         success: true,
         ...cached.data,
@@ -1025,6 +1067,10 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`📊 Status: http://localhost:${PORT}/api/status`);
   console.log("=".repeat(60) + "\n");
 
+  // Self-ping inicia IMEDIATAMENTE — não depende do banco
+  startSelfPing();
+
+  // Banco e Firebase iniciam em background 2s depois
   setTimeout(() => {
     console.log("🔄 Background initialization...");
     initializeDependencies().catch((err) =>

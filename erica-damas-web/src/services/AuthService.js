@@ -10,7 +10,6 @@ let API_URL;
 
 if (isCodespaces) {
   // GitHub Codespaces
-  const codespacePrefix = window.location.hostname.split("-3000")[0];
   API_URL = "https://ericadamas-com-br.onrender.com/api";
 } else if (isVercel) {
   // Vercel - usar Render backend
@@ -29,7 +28,7 @@ if (isCodespaces) {
 // Configuração do axios
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000, // 30 segundos para Render cold start
+  timeout: 50000, // Aumentado para 50s para dar tempo total ao Render de subir o processo
   headers: {
     "Content-Type": "application/json",
   },
@@ -49,16 +48,28 @@ api.interceptors.request.use(
   }
 );
 
+// Retry automático 1x para cold start (timeout ou rede)
+const retryRequest = (config) => {
+  return new Promise((resolve) => setTimeout(resolve, 4000))
+    .then(() => api.request({ ...config, _retry: true }));
+};
+
 // Interceptor para tratar erros de resposta
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const isColdStart =
+      (error.code === "ECONNABORTED" && error.message.includes("timeout")) ||
+      error.code === "ERR_NETWORK";
+
+    // Retry automático 1x durante cold start
+    if (isColdStart && !error.config?._retry) {
+      console.warn("Cold start detectado — retentando em 4s...");
+      return retryRequest(error.config);
+    }
 
     // Tratar erro específico do Render (cold start)
     if (error.code === "ECONNABORTED" && error.message.includes("timeout")) {
-      console.warn(
-        "Timeout na requisição - Render pode estar 'acordando' o servidor"
-      );
       return Promise.reject(
         new Error("Servidor está iniciando, tente novamente em alguns segundos")
       );
@@ -66,7 +77,6 @@ api.interceptors.response.use(
 
     // Tratar erro de conexão
     if (error.code === "ERR_NETWORK") {
-      console.warn("Erro de rede - verificando conexão com servidor");
       return Promise.reject(
         new Error("Erro de conexão. Verifique sua internet ou tente novamente.")
       );

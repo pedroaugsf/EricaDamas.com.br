@@ -15,6 +15,7 @@ const Debutantes = () => {
   const [vestidoSelecionado, setVestidoSelecionado] = useState(null);
   const [erro, setErro] = useState("");
   const [imagemModalAtual, setImagemModalAtual] = useState(0);
+  const [modalHeight, setModalHeight] = useState(0);
 
   // Estados para paginação e filtros
   const [paginaAtual, setPaginaAtual] = useState(1);
@@ -363,7 +364,14 @@ const Debutantes = () => {
   const abrirModal = useCallback((vestido) => {
     setVestidoSelecionado(vestido);
     setImagemModalAtual(0);
+    setModalHeight(Math.floor(window.innerHeight * 0.92));
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
+    const headerEl = document.querySelector('header');
+    if (headerEl) headerEl.style.visibility = 'hidden';
 
     if (vestido.imagens && vestido.imagens.length > 0) {
       const img = new Image();
@@ -383,7 +391,15 @@ const Debutantes = () => {
   const fecharModal = useCallback(() => {
     setVestidoSelecionado(null);
     setImagemModalAtual(0);
-    document.body.style.overflow = "auto";
+    setModalHeight(0);
+    const scrollY = document.body.style.top;
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.width = "";
+    document.body.style.overflow = "";
+    window.scrollTo(0, parseInt(scrollY || "0") * -1);
+    const headerEl = document.querySelector('header');
+    if (headerEl) headerEl.style.visibility = '';
   }, []);
 
   const proximaImagem = useCallback(() => {
@@ -405,7 +421,7 @@ const Debutantes = () => {
   const gerarMensagemWhatsApp = useMemo(
     () => (vestido) => {
       const mensagem = `Olá! Gostaria de saber mais sobre o vestido de debutante "${vestido.nome}". Poderia me dar mais informações sobre disponibilidade e valores?`;
-      return `https://wa.me/5511999999999?text=${encodeURIComponent(mensagem)}`;
+      return `https://wa.me/5537999153738?text=${encodeURIComponent(mensagem)}`;
     },
     []
   );
@@ -591,7 +607,7 @@ const Debutantes = () => {
             nossas opções disponíveis.
           </p>
           <a
-            href="https://wa.me/5511999999999?text=Olá,%20gostaria%20de%20conhecer%20os%20vestidos%20de%20debutante%20disponíveis"
+            href="https://wa.me/5537999153738?text=Ol%C3%A1%2C%20gostaria%20de%20conhecer%20os%20vestidos%20de%20debutante%20dispon%C3%ADveis"
             target="_blank"
             rel="noopener noreferrer"
             style={styles.contactButton}
@@ -602,7 +618,6 @@ const Debutantes = () => {
         </div>
       ) : (
         <React.Fragment>
-          {renderFiltros}
           {renderVestidosGrid}
 
           {/* Carregar mais - Desktop */}
@@ -638,145 +653,52 @@ const Debutantes = () => {
         </React.Fragment>
       )}
 
-      {/* Modal permanece igual ao código original */}
-      {vestidoSelecionado && (
+      {/* Modal desktop */}
+      {vestidoSelecionado && !isMobile && (
         <div style={styles.modalOverlay} onClick={fecharModal}>
-          <div
-            style={{
-              ...styles.modalContent,
-              ...(isMobile ? styles.modalContentMobile : {}),
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button style={styles.closeButton} onClick={fecharModal}>
-              ×
+          <div style={styles.modalPanel} onClick={(e) => e.stopPropagation()}>
+            <button style={styles.closeButton} onClick={fecharModal} aria-label="Fechar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
-
-            <div
-              style={{
-                ...styles.modalGrid,
-                ...(isMobile ? styles.modalGridMobile : {}),
-              }}
-            >
-              <div
-                style={{
-                  ...styles.modalImageSection,
-                  ...(isMobile ? styles.modalImageSectionMobile : {}),
-                }}
-              >
-                {vestidoSelecionado.imagens &&
-                  vestidoSelecionado.imagens.length > 0 && (
-                    <div style={styles.imageCarousel}>
-                      <img
-                        src={vestidoSelecionado.imagens[imagemModalAtual]}
-                        alt={vestidoSelecionado.nome}
-                        style={{
-                          ...styles.modalImage,
-                          ...(isMobile ? styles.modalImageMobile : {}),
-                        }}
-                      />
-
-                      {vestidoSelecionado.imagens.length > 1 && (
-                        <React.Fragment>
-                          <button
-                            style={{
-                              ...styles.navButton,
-                              ...styles.navButtonPrev,
-                            }}
-                            onClick={imagemAnterior}
-                          >
-                            ‹
-                          </button>
-                          <button
-                            style={{
-                              ...styles.navButton,
-                              ...styles.navButtonNext,
-                            }}
-                            onClick={proximaImagem}
-                          >
-                            ›
-                          </button>
-                          <div style={styles.imageIndicators}>
-                            {vestidoSelecionado.imagens.map((_, index) => (
-                              <div
-                                key={index}
-                                style={{
-                                  ...styles.indicator,
-                                  ...(index === imagemModalAtual
-                                    ? styles.indicatorActive
-                                    : {}),
-                                }}
-                                onClick={() => setImagemModalAtual(index)}
-                              />
-                            ))}
-                          </div>
-                        </React.Fragment>
-                      )}
-                    </div>
+            <div style={styles.modalBody}>
+              <div style={styles.modalImageCol}>
+                <div style={styles.mainImageWrap}>
+                  <img src={vestidoSelecionado.imagens?.[imagemModalAtual]} alt={vestidoSelecionado.nome} style={styles.modalMainImage} />
+                  {vestidoSelecionado.imagens?.length > 1 && (
+                    <>
+                      <button style={{ ...styles.arrowBtn, left: "12px" }} onClick={imagemAnterior} aria-label="Imagem anterior">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                      </button>
+                      <button style={{ ...styles.arrowBtn, right: "12px" }} onClick={proximaImagem} aria-label="Próxima imagem">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                      </button>
+                    </>
                   )}
-
-                {!isMobile &&
-                  vestidoSelecionado.imagens &&
-                  vestidoSelecionado.imagens.length > 1 && (
-                    <div style={styles.thumbnailContainer}>
-                      {vestidoSelecionado.imagens
-                        .slice(0, 5)
-                        .map((img, index) => (
-                          <img
-                            key={index}
-                            src={img}
-                            alt={`${vestidoSelecionado.nome} - imagem ${
-                              index + 1
-                            }`}
-                            style={{
-                              ...styles.thumbnail,
-                              ...(index === imagemModalAtual
-                                ? styles.thumbnailActive
-                                : {}),
-                            }}
-                            onClick={() => setImagemModalAtual(index)}
-                          />
-                        ))}
-                    </div>
-                  )}
-              </div>
-
-              <div
-                style={{
-                  ...styles.modalInfoSection,
-                  ...(isMobile ? styles.modalInfoSectionMobile : {}),
-                }}
-              >
-                <h2
-                  style={{
-                    ...styles.modalTitle,
-                    ...(isMobile ? styles.modalTitleMobile : {}),
-                  }}
-                >
-                  {vestidoSelecionado.nome}
-                </h2>
-                <div
-                  style={{
-                    ...styles.modalDescription,
-                    ...(isMobile ? styles.modalDescriptionMobile : {}),
-                  }}
-                >
-                  {vestidoSelecionado.descricao}
                 </div>
-
-                <div style={styles.modalActions}>
-                  <a
-                    href={gerarMensagemWhatsApp(vestidoSelecionado)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      ...styles.whatsappButton,
-                      ...(isMobile ? styles.whatsappButtonMobile : {}),
-                    }}
-                    className="whatsapp-button"
-                  >
-                    💬 Consultar no WhatsApp
-                  </a>
+                {vestidoSelecionado.imagens?.length > 1 && (
+                  <div style={styles.thumbRow}>
+                    {vestidoSelecionado.imagens.slice(0, 6).map((img, i) => (
+                      <button key={i} style={{ ...styles.thumbBtn, ...(i === imagemModalAtual ? styles.thumbBtnActive : {}) }} onClick={() => setImagemModalAtual(i)} aria-label={`Imagem ${i + 1}`}>
+                        <img src={img} alt="" style={styles.thumbImg} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={styles.modalInfoCol}>
+                <div style={styles.modalInfoScroll}>
+                  {vestidoSelecionado.categoria && <p style={styles.modalCategory}>{vestidoSelecionado.categoria.toUpperCase()}</p>}
+                  <h2 style={styles.modalTitle}>{vestidoSelecionado.nome}</h2>
+                  <p style={styles.modalPrice}>{typeof vestidoSelecionado.preco === "number" ? `R$ ${vestidoSelecionado.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "Consulte o preço"}</p>
+                  <hr style={styles.modalDivider} />
+                  <p style={styles.modalDesc}>{vestidoSelecionado.descricao}</p>
+                  {vestidoSelecionado.imagens?.length > 1 && <p style={styles.modalImageCount}>{imagemModalAtual + 1} / {vestidoSelecionado.imagens.length}</p>}
+                </div>
+                <div style={styles.modalCta}>
+                  <a href={gerarMensagemWhatsApp(vestidoSelecionado)} target="_blank" rel="noopener noreferrer" style={styles.ctaPrimary} className="cta-primary-btn">Agendar Consulta</a>
+                  <p style={styles.ctaNote}>Atendimento exclusivo e personalizado</p>
                 </div>
               </div>
             </div>
@@ -784,61 +706,88 @@ const Debutantes = () => {
         </div>
       )}
 
-      <style jsx>{`
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
+      {/* Modal mobile */}
+      {vestidoSelecionado && isMobile && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 1001, backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} onClick={fecharModal} />
+          {/* Sheet */}
+          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, height: `${modalHeight}px`, backgroundColor: "#fff", borderRadius: "16px 16px 0 0", zIndex: 1002, display: "flex", flexDirection: "column", animation: "sheetSlideUp 0.32s cubic-bezier(0.32,0.72,0,1)", WebkitTransform: "translateZ(0)", transform: "translateZ(0)" }}>
+            {/* Top bar: handle + X */}
+            <div style={{ display: "flex", alignItems: "center", padding: "10px 12px 8px", flexShrink: 0, borderBottom: "1px solid #f0f0f0" }}>
+              <div style={{ flex: 1 }} />
+              <div style={{ width: "36px", height: "4px", borderRadius: "2px", backgroundColor: "#ddd" }} />
+              <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={fecharModal} aria-label="Fechar" style={{ width: "36px", height: "36px", background: "#1a1a1a", border: "none", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", minHeight: 0 }}>
+              <div style={{ position: "relative", width: "100%", backgroundColor: "#f5f5f5" }}>
+                <img src={vestidoSelecionado.imagens?.[imagemModalAtual]} alt={vestidoSelecionado.nome} style={{ width: "100%", height: `${Math.floor(modalHeight * 0.52)}px`, objectFit: "cover", display: "block" }} />
+                {vestidoSelecionado.imagens?.length > 1 && (
+                  <>
+                    <button style={{ ...styles.arrowBtn, left: "12px" }} onClick={imagemAnterior} aria-label="Imagem anterior">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                    </button>
+                    <button style={{ ...styles.arrowBtn, right: "12px" }} onClick={proximaImagem} aria-label="Próxima imagem">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                    </button>
+                  </>
+                )}
+              </div>
+              {vestidoSelecionado.imagens?.length > 1 && (
+                <div style={styles.thumbRow}>
+                  {vestidoSelecionado.imagens.slice(0, 6).map((img, i) => (
+                    <button key={i} style={{ ...styles.thumbBtn, ...(i === imagemModalAtual ? styles.thumbBtnActive : {}) }} onClick={() => setImagemModalAtual(i)} aria-label={`Imagem ${i + 1}`}>
+                      <img src={img} alt="" style={styles.thumbImg} />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{ padding: "1.25rem 1.25rem 0" }}>
+                {vestidoSelecionado.categoria && <p style={styles.modalCategory}>{vestidoSelecionado.categoria.toUpperCase()}</p>}
+                <h2 style={{ ...styles.modalTitle, fontSize: "1.4rem" }}>{vestidoSelecionado.nome}</h2>
+                <p style={styles.modalPrice}>{typeof vestidoSelecionado.preco === "number" ? `R$ ${vestidoSelecionado.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "Consulte o preço"}</p>
+                <hr style={styles.modalDivider} />
+                <p style={styles.modalDesc}>{vestidoSelecionado.descricao}</p>
+                {vestidoSelecionado.imagens?.length > 1 && <p style={{ ...styles.modalImageCount, marginBottom: "0.5rem" }}>{imagemModalAtual + 1} / {vestidoSelecionado.imagens.length}</p>}
+              </div>
+            </div>
+            <div style={{ ...styles.modalCta, flexShrink: 0 }}>
+              <a href={gerarMensagemWhatsApp(vestidoSelecionado)} target="_blank" rel="noopener noreferrer" style={styles.ctaPrimary} className="cta-primary-btn">Agendar Consulta</a>
+              <p style={styles.ctaNote}>Atendimento exclusivo e personalizado</p>
+            </div>
+          </div>
+        </>
+      )}
 
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .vestido-card {
-          transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-          animation: fadeInUp 0.6s ease forwards;
-        }
-
-        .vestido-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        .vestido-card:hover .vestido-image {
-          transform: scale(1.05);
-        }
-
-        .vestido-card:hover .hover-overlay {
-          opacity: 1;
-        }
-
-        .carregar-mais-button:hover:not(:disabled) {
-          background-color: #9a8655;
+      <style>{`
+        .cta-primary-btn:hover {
           transform: translateY(-2px);
           box-shadow: 0 8px 20px rgba(154, 134, 85, 0.3);
         }
 
-        .whatsapp-button:hover {
-          background-color: #128c7e;
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(37, 211, 102, 0.3);
+        .cta-primary-btn:hover {
+          background-color: #333 !important;
+        }
+
+        @keyframes modalSlideIn {
+          from { opacity: 0; transform: translateY(24px) scale(0.98); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes sheetSlideUp {
+          from { transform: translateY(100%); }
+          to   { transform: translateY(0); }
         }
 
         @media (max-width: 768px) {
           .vestido-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+            transform: none;
+            box-shadow: none;
           }
         }
       `}</style>
@@ -875,96 +824,6 @@ const styles = {
     height: "2px",
     backgroundColor: "#b6a06a",
     margin: "0 auto",
-  },
-
-  filtrosContainer: {
-    marginBottom: "3rem",
-    padding: "2rem",
-    backgroundColor: "#fafafa",
-    borderRadius: "12px",
-    border: "1px solid #f0f0f0",
-  },
-
-  filtrosRow: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.2rem",
-    marginBottom: "1.5rem",
-    "@media (min-width: 768px)": {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: "1.5rem",
-    },
-  },
-
-  filtroItem: {
-    flex: 1,
-    minWidth: "200px",
-  },
-
-  inputContainer: {
-    position: "relative",
-    display: "flex",
-    alignItems: "center",
-  },
-
-  inputBusca: {
-    width: "100%",
-    padding: "1rem 1.2rem",
-    paddingRight: "3.5rem",
-    border: "2px solid #e8e8e8",
-    borderRadius: "10px",
-    fontSize: "1rem",
-    fontFamily: "inherit",
-    transition: "all 0.3s ease",
-    outline: "none",
-    backgroundColor: "white",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-  },
-
-  inputBuscando: {
-    borderColor: "#b6a06a",
-    boxShadow: "0 0 0 4px rgba(182, 160, 106, 0.1)",
-  },
-
-  buscaIndicador: {
-    position: "absolute",
-    right: "15px",
-    display: "flex",
-    alignItems: "center",
-  },
-
-  selectFiltro: {
-    width: "100%",
-    padding: "1rem 1.2rem",
-    border: "2px solid #e8e8e8",
-    borderRadius: "10px",
-    fontSize: "1rem",
-    fontFamily: "inherit",
-    backgroundColor: "white",
-    cursor: "pointer",
-    outline: "none",
-    transition: "all 0.3s ease",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-  },
-
-  resultadosInfo: {
-    fontSize: "0.95rem",
-    color: "#666",
-    textAlign: "center",
-    fontStyle: "italic",
-    fontWeight: "400",
-  },
-
-  textoBusca: {
-    color: "#b6a06a",
-    fontWeight: "600",
-    marginLeft: "0.5rem",
-  },
-
-  nenhumResultado: {
-    color: "#c62828",
-    fontWeight: "500",
   },
 
   // GRID ESTILO LOUIS VUITTON
@@ -1195,255 +1054,276 @@ const styles = {
     fontSize: "1rem",
   },
 
-  // Modal styles permanecem iguais ao código original
+  // ─── Modal ────────────────────────────────────────────────
+
   modalOverlay: {
     position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.92)",
+    inset: 0,
+    backgroundColor: "rgba(0,0,0,0.55)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
     padding: "1rem",
-    backdropFilter: "blur(4px)",
+    backdropFilter: "blur(6px)",
+    WebkitBackdropFilter: "blur(6px)",
   },
 
-  modalContent: {
+  modalPanel: {
     backgroundColor: "#fff",
-    borderRadius: "12px",
-    maxWidth: "1200px",
     width: "100%",
-    maxHeight: "95vh",
-    overflow: "auto",
+    maxWidth: "1060px",
+    maxHeight: "92vh",
+    display: "flex",
+    flexDirection: "column",
     position: "relative",
-    boxShadow: "0 25px 50px rgba(0,0,0,0.4)",
+    animation: "modalSlideIn 0.28s ease",
+    overflow: "hidden",
   },
 
-  modalContentMobile: {
-    margin: "0",
-    borderRadius: "12px",
-    maxHeight: "95vh",
+  modalSheetMobile: {
+    width: "100%",
+    backgroundColor: "#fff",
+    maxHeight: "92vh",
+    display: "flex",
+    flexDirection: "column",
+    borderRadius: "16px 16px 0 0",
+    animation: "sheetSlideUp 0.32s cubic-bezier(0.32,0.72,0,1)",
+    overflow: "hidden",
+    WebkitTransform: "translateZ(0)",
+    transform: "translateZ(0)",
   },
 
   closeButton: {
     position: "absolute",
-    top: "15px",
-    right: "20px",
-    fontSize: "1.8rem",
-    background: "rgba(0,0,0,0.8)",
-    color: "white",
+    top: "16px",
+    right: "16px",
+    width: "36px",
+    height: "36px",
+    background: "#fff",
+    border: "1px solid #e5e5e5",
+    borderRadius: "50%",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 20,
+    color: "#111",
+    transition: "background 0.2s",
+  },
+
+  mobileModalTopBar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    padding: "10px 14px 8px",
+    flexShrink: 0,
+    position: "relative",
+    borderBottom: "1px solid #f0f0f0",
+  },
+
+  mobileModalHandle: {
+    position: "absolute",
+    left: "50%",
+    top: "10px",
+    transform: "translateX(-50%)",
+    width: "36px",
+    height: "4px",
+    borderRadius: "2px",
+    backgroundColor: "#ddd",
+  },
+
+  mobileCloseButton: {
+    width: "34px",
+    height: "34px",
+    background: "#f5f5f5",
     border: "none",
     borderRadius: "50%",
-    width: "45px",
-    height: "45px",
     cursor: "pointer",
-    zIndex: 10,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    transition: "all 0.3s",
-    fontWeight: "300",
+    color: "#111",
+    flexShrink: 0,
   },
 
-  modalGrid: {
-    display: "flex",
-    flexDirection: "column",
-    minHeight: "500px",
-    "@media (min-width: 768px)": {
-      display: "grid",
-      gridTemplateColumns: "1.3fr 1fr",
-      minHeight: "600px",
-    },
+  modalBody: {
+    display: "grid",
+    gridTemplateColumns: "1.1fr 0.9fr",
+    flex: 1,
+    overflow: "hidden",
   },
 
-  modalGridMobile: {
+  modalBodyMobile: {
     display: "flex",
     flexDirection: "column",
+    flex: 1,
+    overflowY: "auto",
   },
 
-  modalImageSection: {
-    padding: "2rem 1.5rem",
+  // Coluna imagem
+  modalImageCol: {
     display: "flex",
     flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#fafafa",
+    backgroundColor: "#f7f7f7",
+    overflow: "hidden",
+  },
+
+  mainImageWrap: {
     position: "relative",
+    flex: 1,
+    overflow: "hidden",
+    minHeight: "0",
   },
 
-  modalImageSectionMobile: {
-    padding: "1.5rem",
-    minHeight: "350px",
-  },
-
-  imageCarousel: {
-    position: "relative",
+  modalMainImage: {
     width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    height: "100%",
+    objectFit: "cover",
+    display: "block",
   },
 
-  modalImage: {
-    width: "100%",
-    height: "auto",
-    maxHeight: "500px",
-    objectFit: "contain",
-    borderRadius: "8px",
-    boxShadow: "0 8px 25px rgba(0,0,0,0.15)",
-  },
-
-  modalImageMobile: {
-    maxHeight: "350px",
-  },
-
-  navButton: {
+  arrowBtn: {
     position: "absolute",
     top: "50%",
     transform: "translateY(-50%)",
-    backgroundColor: "rgba(0,0,0,0.75)",
-    color: "white",
+    width: "36px",
+    height: "36px",
+    backgroundColor: "rgba(255,255,255,0.92)",
     border: "none",
     borderRadius: "50%",
-    width: "45px",
-    height: "45px",
-    fontSize: "1.6rem",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    transition: "all 0.3s",
+    color: "#111",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
     zIndex: 5,
   },
 
-  navButtonPrev: {
-    left: "15px",
-  },
-
-  navButtonNext: {
-    right: "15px",
-  },
-
-  imageIndicators: {
-    position: "absolute",
-    bottom: "20px",
-    left: "50%",
-    transform: "translateX(-50%)",
+  thumbRow: {
     display: "flex",
-    gap: "10px",
-    zIndex: 5,
+    gap: "6px",
+    padding: "10px",
+    overflowX: "auto",
+    flexShrink: 0,
+    backgroundColor: "#f7f7f7",
   },
 
-  indicator: {
-    width: "10px",
-    height: "10px",
-    borderRadius: "50%",
-    backgroundColor: "rgba(255,255,255,0.5)",
+  thumbBtn: {
+    width: "56px",
+    height: "56px",
+    flexShrink: 0,
+    padding: 0,
+    border: "2px solid transparent",
+    borderRadius: "4px",
     cursor: "pointer",
-    transition: "all 0.3s",
+    overflow: "hidden",
+    background: "transparent",
+    transition: "border-color 0.15s",
   },
 
-  indicatorActive: {
-    backgroundColor: "white",
-    transform: "scale(1.3)",
+  thumbBtnActive: {
+    borderColor: "#111",
   },
 
-  thumbnailContainer: {
-    display: "flex",
-    gap: "10px",
-    marginTop: "20px",
-    justifyContent: "center",
-    flexWrap: "wrap",
-  },
-
-  thumbnail: {
-    width: "60px",
-    height: "60px",
+  thumbImg: {
+    width: "100%",
+    height: "100%",
     objectFit: "cover",
-    borderRadius: "6px",
-    cursor: "pointer",
-    border: "3px solid transparent",
-    transition: "all 0.3s",
-    opacity: 0.7,
+    display: "block",
   },
 
-  thumbnailActive: {
-    border: "3px solid #b6a06a",
-    opacity: 1,
-    transform: "scale(1.05)",
-  },
-
-  modalInfoSection: {
-    padding: "2.5rem 2rem",
+  // Coluna info
+  modalInfoCol: {
     display: "flex",
     flexDirection: "column",
-    backgroundColor: "#fff",
+    borderLeft: "1px solid #f0f0f0",
+    overflow: "hidden",
   },
 
-  modalInfoSectionMobile: {
-    padding: "2rem 1.5rem",
+  modalInfoScroll: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "3rem 2.5rem 1.5rem",
+  },
+
+  modalCategory: {
+    fontSize: "0.7rem",
+    letterSpacing: "2px",
+    color: "#999",
+    marginBottom: "0.75rem",
+    fontFamily: '"Helvetica Neue", Arial, sans-serif',
   },
 
   modalTitle: {
-    fontSize: "1.8rem",
+    fontSize: "1.75rem",
     fontWeight: "400",
-    color: "#2c2c2c",
+    color: "#111",
+    marginBottom: "1rem",
+    lineHeight: "1.25",
+    fontFamily: '"Cormorant Garamond", Georgia, serif',
+  },
+
+  modalPrice: {
+    fontSize: "1.1rem",
+    color: "#111",
+    fontWeight: "500",
     marginBottom: "1.5rem",
-    lineHeight: "1.3",
-    fontFamily: '"Cormorant Garamond", serif',
+    fontFamily: '"Helvetica Neue", Arial, sans-serif',
   },
 
-  modalTitleMobile: {
-    fontSize: "1.6rem",
-    marginBottom: "1.2rem",
+  modalDivider: {
+    border: "none",
+    borderTop: "1px solid #f0f0f0",
+    marginBottom: "1.5rem",
   },
 
-  modalDescription: {
-    fontSize: "1.05rem",
-    lineHeight: "1.7",
+  modalDesc: {
+    fontSize: "0.95rem",
+    lineHeight: "1.75",
     color: "#555",
-    marginBottom: "2.5rem",
-    flex: 1,
+    fontFamily: '"Helvetica Neue", Arial, sans-serif',
   },
 
-  modalDescriptionMobile: {
-    fontSize: "1rem",
-    lineHeight: "1.6",
-    marginBottom: "2rem",
+  modalImageCount: {
+    marginTop: "1.5rem",
+    fontSize: "0.75rem",
+    color: "#bbb",
+    fontFamily: '"Helvetica Neue", Arial, sans-serif',
   },
 
-  modalActions: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.2rem",
+  // CTA
+  modalCta: {
+    padding: "1.5rem 2.5rem",
+    borderTop: "1px solid #f0f0f0",
+    backgroundColor: "#fff",
+    flexShrink: 0,
   },
 
-  whatsappButton: {
-    backgroundColor: "#25D366",
-    color: "white",
-    padding: "1.3rem",
-    borderRadius: "10px",
+  ctaPrimary: {
+    display: "block",
+    width: "100%",
+    padding: "1rem",
+    backgroundColor: "#111",
+    color: "#fff",
     textAlign: "center",
     textDecoration: "none",
-    fontSize: "1.1rem",
+    fontSize: "0.85rem",
     fontWeight: "600",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "0.8rem",
-    transition: "all 0.3s ease",
-    boxShadow: "0 6px 15px rgba(37, 211, 102, 0.3)",
-    border: "none",
-    cursor: "pointer",
-    letterSpacing: "0.5px",
+    letterSpacing: "1.5px",
+    textTransform: "uppercase",
+    borderRadius: "0",
+    transition: "background 0.2s ease",
+    fontFamily: '"Helvetica Neue", Arial, sans-serif',
   },
 
-  whatsappButtonMobile: {
-    padding: "1.2rem",
-    fontSize: "1.05rem",
+  ctaNote: {
+    marginTop: "0.75rem",
+    fontSize: "0.75rem",
+    color: "#aaa",
+    textAlign: "center",
+    fontFamily: '"Helvetica Neue", Arial, sans-serif',
   },
 };
 

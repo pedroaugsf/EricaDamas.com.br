@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, lazy, Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -7,30 +7,46 @@ import {
   useLocation,
 } from "react-router-dom";
 
-// Componentes da página inicial
+// Componentes críticos (carregados imediatamente — aparecem no First Paint)
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import About from "./components/About";
-import Depoimentos from "./components/Depoimentos";
-import Localizacao from "./components/Localizacao";
-import FAQ from "./components/Faq";
-import CategoriasCarrossel from "./components/CategoriasCarrossel";
 import HeroFeature from "./components/HeroFeature";
-import NossosServicos from "./components/NovosServicos";
-import GerenciadorContratos from "./pages/Admin/GerenciadorContrato";
-
-// Páginas de produtos
-import Vestidos from "./pages/Vestidos";
-import Ternos from "./pages/Ternos";
-import Debutantes from "./pages/Debutantes";
-
-// Páginas administrativas
-import Login from "./pages/Admin/Login";
-import Dashboard from "./pages/Admin/Dashboard";
-import GerenciadorProdutos from "./pages/Admin/GerenciarProdutos";
-
-// Importar o componente RotaProtegida
 import RotaProtegida from "./components/RotaPotegida";
+
+// CategoriasCarrossel carrega react-slick (~30KB) + 2 CSS — lazy para não bloquear o First Paint
+const CategoriasCarrossel = lazy(() => import("./components/CategoriasCarrossel"));
+
+// Componentes secundários da home (lazy — abaixo da dobra)
+const About = lazy(() => import("./components/About"));
+const Depoimentos = lazy(() => import("./components/Depoimentos"));
+const Localizacao = lazy(() => import("./components/Localizacao"));
+const FAQ = lazy(() => import("./components/Faq"));
+const NossosServicos = lazy(() => import("./components/NovosServicos"));
+const GerenciadorContratos = lazy(() => import("./pages/Admin/GerenciadorContrato"));
+
+// Páginas de produtos (lazy — só carregam quando o usuário navega)
+const Vestidos = lazy(() => import("./pages/Vestidos"));
+const Ternos = lazy(() => import("./pages/Ternos"));
+const Debutantes = lazy(() => import("./pages/Debutantes"));
+
+// Páginas administrativas (lazy — 99% dos usuários nunca acessam)
+const Login = lazy(() => import("./pages/Admin/Login"));
+const Dashboard = lazy(() => import("./pages/Admin/Dashboard"));
+const GerenciadorProdutos = lazy(() => import("./pages/Admin/GerenciarProdutos"));
+
+// Fallback minimalista de carregamento
+const PageLoader = () => (
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "40vh" }}>
+    <div style={{
+      width: "32px", height: "32px",
+      border: "2px solid #e8e8e8",
+      borderTopColor: "#b6a06a",
+      borderRadius: "50%",
+      animation: "spin 0.8s linear infinite",
+    }} />
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+  </div>
+);
 
 // ========== DETECÇÃO MOBILE INSTANTÂNEA ==========
 
@@ -150,14 +166,16 @@ const Home = () => {
   return (
     <div>
       <HeroFeature />
-      <CategoriasCarrossel />
-      <div id="nossos-servicos">
-        <NossosServicos />
-      </div>
-      <div id="localizacao">
-        <Localizacao />
-      </div>
-      <FAQ />
+      <Suspense fallback={null}>
+        <CategoriasCarrossel />
+        <div id="nossos-servicos">
+          <NossosServicos />
+        </div>
+        <div id="localizacao">
+          <Localizacao />
+        </div>
+        <FAQ />
+      </Suspense>
     </div>
   );
 };
@@ -183,22 +201,64 @@ const PublicLayout = () => {
     <div>
       <Header />
       <main style={layoutStyles}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/vestidos" element={<Vestidos />} />
-          <Route path="/ternos" element={<Ternos />} />
-          <Route path="/debutantes" element={<Debutantes />} />
-          <Route
-            path="/sobre"
-            element={<RedirectToComponent targetId="nossos-servicos" />}
-          />
-          <Route
-            path="/contato"
-            element={<RedirectToComponent targetId="localizacao" />}
-          />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/vestidos" element={<Vestidos />} />
+            <Route path="/ternos" element={<Ternos />} />
+            <Route path="/debutantes" element={<Debutantes />} />
+            <Route
+              path="/sobre"
+              element={<RedirectToComponent targetId="nossos-servicos" />}
+            />
+            <Route
+              path="/contato"
+              element={<RedirectToComponent targetId="localizacao" />}
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </main>
       <Footer />
+    </div>
+  );
+};
+
+// ========== BANNER COLD START ==========
+
+const ColdStartBanner = ({ visible, onHide }) => {
+  if (!visible) return null;
+  return (
+    <div style={{
+      position: "fixed",
+      bottom: "24px",
+      left: "50%",
+      transform: "translateX(-50%)",
+      zIndex: 9999,
+      backgroundColor: "#3a2f28",
+      color: "#f6f1ea",
+      padding: "14px 24px",
+      borderRadius: "999px",
+      display: "flex",
+      alignItems: "center",
+      gap: "12px",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+      fontSize: "0.85rem",
+      letterSpacing: "0.03em",
+      whiteSpace: "nowrap",
+      animation: "slideUp 0.4s ease",
+    }}>
+      <style>{`@keyframes slideUp { from { opacity:0; transform:translateX(-50%) translateY(16px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
+      <span style={{
+        width: "14px", height: "14px",
+        border: "2px solid rgba(246,241,234,0.3)",
+        borderTopColor: "#b6a06a",
+        borderRadius: "50%",
+        animation: "spin 0.8s linear infinite",
+        flexShrink: 0,
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      Servidor iniciando, aguarde um instante...
     </div>
   );
 };
@@ -206,6 +266,35 @@ const PublicLayout = () => {
 // ========== COMPONENTE PRINCIPAL ==========
 
 function App() {
+  const [serverWaking, setServerWaking] = useState(false);
+
+  // Acordar o backend Render — mostra banner se demorar mais de 10s
+  useEffect(() => {
+    const apiBase = process.env.REACT_APP_API_URL ||
+      "https://ericadamas-com-br.onrender.com/api";
+    const healthUrl = apiBase.replace("/api", "") + "/health";
+
+    const bannerTimer = setTimeout(() => setServerWaking(true), 10000);
+
+    const warmup = async () => {
+      try {
+        await fetch(healthUrl, {
+          method: "GET",
+          cache: "no-store",
+          signal: AbortSignal.timeout(50000),
+        });
+      } catch (_) {
+        // silencioso
+      } finally {
+        clearTimeout(bannerTimer);
+        setServerWaking(false);
+      }
+    };
+    warmup();
+
+    return () => clearTimeout(bannerTimer);
+  }, []);
+
   // Aplicar configurações imediatas
   useEffect(() => {
     const initialInfo = getInitialDeviceInfo();
@@ -231,15 +320,16 @@ function App() {
     <DeviceProvider>
       <Router>
         <div style={styles.appContainer}>
+          <ColdStartBanner visible={serverWaking} />
           <Routes>
             {/* Rotas administrativas */}
-            <Route path="/admin/login" element={<Login />} />
+            <Route path="/admin/login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
             <Route path="/admin" element={<RotaProtegida />}>
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="contratos" element={<GerenciadorContratos />} />
+              <Route path="dashboard" element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
+              <Route path="contratos" element={<Suspense fallback={<PageLoader />}><GerenciadorContratos /></Suspense>} />
               <Route
                 path="produtos/:tipoProduto"
-                element={<GerenciadorProdutos />}
+                element={<Suspense fallback={<PageLoader />}><GerenciadorProdutos /></Suspense>}
               />
               <Route
                 index

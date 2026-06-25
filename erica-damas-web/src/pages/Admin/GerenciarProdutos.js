@@ -47,14 +47,11 @@ const GerenciadorProdutos = () => {
     try {
       setCarregando(true);
 
-      console.log("Carregando produtos da API:", `/produtos/${config.colecao}`);
-
       const response = await api.get(`/produtos/${config.colecao}`);
       const result = response.data;
 
       if (result.success) {
         setProdutos(result.produtos);
-        console.log(`✅ ${result.produtos.length} produtos carregados`);
       } else {
         setErro("Erro ao carregar produtos: " + result.message);
       }
@@ -73,10 +70,6 @@ const GerenciadorProdutos = () => {
 
   // Função para criar produto
   const criarProduto = async (dadosProduto, arquivosImagem) => {
-    console.log("=== CRIANDO PRODUTO ===");
-    console.log("Dados:", dadosProduto);
-    console.log("Imagens:", arquivosImagem.length);
-
     const formData = new FormData();
     formData.append("nome", dadosProduto.nome);
     formData.append("descricao", dadosProduto.descricao);
@@ -97,11 +90,6 @@ const GerenciadorProdutos = () => {
 
   // Função para atualizar produto
   const atualizarProduto = async (id, dadosProduto, arquivosImagem = []) => {
-    console.log("=== ATUALIZANDO PRODUTO ===");
-    console.log("ID:", id);
-    console.log("Dados:", dadosProduto);
-    console.log("Novas imagens:", arquivosImagem.length);
-
     const formData = new FormData();
     formData.append("nome", dadosProduto.nome);
     formData.append("descricao", dadosProduto.descricao);
@@ -121,9 +109,6 @@ const GerenciadorProdutos = () => {
 
   // Função para excluir produto
   const excluirProduto = async (id) => {
-    console.log("=== EXCLUINDO PRODUTO ===");
-    console.log("ID:", id);
-
     const response = await api.delete(`/produtos/${id}`);
     return response.data;
   };
@@ -175,7 +160,6 @@ const GerenciadorProdutos = () => {
         const result = await excluirProduto(id);
 
         if (result.success) {
-          console.log("✅ Produto excluído com sucesso");
           await carregarProdutos(); // Recarregar lista
         } else {
           setErro("Erro ao excluir produto: " + result.message);
@@ -215,7 +199,6 @@ const GerenciadorProdutos = () => {
       }
 
       if (result.success) {
-        console.log("✅ Produto salvo com sucesso:", result.produto);
         resetarFormulario();
         await carregarProdutos(); // Recarregar lista
       } else {

@@ -91,6 +91,7 @@ const NossosServicos = () => {
 
   // Adicionando estilos CSS
   useEffect(() => {
+    if (document.querySelector('style[data-servicos-hover]')) return;
     const style = document.createElement("style");
     style.setAttribute("data-servicos-hover", "true");
     style.innerHTML = `
