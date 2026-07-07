@@ -1029,7 +1029,11 @@ const GerenciadorContratos = () => {
           <div class="header-info">Pará de Minas</div>
           <div class="header-info">(37) 3231-3738</div>
         </div>
-        <div class="header-right" style="flex: 0.65; text-align: center; white-space: nowrap;">
+        <div class="header-right" style="flex: 0.65; display: flex; align-items: center; justify-content: space-between; gap: 12px; white-space: nowrap;">
+          <div style="text-align: right;">
+            <div class="header-info">WhatsApp</div>
+            <div class="header-info">(37) 9 9915-3738</div>
+          </div>
           <div class="header-info"><strong>Nº:</strong> ${dadosContrato.numeroContrato || "_______"}</div>
         </div>
       </div>
