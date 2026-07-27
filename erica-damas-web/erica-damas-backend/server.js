@@ -369,7 +369,13 @@ const preloadCache = async () => {
 // ============ MIDDLEWARE ============
 
 app.use(async (req, res, next) => {
-  const skipRoutes = ["/health", "/", "/api/warmup", "/api/login"];
+  const skipRoutes = [
+    "/health",
+    "/",
+    "/api/warmup",
+    "/api/login",
+    "/api/refresh",
+  ];
   if (skipRoutes.includes(req.path) || req.method === "OPTIONS") {
     return next();
   }
@@ -427,6 +433,19 @@ app.get("/api/status", (req, res) => {
 
 // ============ MIDDLEWARE DE AUTENTICAÇÃO ============
 
+// Validade do token. O frontend renova sozinho antes de vencer, então esse
+// prazo só importa quando o navegador fica dias sem abrir o painel.
+const TOKEN_EXPIRACAO = "7d";
+
+// Janela em que um token já vencido ainda pode ser trocado por um novo.
+// Evita que o admin perca o trabalho por ter deixado a aba aberta no fim de semana.
+const REFRESH_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
+
+const gerarToken = () =>
+  jwt.sign({ id: "admin", email: ADMIN_EMAIL }, JWT_SECRET, {
+    expiresIn: TOKEN_EXPIRACAO,
+  });
+
 const verificarToken = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
 
@@ -445,6 +464,7 @@ const verificarToken = (req, res, next) => {
     res.status(401).json({
       success: false,
       message: "Token inválido ou expirado",
+      expirado: error.name === "TokenExpiredError",
     });
   }
 };
@@ -530,9 +550,7 @@ app.post("/api/login", async (req, res) => {
     }
 
     if (normalizedEmail === adminEmail && normalizedSenha === adminPassword) {
-      const token = jwt.sign({ id: "admin", email: ADMIN_EMAIL }, JWT_SECRET, {
-        expiresIn: "24h",
-      });
+      const token = gerarToken();
 
       return res.json({
         success: true,
@@ -559,6 +577,56 @@ app.get("/api/admin/verificar", verificarToken, (req, res) => {
     success: true,
     user: { email: req.user.email },
   });
+});
+
+// Troca um token por outro com validade cheia. Aceita token já vencido dentro da
+// janela de tolerância — sem isso o admin é jogado pra tela de login no meio de
+// um contrato. Não depende do banco nem do Firebase de propósito: precisa
+// funcionar mesmo com o resto do servidor degradado.
+app.post("/api/refresh", (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: "Token não fornecido",
+    });
+  }
+
+  try {
+    const decodificado = jwt.verify(token, JWT_SECRET, {
+      ignoreExpiration: true,
+    });
+
+    if (decodificado.id !== "admin") {
+      return res.status(401).json({
+        success: false,
+        message: "Token inválido",
+      });
+    }
+
+    const expiradoEm = (decodificado.exp || 0) * 1000;
+    const vencidoHa = Date.now() - expiradoEm;
+
+    if (vencidoHa > REFRESH_GRACE_MS) {
+      return res.status(401).json({
+        success: false,
+        message: "Sessão expirada. Faça login novamente.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      token: gerarToken(),
+      user: { name: "Administrador", email: ADMIN_EMAIL },
+    });
+  } catch (error) {
+    // Assinatura inválida ou token corrompido — aqui não há renovação possível.
+    return res.status(401).json({
+      success: false,
+      message: "Token inválido",
+    });
+  }
 });
 
 // ============ PRODUTOS COM CACHE INTELIGENTE ============

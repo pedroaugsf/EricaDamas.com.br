@@ -18,9 +18,17 @@ const Dashboard = () => {
     verificarAutenticacao();
   }, [navigate]);
 
-  // Renovar sessão quando o usuário interagir com o dashboard
+  // Renovar sessão quando o usuário interagir com o dashboard.
+  // Limitado a 1x por minuto: renovarSessao decodifica o token, não vale rodar
+  // isso a cada tecla digitada.
   useEffect(() => {
+    let ultimaRenovacao = 0;
+
     const renovarSessao = () => {
+      const agora = Date.now();
+      if (agora - ultimaRenovacao < 60000) return;
+
+      ultimaRenovacao = agora;
       authService.renovarSessao();
     };
 

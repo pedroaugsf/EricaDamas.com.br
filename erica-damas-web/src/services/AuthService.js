@@ -34,9 +34,123 @@ const api = axios.create({
   },
 });
 
+// ==================== SESSÃO E TOKEN ====================
+
+// Renova o token quando falta menos que isso para vencer. Precisa ser bem maior
+// que o tempo de preenchimento de um contrato, senão o token vence com o
+// formulário aberto e a requisição de salvar é a que descobre isso.
+const MARGEM_RENOVACAO_MS = 12 * 60 * 60 * 1000; // 12h
+
+// De quanto em quanto tempo checar o token com a aba aberta e parada.
+const INTERVALO_CHECAGEM_MS = 30 * 60 * 1000; // 30min
+
+// Lê o payload do JWT. Serve só para saber quando ele vence — a validação de
+// verdade é sempre no servidor.
+const decodificarToken = (token) => {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+
+    return JSON.parse(json);
+  } catch (error) {
+    return null;
+  }
+};
+
+// Quanto tempo falta para o token vencer, em ms. Negativo = já venceu.
+// null = não há token ou não foi possível ler a expiração.
+const tempoRestanteToken = () => {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+
+  const payload = decodificarToken(token);
+  if (!payload?.exp) return null;
+
+  return payload.exp * 1000 - Date.now();
+};
+
+const limparSessao = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("adminName");
+  localStorage.removeItem("loginTime");
+};
+
+// Navegação sem recarregar a página. O reload destruía o estado do React e,
+// com ele, o formulário de contrato que estava sendo preenchido.
+const redirecionarParaLogin = () => {
+  if (window.location.pathname.includes("/admin/login")) return;
+
+  window.history.pushState({}, "", "/admin/login");
+  window.dispatchEvent(new PopStateEvent("popstate"));
+};
+
+// Uma renovação por vez. Sem isso, várias requisições paralelas com token
+// vencido disparariam vários refresh e um sobrescreveria o token do outro.
+let renovacaoEmAndamento = null;
+
+const renovarToken = async () => {
+  if (renovacaoEmAndamento) return renovacaoEmAndamento;
+
+  const token = localStorage.getItem("token");
+  if (!token) return false;
+
+  renovacaoEmAndamento = (async () => {
+    try {
+      const response = await api.post(
+        "/refresh",
+        {},
+        { _semRenovacao: true, timeout: 30000 }
+      );
+
+      if (response.data?.success && response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("loginTime", Date.now().toString());
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      // 401 aqui significa sessão realmente perdida (fora da janela de
+      // tolerância ou token adulterado). Qualquer outro erro é falha de rede /
+      // servidor dormindo: mantém o token para tentar de novo depois.
+      if (error.response?.status === 401) {
+        limparSessao();
+      }
+      return false;
+    } finally {
+      renovacaoEmAndamento = null;
+    }
+  })();
+
+  return renovacaoEmAndamento;
+};
+
+// Renova de forma preventiva se estiver perto de vencer.
+const garantirTokenValido = async () => {
+  const restante = tempoRestanteToken();
+  if (restante === null) return;
+
+  if (restante < MARGEM_RENOVACAO_MS) {
+    await renovarToken();
+  }
+};
+
 // Interceptor para adicionar token em todas as requisições
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // A própria chamada de refresh não pode passar por aqui, senão vira loop.
+    if (!config._semRenovacao) {
+      await garantirTokenValido();
+    }
+
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -57,7 +171,7 @@ const retryRequest = (config) => {
 // Interceptor para tratar erros de resposta
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const isColdStart =
       (error.code === "ECONNABORTED" && error.message.includes("timeout")) ||
       error.code === "ERR_NETWORK";
@@ -82,20 +196,45 @@ api.interceptors.response.use(
       );
     }
 
-    // Tratar erro de autenticação (token expirado)
+    // Tratar erro de autenticação: antes de derrubar a sessão, tenta renovar o
+    // token e repetir a requisição. É o que evita perder um contrato inteiro
+    // porque o token venceu durante o preenchimento.
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("adminName");
-      localStorage.removeItem("loginTime");
+      const config = error.config || {};
 
-      if (!window.location.pathname.includes("/admin/login")) {
-        window.location.href = "/admin/login";
+      if (!config._semRenovacao && !config._authRetry) {
+        const renovou = await renovarToken();
+
+        if (renovou) {
+          return api.request({ ...config, _authRetry: true });
+        }
       }
+
+      limparSessao();
+      redirecionarParaLogin();
     }
 
     return Promise.reject(error);
   }
 );
+
+// Com a aba aberta e parada não há requisição nenhuma para disparar o
+// interceptor, então o token venceria em silêncio. Esse timer cobre esse caso.
+let timerRenovacao = null;
+
+const iniciarRenovacaoAutomatica = () => {
+  if (timerRenovacao) return;
+
+  timerRenovacao = setInterval(() => {
+    if (localStorage.getItem("token")) {
+      garantirTokenValido();
+    }
+  }, INTERVALO_CHECAGEM_MS);
+};
+
+if (localStorage.getItem("token")) {
+  iniciarRenovacaoAutomatica();
+}
 
 // Serviço de autenticação
 const authService = {
@@ -113,6 +252,7 @@ const authService = {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("adminName", response.data.user.name);
         localStorage.setItem("loginTime", Date.now().toString());
+        iniciarRenovacaoAutomatica();
       }
       return response.data;
     } catch (error) {
@@ -140,9 +280,7 @@ const authService = {
 
   // Logout
   logout: () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("adminName");
-    localStorage.removeItem("loginTime");
+    limparSessao();
   },
 
   // Verificar se está autenticado
@@ -152,15 +290,12 @@ const authService = {
       return false;
     }
 
-    // Verificar se o token expirou localmente (24h)
-    const loginTime = localStorage.getItem("loginTime");
-    if (loginTime) {
-      const now = Date.now();
-      const loginDate = parseInt(loginTime, 10);
-      const hoursPassed = (now - loginDate) / (1000 * 60 * 60);
-
-      if (hoursPassed > 24) {
-        authService.logout();
+    // Se o token venceu, tenta renovar antes de desistir. O servidor aceita
+    // token vencido dentro da janela de tolerância.
+    const restante = tempoRestanteToken();
+    if (restante !== null && restante <= 0) {
+      const renovou = await renovarToken();
+      if (!renovou) {
         return false;
       }
     }
@@ -169,20 +304,27 @@ const authService = {
       const response = await api.get("/admin/verificar");
       return response.data.success;
     } catch (error) {
-
-      // Se for erro 401, fazer logout
+      // Só considera desautenticado num 401 — servidor fora do ar ou sem
+      // internet não é motivo para expulsar quem tem token válido.
       if (error.response?.status === 401) {
-        authService.logout();
+        return false;
       }
 
-      return false;
+      return tempoRestanteToken() > 0;
     }
   },
 
-  // Renovar sessão (atualizar timestamp)
+  // Renovar sessão de verdade (troca o token, não só o timestamp local)
   renovarSessao: () => {
     localStorage.setItem("loginTime", Date.now().toString());
+    garantirTokenValido();
   },
+
+  // Quanto tempo resta de sessão, em ms (null se não houver token)
+  tempoRestanteSessao: tempoRestanteToken,
+
+  // Força a renovação do token agora
+  forcarRenovacao: renovarToken,
 
   // Função para "acordar" o servidor Render (útil para cold starts)
   wakeUpServer: async () => {
@@ -212,14 +354,13 @@ const authService = {
     const adminName = localStorage.getItem("adminName");
     const loginTime = localStorage.getItem("loginTime");
     const token = localStorage.getItem("token");
+    const restante = tempoRestanteToken();
 
     return {
       name: adminName,
       loginTime: loginTime ? new Date(parseInt(loginTime)) : null,
       hasToken: !!token,
-      isExpired: loginTime
-        ? (Date.now() - parseInt(loginTime)) / (1000 * 60 * 60) > 24
-        : true,
+      isExpired: restante === null ? true : restante <= 0,
     };
   },
 };

@@ -1,31 +1,31 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Navigate, Outlet } from "react-router-dom";
+import authService from "../services/AuthService";
+
+// Mesma janela de tolerância do backend: um token vencido dentro dela ainda é
+// renovável, então não faz sentido expulsar o admin aqui.
+const TOLERANCIA_MS = 30 * 24 * 60 * 60 * 1000;
 
 const RotaProtegida = () => {
-  // Verificação simples sem hooks assíncronos
   const token = localStorage.getItem("token");
+  const restante = authService.tempoRestanteSessao();
+
+  // Sessão renovável: pede um token novo em segundo plano enquanto a tela abre.
+  useEffect(() => {
+    if (token) {
+      authService.renovarSessao();
+    }
+  }, [token]);
 
   if (!token) {
     return <Navigate to="/admin/login" replace />;
   }
 
-  // Verificar se o token expirou (24 horas)
-  const loginTime = localStorage.getItem("loginTime");
-  if (loginTime) {
-    const now = Date.now();
-    const loginDate = parseInt(loginTime, 10);
-    const hoursPassed = (now - loginDate) / (1000 * 60 * 60);
-
-    if (hoursPassed > 24) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("adminName");
-      localStorage.removeItem("loginTime");
-      return <Navigate to="/admin/login" replace />;
-    }
+  // Vencido além da tolerância — aí não há renovação possível.
+  if (restante !== null && restante < -TOLERANCIA_MS) {
+    authService.logout();
+    return <Navigate to="/admin/login" replace />;
   }
-
-  // Renovar a sessão
-  localStorage.setItem("loginTime", Date.now().toString());
 
   return <Outlet />;
 };

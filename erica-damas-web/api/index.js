@@ -92,6 +92,13 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ericadamas.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Eri@D4m4s!2024#Adm";
 const JWT_SECRET = process.env.JWT_SECRET || "chave_secreta_padrao";
 
+// Validade do token e janela de tolerância para renovação (ver server.js)
+const TOKEN_EXPIRACAO = "7d";
+const REFRESH_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
+
+const gerarToken = (email) =>
+  jwt.sign({ id: "admin", email }, JWT_SECRET, { expiresIn: TOKEN_EXPIRACAO });
+
 // Middleware de verificação de token
 const verificarToken = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
@@ -102,7 +109,10 @@ const verificarToken = (req, res, next) => {
     req.user = verificado;
     next();
   } catch (error) {
-    res.status(401).json({ message: "Token inválido" });
+    res.status(401).json({
+      message: "Token inválido",
+      expirado: error.name === "TokenExpiredError",
+    });
   }
 };
 
@@ -138,9 +148,7 @@ app.post("/api/login", async (req, res) => {
     const { email, senha } = req.body;
 
     if (email === ADMIN_EMAIL && senha === ADMIN_PASSWORD) {
-      const token = jwt.sign({ id: "admin", email }, JWT_SECRET, {
-        expiresIn: "24h",
-      });
+      const token = gerarToken(email);
       res.json({ success: true, token, user: { name: "Administrador" } });
     } else {
       res
@@ -177,6 +185,43 @@ app.get("/api/produtos/:tipo", async (req, res) => {
   } catch (error) {
     "Erro:", error;
     res.status(500).json({ success: false, message: "Erro interno" });
+  }
+});
+
+// Renovação de token — aceita token vencido dentro da janela de tolerância
+app.post("/api/refresh", (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token)
+    return res
+      .status(401)
+      .json({ success: false, message: "Token não fornecido" });
+
+  try {
+    const decodificado = jwt.verify(token, JWT_SECRET, {
+      ignoreExpiration: true,
+    });
+
+    if (decodificado.id !== "admin") {
+      return res
+        .status(401)
+        .json({ success: false, message: "Token inválido" });
+    }
+
+    const vencidoHa = Date.now() - (decodificado.exp || 0) * 1000;
+    if (vencidoHa > REFRESH_GRACE_MS) {
+      return res.status(401).json({
+        success: false,
+        message: "Sessão expirada. Faça login novamente.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      token: gerarToken(decodificado.email || ADMIN_EMAIL),
+      user: { name: "Administrador" },
+    });
+  } catch (error) {
+    return res.status(401).json({ success: false, message: "Token inválido" });
   }
 });
 

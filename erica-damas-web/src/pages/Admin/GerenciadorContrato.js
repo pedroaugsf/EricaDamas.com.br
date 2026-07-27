@@ -1,16 +1,80 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../services/AuthService";
+
+// Rascunho do contrato em andamento. Gravado a cada alteração e só descartado
+// depois que o servidor confirma o salvamento — é o que garante que nenhum
+// contrato seja perdido se a sessão cair, a aba fechar ou a API falhar.
+const RASCUNHO_KEY = "contrato_rascunho";
+
+// Fábricas, não constantes: o formulário edita itens no lugar
+// (novosItens[i].campo = valor), então um objeto compartilhado seria
+// contaminado entre contratos.
+const criarClienteVazio = () => ({
+  nome: "",
+  rg: "",
+  cpf: "",
+  nacionalidade: "Brasileira",
+  dataNascimento: "",
+  profissao: "",
+  endereco: "",
+  numero: "",
+  bairro: "",
+  cidade: "",
+  telefone: "",
+  celular: "",
+});
+
+const criarContratoVazio = () => ({
+  numeroContrato: "",
+  dataVenda: "",
+  dataAjuste: "",
+  dataRetirada: "",
+  dataEntrega: "",
+  pecaEncomenda: "nao",
+  planoLivreTroca: "nao",
+  formaPagamento: "",
+  itens: [{ codigo: "", especificacao: "", valor: "" }],
+  parcelas: [],
+  observacoesPagamento: "",
+});
+
+const lerRascunho = () => {
+  try {
+    const bruto = localStorage.getItem(RASCUNHO_KEY);
+    if (!bruto) return null;
+
+    const rascunho = JSON.parse(bruto);
+    return rascunho?.dadosCliente ? rascunho : null;
+  } catch (error) {
+    localStorage.removeItem(RASCUNHO_KEY);
+    return null;
+  }
+};
+
+const descartarRascunho = () => {
+  localStorage.removeItem(RASCUNHO_KEY);
+};
 
 const GerenciadorContratos = () => {
   const navigate = useNavigate();
   const formRef = useRef(null);
+
+  // Lido uma única vez na montagem. Se havia contrato em andamento, ele volta
+  // exatamente como estava, inclusive as cláusulas editadas.
+  const rascunho = useMemo(() => lerRascunho(), []);
+
   const [contratos, setContratos] = useState([]);
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [editandoId, setEditandoId] = useState(null);
+  const [mostrarFormulario, setMostrarFormulario] = useState(!!rascunho);
+  const [editandoId, setEditandoId] = useState(rascunho?.editandoId || null);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  const [aviso, setAviso] = useState(
+    rascunho
+      ? "Rascunho recuperado: o contrato que estava sendo preenchido foi restaurado. Confira os dados e salve."
+      : ""
+  );
 
   // Estados para paginação e filtros
   const [paginaAtual, setPaginaAtual] = useState(1);
@@ -22,37 +86,17 @@ const GerenciadorContratos = () => {
     useState(true);
 
   // Estados do formulário
-  const [dadosCliente, setDadosCliente] = useState({
-    nome: "",
-    rg: "",
-    cpf: "",
-    nacionalidade: "Brasileira",
-    dataNascimento: "",
-    profissao: "",
-    endereco: "",
-    numero: "",
-    bairro: "",
-    cidade: "",
-    telefone: "",
-    celular: "",
-  });
+  const [dadosCliente, setDadosCliente] = useState(
+    () => rascunho?.dadosCliente || criarClienteVazio()
+  );
 
-  const [dadosContrato, setDadosContrato] = useState({
-    numeroContrato: "",
-    dataVenda: "",
-    dataAjuste: "",
-    dataRetirada: "",
-    dataEntrega: "",
-    pecaEncomenda: "nao",
-    planoLivreTroca: "nao",
-    formaPagamento: "",
-    itens: [{ codigo: "", especificacao: "", valor: "" }],
-    parcelas: [],
-    observacoesPagamento: "",
-  });
+  const [dadosContrato, setDadosContrato] = useState(
+    () => rascunho?.dadosContrato || criarContratoVazio()
+  );
 
-  // Estados para cláusulas editáveis
-  const [clausulas, setClausulas] = useState({
+  // Cláusulas padrão do contrato. Função para devolver sempre uma cópia nova —
+  // os campos são editados no lugar e contaminariam o padrão.
+  const criarClausulasPadrao = () => ({
     clausula1: {
       titulo: "CLÁUSULA 1 – OBJETO",
       conteudo:
@@ -210,6 +254,10 @@ const GerenciadorContratos = () => {
     },
   });
 
+  const [clausulas, setClausulas] = useState(
+    () => rascunho?.clausulas || criarClausulasPadrao()
+  );
+
   const FORMAS_PAGAMENTO = [
     { value: "avista", label: "À vista" },
     { value: "aprazo", label: "A prazo" },
@@ -249,6 +297,29 @@ const GerenciadorContratos = () => {
     carregarContratos();
   }, []);
 
+  // Grava o rascunho a cada alteração enquanto o formulário está aberto. É a
+  // rede de segurança: mesmo que a sessão expire, a API falhe ou o navegador
+  // feche, os dados voltam na próxima abertura da tela.
+  useEffect(() => {
+    if (!mostrarFormulario) return;
+
+    try {
+      localStorage.setItem(
+        RASCUNHO_KEY,
+        JSON.stringify({
+          dadosCliente,
+          dadosContrato,
+          clausulas,
+          editandoId,
+          salvoEm: new Date().toISOString(),
+        })
+      );
+    } catch (error) {
+      // Quota do localStorage estourada — não é motivo para quebrar a tela.
+      console.warn("Não foi possível gravar o rascunho:", error.message);
+    }
+  }, [mostrarFormulario, dadosCliente, dadosContrato, clausulas, editandoId]);
+
   const toggleMostrarContratos = () => {
     setMostrarContratos(!mostrarContratos);
   };
@@ -272,10 +343,12 @@ const GerenciadorContratos = () => {
     }
   };
 
-  // Salvar contratos no banco de dados e localStorage
+  // Salva o contrato no banco. Devolve true somente quando o servidor confirma —
+  // quem chama depende disso para decidir se pode limpar o formulário.
   const salvarContratos = async (novoContrato, isUpdate = false) => {
     try {
       setSalvando(true);
+      setErro("");
 
       let response;
 
@@ -285,44 +358,30 @@ const GerenciadorContratos = () => {
         response = await api.post("/contratos", novoContrato);
       }
 
-      if (response.data.success) {
-        await carregarContratos();
-        console.log(
-          `✅ Contrato ${isUpdate ? "atualizado" : "criado"} com sucesso`
-        );
-      } else {
+      if (!response.data.success) {
         throw new Error(response.data.message || "Erro ao salvar contrato");
       }
+
+      await carregarContratos();
+      console.log(
+        `✅ Contrato ${isUpdate ? "atualizado" : "criado"} com sucesso`
+      );
+      return true;
     } catch (error) {
       console.error(
         `Erro ao ${isUpdate ? "atualizar" : "criar"} contrato:`,
         error
       );
+
+      // Nada de salvar no localStorage como se tivesse dado certo: isso criava
+      // contratos fantasmas que desapareciam da tela na próxima vez que a API
+      // respondia. O formulário e o rascunho ficam intactos para nova tentativa.
       setErro(
         `Falha ao ${isUpdate ? "atualizar" : "criar"} contrato. ${
           error.message || ""
-        }`
+        } — Os dados continuam no formulário, clique em salvar novamente.`
       );
-
-      const contratosSalvos = localStorage.getItem("contratos")
-        ? JSON.parse(localStorage.getItem("contratos"))
-        : [];
-
-      let novosContratos;
-
-      if (isUpdate) {
-        novosContratos = contratosSalvos.map((c) =>
-          (c._id || c.id) === (novoContrato._id || novoContrato.id) ? novoContrato : c
-        );
-      } else {
-        // Gera ID local apenas para fallback no localStorage
-        novoContrato.id = Date.now().toString();
-        novosContratos = [...contratosSalvos, novoContrato];
-      }
-
-      localStorage.setItem("contratos", JSON.stringify(novosContratos));
-      setContratos(novosContratos);
-      console.log("⚠️ Salvando no localStorage como fallback");
+      return false;
     } finally {
       setSalvando(false);
     }
@@ -445,37 +504,37 @@ const GerenciadorContratos = () => {
     });
   };
 
-  // Resetar formulário
+  // Resetar formulário. Descarta o rascunho — só deve ser chamado após
+  // salvamento confirmado ou cancelamento explícito.
   const resetarFormulario = () => {
-    setDadosCliente({
-      nome: "",
-      rg: "",
-      cpf: "",
-      nacionalidade: "Brasileira",
-      dataNascimento: "",
-      profissao: "",
-      endereco: "",
-      numero: "",
-      bairro: "",
-      cidade: "",
-      telefone: "",
-      celular: "",
-    });
-    setDadosContrato({
-      numeroContrato: "",
-      dataVenda: "",
-      dataAjuste: "",
-      dataRetirada: "",
-      dataEntrega: "",
-      pecaEncomenda: "nao",
-      planoLivreTroca: "nao",
-      formaPagamento: "",
-      itens: [{ codigo: "", especificacao: "", valor: "" }],
-      parcelas: [],
-      observacoesPagamento: "",
-    });
+    setDadosCliente(criarClienteVazio());
+    setDadosContrato(criarContratoVazio());
+    setClausulas(criarClausulasPadrao());
     setMostrarFormulario(false);
     setEditandoId(null);
+    setAviso("");
+    descartarRascunho();
+  };
+
+  // Pede confirmação antes de jogar fora um formulário com dados.
+  const confirmarDescarte = () => {
+    const temDados =
+      dadosCliente.nome ||
+      dadosCliente.cpf ||
+      (dadosContrato.itens || []).some(
+        (item) => item.codigo || item.especificacao || item.valor
+      );
+
+    if (!temDados) return true;
+
+    return window.confirm(
+      "Descartar o contrato aberto? Os dados preenchidos serão perdidos."
+    );
+  };
+
+  const cancelarFormulario = () => {
+    if (!confirmarDescarte()) return;
+    resetarFormulario();
   };
 
   // Handler para forma de pagamento
@@ -488,7 +547,9 @@ const GerenciadorContratos = () => {
   };
 
   // Salvar contrato
-  const salvarContrato = () => {
+  const salvarContrato = async () => {
+    if (salvando) return;
+
     if (!dadosCliente.nome || !dadosCliente.cpf) {
       alert("Por favor, preencha pelo menos o nome e CPF do cliente");
       return;
@@ -521,18 +582,50 @@ const GerenciadorContratos = () => {
       novoContrato._id = editandoId;
     }
 
-    salvarContratos(novoContrato, !!editandoId);
-    resetarFormulario();
+    // Espera a confirmação do servidor antes de limpar. Antes o formulário era
+    // resetado na hora, então qualquer falha no salvamento apagava tudo.
+    const salvou = await salvarContratos(novoContrato, !!editandoId);
+
+    if (salvou) {
+      resetarFormulario();
+      setAviso(
+        editandoId
+          ? "Contrato atualizado com sucesso."
+          : "Contrato salvo com sucesso."
+      );
+    }
+  };
+
+  // Abrir formulário em branco, descartando o que estiver aberto
+  const abrirNovoContrato = () => {
+    if (mostrarFormulario && !confirmarDescarte()) return;
+
+    setDadosCliente(criarClienteVazio());
+    setDadosContrato(criarContratoVazio());
+    setClausulas(criarClausulasPadrao());
+    setEditandoId(null);
+    setAviso("");
+    setErro("");
+    setMostrarFormulario(true);
+    window.scrollTo(0, 0);
   };
 
   // Editar contrato
   const editarContrato = (contrato) => {
-    setDadosCliente(contrato.cliente || {});
+    if (mostrarFormulario && !confirmarDescarte()) return;
+
+    setDadosCliente({ ...criarClienteVazio(), ...(contrato.cliente || {}) });
     setDadosContrato(normalizarContrato(contrato));
-    if (contrato.clausulas) {
-      setClausulas(contrato.clausulas);
-    }
+    // Sem cláusulas gravadas, volta ao padrão — senão herdaria as cláusulas
+    // editadas do contrato anterior.
+    setClausulas(
+      contrato.clausulas
+        ? JSON.parse(JSON.stringify(contrato.clausulas))
+        : criarClausulasPadrao()
+    );
     setEditandoId(contrato._id || contrato.id);
+    setAviso("");
+    setErro("");
     setMostrarFormulario(true);
     window.scrollTo(0, 0);
   };
@@ -1303,9 +1396,18 @@ const GerenciadorContratos = () => {
         </div>
       )}
 
+      {aviso && (
+        <div style={styles.aviso}>
+          {aviso}
+          <button onClick={() => setAviso("")} style={styles.closeErrorButton}>
+            ×
+          </button>
+        </div>
+      )}
+
       <div style={styles.actionsContainer}>
         <button
-          onClick={() => setMostrarFormulario(true)}
+          onClick={abrirNovoContrato}
           style={styles.newButton}
           disabled={salvando}
         >
@@ -1910,7 +2012,9 @@ const GerenciadorContratos = () => {
                   if (
                     window.confirm("Deseja restaurar as cláusulas padrão?")
                   ) {
-                    window.location.reload();
+                    // Antes isso recarregava a página e levava o formulário
+                    // inteiro junto. Agora só as cláusulas voltam ao padrão.
+                    setClausulas(criarClausulasPadrao());
                   }
                 }}
                 style={styles.restaurarButton}
@@ -1929,7 +2033,7 @@ const GerenciadorContratos = () => {
               Contrato
             </button>
             <button
-              onClick={resetarFormulario}
+              onClick={cancelarFormulario}
               style={styles.cancelButton}
               disabled={salvando}
             >
@@ -2430,6 +2534,14 @@ const styles = {
   erro: {
     backgroundColor: "#ffebee",
     color: "#c62828",
+    padding: "1rem",
+    borderRadius: "8px",
+    marginBottom: "1.5rem",
+    position: "relative",
+  },
+  aviso: {
+    backgroundColor: "#e8f5e9",
+    color: "#2e7d32",
     padding: "1rem",
     borderRadius: "8px",
     marginBottom: "1.5rem",
