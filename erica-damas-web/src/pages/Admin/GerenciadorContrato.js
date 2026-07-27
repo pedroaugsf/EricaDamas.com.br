@@ -748,20 +748,47 @@ const GerenciadorContratos = () => {
     getContratosFiltrados();
   const totalPaginas = Math.ceil(totalContratos / itensPorPagina);
 
-  // Escolhe o nivel de compactacao da pagina 1 para o contrato caber em 2
-  // paginas. Conta cada item como 1, mais 1 por cada ~90 caracteres de
-  // especificacao, porque uma descricao longa quebra em mais linhas na tabela e
-  // ocupa o mesmo que um item extra. Ver a tabela de medicoes no CSS.
-  const montarClassePagina1 = (itens) => {
-    const peso = (itens || []).reduce(
+  // Peso da tabela de itens: cada item conta 1, mais 1 por cada ~90 caracteres
+  // de especificacao, porque uma descricao longa quebra em mais linhas e ocupa
+  // o mesmo que um item extra.
+  const pesoDosItens = (itens) => {
+    return (itens || []).reduce(
       (soma, item) =>
         soma + 1 + Math.floor(String(item.especificacao || "").length / 90),
       0
     );
+  };
 
-    if (peso >= 13) return "page1 page1-compacta page1-compacta-max";
-    if (peso >= 4) return "page1 page1-compacta";
-    return "page1";
+  // Escala do espacamento da pagina 1 (--e no CSS). 1 = espacamento original.
+  // Quanto maior a tabela de itens, menos espaco em branco, para o contrato nao
+  // passar de 2 paginas. Usa sempre a MENOR compactacao que ainda cabe, senao a
+  // pagina fica com um vazio grande no pe.
+  //
+  // Tabela calibrada contando paginas de PDF A4 real. Para cada peso foi medido
+  // o maior --e que cabe e quanto sobrava de branco no pe da pagina 1:
+  //   peso:      1    2    3    4    5    6    7    8    9   10   12   14   16   18   20
+  //   maior --e: 1    1    1    1   .9   .9   .9   .8   .8   .7   .6   .6   .5  .42  .35
+  //   sobra:    95   80   50   15   50   15    0   25    0   35   45    0    0    0    0
+  // As faixas abaixo escolhem, para cada peso, um nivel cuja sobra medida era
+  // >= 15px, para nao ficar no limite exato. Verificado depois contra os 150
+  // contratos reais do banco. Se mudar, remeça contando paginas de um PDF A4.
+  const escalaPagina1 = (itens) => {
+    const peso = pesoDosItens(itens);
+    const faixas = [
+      [4, 1],
+      [6, 0.9],
+      [8, 0.8],
+      [10, 0.7],
+      [12, 0.6],
+      [15, 0.5],
+      [18, 0.42],
+      [20, 0.35],
+    ];
+
+    for (const [limite, escala] of faixas) {
+      if (peso <= limite) return escala;
+    }
+    return 0.28;
   };
 
   // Imprimir contrato
@@ -1087,100 +1114,79 @@ const GerenciadorContratos = () => {
           margin: 5px 0;
         }
 
+        /* Espacamento da pagina 1, com escala. O contrato TEM que caber em 2
+           paginas: a partir do 4o item a tabela empurrava as parcelas e a
+           assinatura para uma terceira folha.
+
+           Em vez de niveis fixos, todo espaco em branco da pagina 1 e
+           multiplicado por --e, definido inline em escalaPagina1(). Assim se usa
+           a MENOR compactacao necessaria e a pagina nao fica vazia embaixo.
+           --e: 1 = espacamento original. Nada aqui e tamanho de fonte.
+
+           Se mudar qualquer valor, remeça contando paginas de um PDF A4 real. */
+        .page1 {
+          --e: 1;
+        }
+
         .page1 .header-container {
-          margin-bottom: 18px;
-          padding-bottom: 6px;
+          margin-bottom: calc(18px * var(--e));
+          padding-bottom: calc(6px * var(--e));
+        }
+
+        /* A logo tem altura automatica: reduzir a largura em contratos grandes
+           devolve altura tambem. Piso de 120px para nao ficar ilegivel. */
+        .page1 .logo-image {
+          max-width: max(120px, calc(180px * var(--e)));
         }
 
         .page1 .contract-title {
-          margin: 18px 0;
-          padding: 10px 8px;
+          margin: calc(18px * var(--e)) 0;
+          padding: max(3px, calc(10px * var(--e))) 8px;
         }
 
         .page1 .section {
-          margin-bottom: 18px;
+          margin-bottom: calc(18px * var(--e));
         }
 
         .page1 .section-title {
-          margin: 10px 0 6px 0;
+          margin: calc(10px * var(--e)) 0 calc(6px * var(--e)) 0;
         }
 
         .page1 .party {
-          margin-bottom: 12px;
+          margin-bottom: calc(12px * var(--e));
           line-height: 1.35;
         }
 
         .page1 .items-table {
-          margin: 12px 0;
+          margin: calc(12px * var(--e)) 0;
         }
 
         .page1 .items-table th,
         .page1 .items-table td {
-          padding: 8px;
+          padding: max(2px, calc(8px * var(--e)));
         }
 
         .page1 .parcelas-grid {
-          padding: 10px;
-          margin: 12px 0;
+          padding: max(3px, calc(10px * var(--e)));
+          margin: calc(12px * var(--e)) 0;
         }
 
         .page1 .parcelas-row {
-          margin-bottom: 10px;
+          margin-bottom: max(2px, calc(10px * var(--e)));
         }
 
         .page1 .checkbox-line {
-          margin: 12px 0;
+          margin: calc(12px * var(--e)) 0;
         }
 
         .page1 .data-box {
-          margin: 12px 0;
+          margin: calc(12px * var(--e)) 0;
         }
 
         .page1 .signature-client {
-          margin-top: 48px;
+          margin-top: calc(48px * var(--e));
         }
 
-        /* O contrato tem que caber em 2 paginas. A pagina 1 usa espacamento
-           generoso (as regras .page1 acima) para preencher a folha quando o
-           contrato e pequeno, mas isso deixa pouca folga: a partir do 4o item a
-           tabela empurrava as parcelas e a assinatura para uma terceira folha.
-
-           Estas duas classes devolvem o espaco em branco conforme a tabela
-           cresce. Nada aqui e tamanho de fonte — sao margens, paddings e a
-           folga acima da assinatura.
-
-           Medido em PDF A4 (paginas com cada nivel):
-             itens:            1-3      4-12     13-18     19+
-             sem compactar      2        3         3        3
-             compacta           2        2         3        3
-             compacta-max       2        2         2        3
-           A classe e escolhida em montarClassePagina1(). Se mudar qualquer
-           valor aqui, remeça contando paginas de um PDF A4 real. */
-        .page1.page1-compacta .header-container { margin-bottom: 6px; padding-bottom: 2px; }
-        .page1.page1-compacta .contract-title { margin: 6px 0; padding: 5px; }
-        .page1.page1-compacta .section { margin-bottom: 6px; }
-        .page1.page1-compacta .section-title { margin: 4px 0 2px 0; }
-        .page1.page1-compacta .party { margin-bottom: 3px; line-height: 1.2; }
-        .page1.page1-compacta .items-table { margin: 6px 0; }
-        .page1.page1-compacta .items-table th,
-        .page1.page1-compacta .items-table td { padding: 4px; }
-        .page1.page1-compacta .parcelas-grid { padding: 5px; margin: 6px 0; }
-        .page1.page1-compacta .parcelas-row { margin-bottom: 4px; }
-        .page1.page1-compacta .checkbox-line { margin: 5px 0; }
-        .page1.page1-compacta .data-box { margin: 5px 0; }
-        .page1.page1-compacta .signature-client { margin-top: 14px; }
-
-        .page1.page1-compacta-max .header-container { margin-bottom: 2px; }
-        .page1.page1-compacta-max .contract-title { margin: 3px 0; padding: 3px; }
-        .page1.page1-compacta-max .section { margin-bottom: 3px; }
-        .page1.page1-compacta-max .party { margin-bottom: 1px; }
-        .page1.page1-compacta-max .items-table { margin: 3px 0; }
-        .page1.page1-compacta-max .items-table th,
-        .page1.page1-compacta-max .items-table td { padding: 2px 4px; }
-        .page1.page1-compacta-max .parcelas-grid { padding: 3px; margin: 3px 0; }
-        .page1.page1-compacta-max .parcelas-row { margin-bottom: 2px; }
-        .page1.page1-compacta-max .signature-client { margin-top: 6px; }
-        .page1.page1-compacta-max .logo-image { max-width: 130px; }
 
         @media print {
           body { 
@@ -1191,7 +1197,7 @@ const GerenciadorContratos = () => {
       </style>
     </head>
     <body>
-      <div class="${montarClassePagina1(dadosContrato.itens)}">
+      <div class="page1" style="--e: ${escalaPagina1(dadosContrato.itens)}">
         <!-- CABEÇALHO -->
         <div class="header-container">
           <div class="header-left">
