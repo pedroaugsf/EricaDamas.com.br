@@ -748,6 +748,22 @@ const GerenciadorContratos = () => {
     getContratosFiltrados();
   const totalPaginas = Math.ceil(totalContratos / itensPorPagina);
 
+  // Escolhe o nivel de compactacao da pagina 1 para o contrato caber em 2
+  // paginas. Conta cada item como 1, mais 1 por cada ~90 caracteres de
+  // especificacao, porque uma descricao longa quebra em mais linhas na tabela e
+  // ocupa o mesmo que um item extra. Ver a tabela de medicoes no CSS.
+  const montarClassePagina1 = (itens) => {
+    const peso = (itens || []).reduce(
+      (soma, item) =>
+        soma + 1 + Math.floor(String(item.especificacao || "").length / 90),
+      0
+    );
+
+    if (peso >= 13) return "page1 page1-compacta page1-compacta-max";
+    if (peso >= 4) return "page1 page1-compacta";
+    return "page1";
+  };
+
   // Imprimir contrato
   const imprimirContrato = (contrato) => {
     const { cliente = {}, total } = contrato;
@@ -1124,6 +1140,48 @@ const GerenciadorContratos = () => {
           margin-top: 48px;
         }
 
+        /* O contrato tem que caber em 2 paginas. A pagina 1 usa espacamento
+           generoso (as regras .page1 acima) para preencher a folha quando o
+           contrato e pequeno, mas isso deixa pouca folga: a partir do 4o item a
+           tabela empurrava as parcelas e a assinatura para uma terceira folha.
+
+           Estas duas classes devolvem o espaco em branco conforme a tabela
+           cresce. Nada aqui e tamanho de fonte — sao margens, paddings e a
+           folga acima da assinatura.
+
+           Medido em PDF A4 (paginas com cada nivel):
+             itens:            1-3      4-12     13-18     19+
+             sem compactar      2        3         3        3
+             compacta           2        2         3        3
+             compacta-max       2        2         2        3
+           A classe e escolhida em montarClassePagina1(). Se mudar qualquer
+           valor aqui, remeça contando paginas de um PDF A4 real. */
+        .page1.page1-compacta .header-container { margin-bottom: 6px; padding-bottom: 2px; }
+        .page1.page1-compacta .contract-title { margin: 6px 0; padding: 5px; }
+        .page1.page1-compacta .section { margin-bottom: 6px; }
+        .page1.page1-compacta .section-title { margin: 4px 0 2px 0; }
+        .page1.page1-compacta .party { margin-bottom: 3px; line-height: 1.2; }
+        .page1.page1-compacta .items-table { margin: 6px 0; }
+        .page1.page1-compacta .items-table th,
+        .page1.page1-compacta .items-table td { padding: 4px; }
+        .page1.page1-compacta .parcelas-grid { padding: 5px; margin: 6px 0; }
+        .page1.page1-compacta .parcelas-row { margin-bottom: 4px; }
+        .page1.page1-compacta .checkbox-line { margin: 5px 0; }
+        .page1.page1-compacta .data-box { margin: 5px 0; }
+        .page1.page1-compacta .signature-client { margin-top: 14px; }
+
+        .page1.page1-compacta-max .header-container { margin-bottom: 2px; }
+        .page1.page1-compacta-max .contract-title { margin: 3px 0; padding: 3px; }
+        .page1.page1-compacta-max .section { margin-bottom: 3px; }
+        .page1.page1-compacta-max .party { margin-bottom: 1px; }
+        .page1.page1-compacta-max .items-table { margin: 3px 0; }
+        .page1.page1-compacta-max .items-table th,
+        .page1.page1-compacta-max .items-table td { padding: 2px 4px; }
+        .page1.page1-compacta-max .parcelas-grid { padding: 3px; margin: 3px 0; }
+        .page1.page1-compacta-max .parcelas-row { margin-bottom: 2px; }
+        .page1.page1-compacta-max .signature-client { margin-top: 6px; }
+        .page1.page1-compacta-max .logo-image { max-width: 130px; }
+
         @media print {
           body { 
             print-color-adjust: exact;
@@ -1133,7 +1191,7 @@ const GerenciadorContratos = () => {
       </style>
     </head>
     <body>
-      <div class="page1">
+      <div class="${montarClassePagina1(dadosContrato.itens)}">
         <!-- CABEÇALHO -->
         <div class="header-container">
           <div class="header-left">
