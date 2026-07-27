@@ -2152,6 +2152,24 @@ const GerenciadorContratos = () => {
 
                       <div style={styles.compactContractDetails}>
                         <div style={styles.compactContractDetail}>
+                          <span style={styles.detailLabel}>Nº contrato:</span>
+                          <span>
+                            {contrato.contrato?.numeroContrato ||
+                              contrato.contrato?.numero ||
+                              "—"}
+                          </span>
+                        </div>
+                        <div style={styles.compactContractDetail}>
+                          <span style={styles.detailLabel}>Venda:</span>
+                          <span>
+                            {contrato.contrato?.dataVenda
+                              ? formatarDataBrasileira(
+                                  contrato.contrato.dataVenda
+                                )
+                              : "—"}
+                          </span>
+                        </div>
+                        <div style={styles.compactContractDetail}>
                           <span style={styles.detailLabel}>Retirada:</span>
                           <span>
                             {formatarDataBrasileira(
