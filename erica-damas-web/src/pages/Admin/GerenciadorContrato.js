@@ -82,8 +82,9 @@ const GerenciadorContratos = () => {
   const [filtroData, setFiltroData] = useState("semana");
   const [pesquisa, setPesquisa] = useState("");
   const [mostrarContratos, setMostrarContratos] = useState(false);
+  // Fechado por padrao: as clausulas raramente sao editadas e o bloco e longo
   const [mostrarClausulasEditaveis, setMostrarClausulasEditaveis] =
-    useState(true);
+    useState(false);
 
   // Estados do formulário
   const [dadosCliente, setDadosCliente] = useState(
@@ -601,7 +602,10 @@ const GerenciadorContratos = () => {
     if (mostrarFormulario && !confirmarDescarte()) return;
 
     setDadosCliente(criarClienteVazio());
-    setDadosContrato(criarContratoVazio());
+    setDadosContrato({
+      ...criarContratoVazio(),
+      numeroContrato: proximoNumeroContrato(),
+    });
     setClausulas(criarClausulasPadrao());
     setEditandoId(null);
     setAviso("");
@@ -747,6 +751,29 @@ const GerenciadorContratos = () => {
   const { contratos: contratosPaginados, total: totalContratos } =
     getContratosFiltrados();
   const totalPaginas = Math.ceil(totalContratos / itensPorPagina);
+
+  // Numeracao automatica do contrato. Comeca em 180 e sobe, pulando numeros ja
+  // usados para nunca duplicar. Nao usa "maior existente + 1" de proposito: o
+  // banco tem numeros digitados errado (1004, 612, 302) que jogariam a sequencia
+  // para longe. O campo continua editavel, isto e so a sugestao inicial.
+  const NUMERO_CONTRATO_INICIAL = 180;
+
+  const proximoNumeroContrato = () => {
+    const usados = new Set(
+      contratos
+        .map((c) => {
+          const bruto = String(
+            c.contrato?.numeroContrato || c.contrato?.numero || ""
+          ).replace(/\D/g, "");
+          return bruto ? parseInt(bruto, 10) : NaN;
+        })
+        .filter((n) => !isNaN(n))
+    );
+
+    let numero = NUMERO_CONTRATO_INICIAL;
+    while (usados.has(numero)) numero++;
+    return String(numero);
+  };
 
   // Peso da tabela de itens: cada item conta 1, mais 1 por cada ~90 caracteres
   // de especificacao, porque uma descricao longa quebra em mais linhas e ocupa
