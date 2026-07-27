@@ -1034,6 +1034,31 @@ const GerenciadorContratos = () => {
           margin: 0 10px;
         }
 
+        /* Espaco para assinar nas assinaturas finais (testemunhas, locadora,
+           atendente, contratante). A altura do bloco E a area de escrita acima
+           da linha: e ela que da folga para assinar, sem mexer em fonte.
+
+           ATENCAO — nao mexa no min-width das linhas de assinatura.
+           As linhas somam mais que a largura da pagina (2x420px e 3x300px), e e
+           justamente isso que faz o Chrome encolher o documento inteiro para
+           caber na folha. Esse encolhimento e o que mantem o contrato em 2
+           paginas. Medido: fazer as linhas caberem na largura remove o
+           encolhimento e o contrato salta para 4 paginas.
+
+           Consequencia: tudo sai impresso reduzido (~22%), inclusive esta
+           altura. Os 60px abaixo viram ~47px no papel (~12mm), contra ~14px
+           (~3,7mm) dos 18px originais.
+
+           Altura escolhida por medicao em PDF A4 real. O limite absoluto e 80px;
+           acima disso vira 3 paginas. Ficamos em 60px porque a altura consome a
+           folga que sobra para as clausulas editaveis:
+             18px -> aceita ~1170 caracteres extras nas clausulas
+             50px -> ~624    60px -> ~390    70px -> ~234    80px -> ~78
+           Se mudar este valor, remeça contando paginas de um PDF A4. */
+        .assinatura-alta {
+          height: 60px;
+        }
+
         .checkbox-line {
           margin: 6px 0;
           font-size: 11pt;
@@ -1341,25 +1366,25 @@ const GerenciadorContratos = () => {
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 10pt;">
           <div style="text-align: center;">
-            <div class="underline-large" style="min-width: 420px;"></div>
+            <div class="underline-large assinatura-alta" style="min-width: 420px;"></div>
             <div style="margin-top: 5px;">1º Testemunha</div>
           </div>
           <div style="text-align: center;">
-            <div class="underline-large" style="min-width: 420px;"></div>
+            <div class="underline-large assinatura-alta" style="min-width: 420px;"></div>
             <div style="margin-top: 5px;">2º Testemunha</div>
           </div>
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 10pt;">
           <div style="text-align: center;">
-            <div class="underline-large"></div>
+            <div class="underline-large assinatura-alta"></div>
             <div style="margin-top: 2px;">ÉRICA DAMAS (Locadora)</div>
           </div>
           <div style="text-align: center;">
-            <div class="underline-large"></div>
+            <div class="underline-large assinatura-alta"></div>
             <div style="margin-top: 2px;">ATENDENTE</div>
           </div>
           <div style="text-align: center;">
-            <div class="underline-large"></div>
+            <div class="underline-large assinatura-alta"></div>
             <div style="margin-top: 2px;">CONTRATANTE (Locatário):</div>
           </div>
         </div>
