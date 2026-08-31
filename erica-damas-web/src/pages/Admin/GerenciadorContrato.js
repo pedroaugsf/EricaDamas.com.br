@@ -65,6 +65,10 @@ const GerenciadorContratos = () => {
   const rascunho = useMemo(() => lerRascunho(), []);
 
   const [contratos, setContratos] = useState([]);
+  // Só vira true quando o servidor responde a lista. Enquanto for false não dá
+  // para sugerir número de contrato: a lista vazia faria a sugestão voltar ao
+  // começo da faixa.
+  const [listaCarregada, setListaCarregada] = useState(false);
   const [mostrarFormulario, setMostrarFormulario] = useState(!!rascunho);
   const [editandoId, setEditandoId] = useState(rascunho?.editandoId || null);
   const [carregando, setCarregando] = useState(true);
@@ -274,6 +278,7 @@ const GerenciadorContratos = () => {
 
       if (response.data.success) {
         setContratos(response.data.contratos);
+        setListaCarregada(true);
         console.log(
           `✅ ${response.data.contratos.length} contratos carregados`
         );
@@ -752,28 +757,78 @@ const GerenciadorContratos = () => {
     getContratosFiltrados();
   const totalPaginas = Math.ceil(totalContratos / itensPorPagina);
 
-  // Numeracao automatica do contrato. Comeca em 180 e sobe, pulando numeros ja
-  // usados para nunca duplicar. Nao usa "maior existente + 1" de proposito: o
-  // banco tem numeros digitados errado (1004, 612, 302) que jogariam a sequencia
-  // para longe. O campo continua editavel, isto e so a sugestao inicial.
+  // Numeracao automatica do contrato: continua de onde a sequencia parou, ou
+  // seja, fim da sequencia + 1.
+  //
+  // Duas coisas quebravam isso e enchiam o banco de contratos numero 180:
+  //
+  // 1. A sugestao era o primeiro numero LIVRE a partir de 180. Com a lista
+  //    ainda vazia (o GET traz 2,9 MB e demora no primeiro acesso), "livre"
+  //    era o proprio 180 — e quem clicava em "Novo Contrato" antes da lista
+  //    chegar levava 180. Sao 24 contratos com esse numero no banco. Agora a
+  //    sugestao so sai com listaCarregada, e o formulario aberto antes disso
+  //    recebe o numero assim que a lista chega (efeito logo abaixo).
+  //
+  // 2. Preencher buraco puxa a numeracao para tras. Agora nao preenche: vale
+  //    o fim da sequencia.
+  //
+  // O fim da sequencia nao e o maior numero do banco. Hoje a faixa vai de 180
+  // a 336 sem furo nenhum, e depois so ha numero digitado errado: 360, 400,
+  // 612, 806, 1004, 1460, 1622, 25700044. Por isso a varredura sobe numero a
+  // numero e para no primeiro salto maior que SALTO_MAXIMO — para em 336 e
+  // sugere 337, em vez de ir atras do 25700045. A folga de 10 existe para a
+  // sequencia continuar andando se algum numero for pulado.
+  //
+  // O campo segue editavel, isto e apenas a sugestao inicial.
   const NUMERO_CONTRATO_INICIAL = 180;
+  const SALTO_MAXIMO = 10;
 
   const proximoNumeroContrato = () => {
-    const usados = new Set(
-      contratos
-        .map((c) => {
-          const bruto = String(
-            c.contrato?.numeroContrato || c.contrato?.numero || ""
-          ).replace(/\D/g, "");
-          return bruto ? parseInt(bruto, 10) : NaN;
-        })
-        .filter((n) => !isNaN(n))
-    );
+    // Sem a lista nao ha como saber onde a sequencia parou. Melhor devolver
+    // vazio e deixar o campo em branco do que sugerir um numero duplicado.
+    if (!listaCarregada) return "";
 
-    let numero = NUMERO_CONTRATO_INICIAL;
-    while (usados.has(numero)) numero++;
-    return String(numero);
+    const usados = [
+      ...new Set(
+        contratos
+          .map((c) => {
+            // Contratos antigos vem sem o nivel "contrato", com os campos na
+            // raiz — mesmo tratamento de normalizarContrato().
+            const dados = c.contrato || c || {};
+            const bruto = String(
+              dados.numeroContrato || dados.numero || ""
+            ).replace(/\D/g, "");
+            return bruto ? parseInt(bruto, 10) : NaN;
+          })
+          .filter((n) => !isNaN(n) && n >= NUMERO_CONTRATO_INICIAL)
+      ),
+    ].sort((a, b) => a - b);
+
+    let ultimo = NUMERO_CONTRATO_INICIAL - 1;
+    for (const numero of usados) {
+      if (numero - ultimo > SALTO_MAXIMO) break;
+      ultimo = numero;
+    }
+
+    // ultimo + 1 nunca esta em uso: se estivesse, a varredura teria continuado
+    // nele (salto de 1) em vez de parar.
+    return String(ultimo + 1);
   };
+
+  // Formulario novo aberto antes da lista chegar fica com o numero em branco.
+  // Assim que a lista chega, preenche a sugestao. Nao mexe em contrato que
+  // esta sendo editado nem em numero ja preenchido — inclusive o que o
+  // usuario digitou na mao.
+  useEffect(() => {
+    if (!listaCarregada || !mostrarFormulario || editandoId) return;
+
+    setDadosContrato((atual) =>
+      atual.numeroContrato
+        ? atual
+        : { ...atual, numeroContrato: proximoNumeroContrato() }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listaCarregada, mostrarFormulario, editandoId]);
 
   // Peso da tabela de itens: cada item conta 1, mais 1 por cada ~90 caracteres
   // de especificacao, porque uma descricao longa quebra em mais linhas e ocupa
@@ -899,6 +954,16 @@ const GerenciadorContratos = () => {
         .header-info {
           margin: 0;
           line-height: 1.15;
+        }
+
+        /* O numero do contrato e o dado que mais se procura na folha, entao
+           sai bem maior que o resto do cabecalho (9pt). Nao aumenta a altura
+           do cabecalho: quem manda nela e a logo, bem mais alta que isto.
+           Sem negrito: o tamanho ja basta para destacar. */
+        .numero-contrato {
+          font-size: 20pt;
+          font-weight: normal;
+          line-height: 1;
         }
 
         .contract-title {
@@ -1243,7 +1308,7 @@ const GerenciadorContratos = () => {
             <div class="header-info">WhatsApp</div>
             <div class="header-info">(37) 9 9915-3738</div>
           </div>
-          <div class="header-info"><strong>Nº:</strong> ${dadosContrato.numeroContrato || "_______"}</div>
+          <div class="header-info numero-contrato">Nº: ${dadosContrato.numeroContrato || "_______"}</div>
         </div>
       </div>
 
@@ -1684,7 +1749,11 @@ const GerenciadorContratos = () => {
             <div style={styles.formGrid}>
               <input
                 type="text"
-                placeholder="Nº do contrato"
+                placeholder={
+                  listaCarregada
+                    ? "Nº do contrato"
+                    : "Nº do contrato (buscando a sequência...)"
+                }
                 value={dadosContrato.numeroContrato}
                 onChange={(e) =>
                   setDadosContrato({
