@@ -555,6 +555,38 @@ const uploadImageToFirebase = async (file) => {
   }
 };
 
+// Apaga do Storage as imagens de um produto. Sem isso, excluir ou trocar a foto
+// de um produto deixava o arquivo no bucket para sempre — o projeto acumulou 19
+// imagens sem dono desse jeito.
+//
+// Nunca derruba a operação principal: se a remoção falhar (arquivo já apagado,
+// permissão, rede), registra e segue. Excluir o produto do banco é o que o
+// usuário pediu; sobrar um arquivo é bem menos grave do que a exclusão falhar.
+const removerImagensDoStorage = async (urls = []) => {
+  if (!bucket || !urls.length) return;
+
+  const prefixo = `https://storage.googleapis.com/${bucket.name}/`;
+
+  await Promise.all(
+    urls.filter(Boolean).map(async (url) => {
+      try {
+        if (!String(url).startsWith(prefixo)) {
+          console.warn(`⚠️ URL de imagem fora do bucket, ignorada: ${url}`);
+          return;
+        }
+
+        // Tira o prefixo e desfaz o escape do caminho para chegar no nome do
+        // objeto (ex.: "produtos/uuid-nome.jpg").
+        const caminho = decodeURIComponent(String(url).slice(prefixo.length));
+        await bucket.file(caminho).delete();
+        console.log(`🧹 Imagem removida do Storage: ${caminho}`);
+      } catch (error) {
+        console.error(`⚠️ Não consegui remover a imagem ${url}: ${error.message}`);
+      }
+    })
+  );
+};
+
 // ============ LOGIN ============
 
 app.post("/api/login", async (req, res) => {
@@ -892,7 +924,12 @@ app.put(
         const validImageUrls = imageUrls.filter(Boolean);
 
         if (validImageUrls.length > 0) {
+          // As antigas são substituídas, então saem do bucket junto. Só depois
+          // que o upload das novas deu certo, para não ficar sem imagem se o
+          // upload falhar no meio.
+          const antigas = produto.imagens || [];
           produto.imagens = validImageUrls;
+          await removerImagensDoStorage(antigas);
         }
       }
 
@@ -943,6 +980,8 @@ app.delete("/api/produtos/:id", verificarToken, async (req, res) => {
         message: "Produto não encontrado",
       });
     }
+
+    await removerImagensDoStorage(produto.imagens);
 
     produtosCache[produto.tipo] = { data: null, timestamp: 0, loading: false };
 
