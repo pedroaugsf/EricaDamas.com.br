@@ -42,16 +42,22 @@ const GerenciadorProdutos = () => {
   // Obter configuração atual
   const config = configProduto[tipoProduto] || configProduto.vestidos;
 
-  // Carregar produtos da API
+  // Carregar produtos da API.
+  //
+  // Usa /admin/produtos, que lê direto do banco. Antes usava /produtos/:tipo,
+  // que é a rota pública e serve de um cache de 10 minutos: a tela podia
+  // mostrar produto que já não existia, e aí excluir devolvia 404 sem parar.
   const carregarProdutos = async () => {
     try {
       setCarregando(true);
 
-      const response = await api.get(`/produtos/${config.colecao}`);
+      const response = await api.get("/admin/produtos");
       const result = response.data;
 
       if (result.success) {
-        setProdutos(result.produtos);
+        setProdutos(
+          (result.produtos || []).filter((p) => p.tipo === config.colecao)
+        );
       } else {
         setErro("Erro ao carregar produtos: " + result.message);
       }
@@ -166,7 +172,23 @@ const GerenciadorProdutos = () => {
         }
       } catch (error) {
         console.error("Erro ao excluir produto:", error);
-        setErro("Erro ao excluir produto: " + error.message);
+
+        // 404 aqui significa que o produto já não está no banco — alguém
+        // excluiu antes, ou a lista da tela estava velha. Antes disso a tela
+        // mostrava "Request failed with status code 404" e mantinha a linha
+        // fantasma, então cada novo clique repetia o mesmo erro. Recarregar
+        // resolve: a linha some sozinha.
+        if (error.response?.status === 404) {
+          await carregarProdutos();
+          setErro(
+            `Este ${config.tituloSingular.toLowerCase()} já havia sido excluído. A lista foi atualizada.`
+          );
+        } else {
+          setErro(
+            "Erro ao excluir produto: " +
+              (error.response?.data?.message || error.message)
+          );
+        }
       } finally {
         setCarregando(false);
       }
