@@ -520,7 +520,7 @@ const Vestidos = () => {
     if (vestidosParaExibir.length === 0) return null;
 
     return (
-      <div style={styles.vestidosGrid}>
+      <div className="vestidos-grid">
         {vestidosParaExibir.map((vestido, index) => (
           <div
             key={`${vestido._id}-${index}`}
@@ -766,7 +766,28 @@ const Vestidos = () => {
         </>
       )}
 
-      <style jsx>{`
+      <style>{`
+        .vestidos-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 2rem;
+          margin-top: 2rem;
+        }
+
+        @media (min-width: 768px) {
+          .vestidos-grid {
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2.5rem;
+          }
+        }
+
+        @media (min-width: 1200px) {
+          .vestidos-grid {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+          }
+        }
+
         @keyframes spin {
           0% {
             transform: rotate(0deg);
@@ -867,21 +888,9 @@ const styles = {
     margin: "0 auto",
   },
 
-  // GRID ESTILO LOUIS VUITTON
-  vestidosGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-    gap: "2rem",
-    marginTop: "2rem",
-    "@media (min-width: 768px)": {
-      gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-      gap: "2.5rem",
-    },
-    "@media (min-width: 1200px)": {
-      gridTemplateColumns: "repeat(4, 1fr)",
-      gap: "2rem",
-    },
-  },
+  // O grid saiu daqui para o CSS de verdade, na classe .vestidos-grid lá
+  // embaixo: @media dentro de objeto de style inline é ignorado pelo React,
+  // então as regras de 768px e 1200px nunca chegavam a valer.
 
   vestidoCard: {
     backgroundColor: "#ffffff",

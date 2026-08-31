@@ -465,7 +465,7 @@ const HeroFeature = () => {
                 alt="Ternos Erica Damas"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 loading="eager"
-                fetchpriority="high"
+                fetchPriority="high"
               />
               <button
                 type="button"

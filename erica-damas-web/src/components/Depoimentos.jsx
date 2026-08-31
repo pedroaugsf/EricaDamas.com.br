@@ -56,7 +56,23 @@ const Depoimentos = () => {
         <div style={styles.divisor}></div>
       </div>
 
-      <div style={styles.depoimentosGrid}>
+      <style>{`
+        .depoimentos-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1.5rem;
+          max-width: 1100px;
+          margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+          .depoimentos-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+
+      <div className="depoimentos-grid">
         {depoimentos.map((depoimento) => (
           <div key={depoimento.id} style={styles.depoimentoCard}>
             <div style={styles.quoteIcon}>"</div>
@@ -97,13 +113,9 @@ const styles = {
     backgroundColor: "#b6a06a",
     margin: "0 auto",
   },
-  depoimentosGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "1.5rem",
-    maxWidth: "1100px",
-    margin: "0 auto",
-  },
+  // O grid saiu daqui para a classe .depoimentos-grid no <style> acima. Aqui
+  // ele ficava fixo em 2 colunas: a regra de 1 coluna no celular estava num
+  // "@media" solto no fim deste objeto, que o React nunca aplica.
   depoimentoCard: {
     backgroundColor: "#fafafa",
     padding: "1.8rem",
@@ -145,11 +157,6 @@ const styles = {
     fontSize: "0.85rem",
     color: "#999",
     fontStyle: "italic",
-  },
-  "@media (max-width: 768px)": {
-    depoimentosGrid: {
-      gridTemplateColumns: "1fr",
-    },
   },
 };
 

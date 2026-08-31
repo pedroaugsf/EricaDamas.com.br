@@ -519,7 +519,7 @@ const Debutantes = () => {
     if (vestidosParaExibir.length === 0) return null;
 
     return (
-      <div style={styles.vestidosGrid}>
+      <div className="debutantes-grid">
         {vestidosParaExibir.map((vestido, index) => (
           <div
             key={`${vestido._id}-${index}`}
@@ -765,6 +765,27 @@ const Debutantes = () => {
       )}
 
       <style>{`
+        .debutantes-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 2rem;
+          margin-top: 2rem;
+        }
+
+        @media (min-width: 768px) {
+          .debutantes-grid {
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2.5rem;
+          }
+        }
+
+        @media (min-width: 1200px) {
+          .debutantes-grid {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+          }
+        }
+
         .cta-primary-btn:hover {
           transform: translateY(-2px);
           box-shadow: 0 8px 20px rgba(154, 134, 85, 0.3);
@@ -826,21 +847,9 @@ const styles = {
     margin: "0 auto",
   },
 
-  // GRID ESTILO LOUIS VUITTON
-  vestidosGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-    gap: "2rem",
-    marginTop: "2rem",
-    "@media (min-width: 768px)": {
-      gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-      gap: "2.5rem",
-    },
-    "@media (min-width: 1200px)": {
-      gridTemplateColumns: "repeat(4, 1fr)",
-      gap: "2rem",
-    },
-  },
+  // O grid saiu daqui para o CSS de verdade, na classe .debutantes-grid lá
+  // embaixo: @media dentro de objeto de style inline é ignorado pelo React,
+  // então as regras de 768px e 1200px nunca chegavam a valer.
 
   vestidoCard: {
     backgroundColor: "#ffffff",
