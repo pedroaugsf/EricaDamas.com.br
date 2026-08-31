@@ -221,12 +221,23 @@ const initializeDependencies = async () => {
           const admin = require("firebase-admin");
           let serviceAccount;
 
-          if (process.env.NODE_ENV === "production") {
+          // A credencial vem das variáveis de ambiente quando elas existem
+          // (Render) e do firebase-key.json quando não existem (máquina
+          // local). Antes isso era decidido por NODE_ENV, o que obrigava o
+          // firebase-key.json a estar commitado para o deploy funcionar — e
+          // foi assim que a chave anterior virou pública e acabou desativada
+          // pelo Google. O arquivo agora é só local e fora do Git, então o
+          // deploy não pode depender dele.
+          const credencialNoAmbiente = !!(
+            process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL
+          );
+
+          if (credencialNoAmbiente) {
             serviceAccount = {
               type: "service_account",
               project_id: process.env.FIREBASE_PROJECT_ID,
               private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-              private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(
+              private_key: process.env.FIREBASE_PRIVATE_KEY.replace(
                 /\\n/g,
                 "\n"
               ),
@@ -238,15 +249,28 @@ const initializeDependencies = async () => {
                 "https://www.googleapis.com/oauth2/v1/certs",
               client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
             };
+            console.log("🔑 Firebase: credencial das variáveis de ambiente");
           } else {
-            serviceAccount = require("./firebase-key.json");
+            try {
+              serviceAccount = require("./firebase-key.json");
+              console.log("🔑 Firebase: credencial do firebase-key.json local");
+            } catch (erro) {
+              throw new Error(
+                "Sem credencial do Firebase. Defina FIREBASE_PRIVATE_KEY e " +
+                  "FIREBASE_CLIENT_EMAIL no ambiente, ou coloque o " +
+                  "firebase-key.json na pasta do backend. O upload de imagens " +
+                  "de produto não funciona sem isso."
+              );
+            }
           }
 
-          // Em desenvolvimento local, permite iniciar sem .env explícito
+          // O bucket deste projeto é .firebasestorage.app, padrão dos projetos
+          // Firebase atuais. O fallback antigo era .appspot.com e apontava para
+          // um bucket que não existe, então falhava só na hora do upload.
           const storageBucket =
             process.env.FIREBASE_STORAGE_BUCKET ||
             (serviceAccount.project_id
-              ? `${serviceAccount.project_id}.appspot.com`
+              ? `${serviceAccount.project_id}.firebasestorage.app`
               : undefined);
 
           if (!admin.apps.length) {
